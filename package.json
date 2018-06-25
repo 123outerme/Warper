@@ -1,0 +1,25 @@
+{
+  "name": "warper",
+  "version": "0.0.1",
+  "description": "a 2d action platformer with teleportation mechanics",
+  "dependencies": {
+    "Crank": "^0.1.0"
+  },
+  "main": "main.c",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/123outerme/Warper.git"
+  },
+  "keywords": [
+    "2d",
+    "action",
+    "platformer",
+    "sdl2"
+  ],
+  "author": "123outerme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/123outerme/Warper/issues"
+  },
+  "homepage": "https://github.com/123outerme/Warper#readme"
+}
