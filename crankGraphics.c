@@ -234,13 +234,44 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite sp
 {
     scenePtr->camera = camera;
     scenePtr->bgColor = bgColor;
-    scenePtr->sprites = (spriteCount > 0) ? &sprites : NULL;
+    if (spriteCount > 0)
+    {
+        scenePtr->sprites = calloc(spriteCount, sizeof(cSprite*));
+        for(int i = 0; i < spriteCount; i++)
+            scenePtr->sprites[i] = &sprites[i];
+    }
+    else
+        scenePtr->sprites = NULL;
     scenePtr->spriteCount = spriteCount;
-    scenePtr->models = (modelCount > 0) ? &models : NULL;
+
+    if (modelCount > 0)
+    {
+        scenePtr->models = calloc(modelCount, sizeof(c2DModel*));
+        for(int i = 0; i < modelCount; i++)
+            scenePtr->models[i] = &models[i];
+    }
+    else
+        scenePtr->models = NULL;
     scenePtr->modelCount = modelCount;
-    scenePtr->resources = (resCount > 0) ? &resources : NULL;
+
+    if (resCount > 0)
+    {
+        scenePtr->resources = calloc(resCount, sizeof(cResource*));
+        for(int i = 0; i < resCount; i++)
+            scenePtr->resources[i] = &resources[i];
+    }
+    else
+        scenePtr->resources = NULL;
     scenePtr->resCount = resCount;
-    scenePtr->strings = (stringCount > 0) ? &strings : NULL;
+
+    if (stringCount > 0)
+    {
+        scenePtr->strings = calloc(stringCount, sizeof(cText*));
+        for(int i = 0; i < spriteCount; i++)
+            scenePtr->strings[i] = &strings[i];
+    }
+    else
+        scenePtr->strings = NULL;
     scenePtr->stringCount = stringCount;
 }
 

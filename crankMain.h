@@ -12,8 +12,8 @@
 #ifndef CRANK_VERSION
     #define CRANK_VERSION_MAJOR 0
     #define CRANK_VERSION_MINOR 2
-    #define CRANK_VERSION_PATCH 0
-    #define CRANK_VERSION "0.1.0"
+    #define CRANK_VERSION_PATCH 1
+    #define CRANK_VERSION "0.2.1"
 #endif //CRANK_VERSION
 
 //#includes:
