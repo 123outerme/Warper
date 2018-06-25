@@ -14,11 +14,12 @@
  * \param subclass - void*. Do with it what you will, isn't used internally
  * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
  */
-void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect rect, double scale, SDL_RendererFlip flip, double degrees, void* subclass, int drawPriority)
+void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, void* subclass, int drawPriority)
 {
     sprite->texture = texture;
     sprite->id = id;
-    sprite->rect = rect;
+    sprite->drawRect = drawRect;
+    sprite->srcClipRect = srcClipRect;
     sprite->scale = scale;
     sprite->degrees = degrees;
     sprite->flip = flip;
@@ -33,7 +34,8 @@ void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect rect, d
 void destroyCSprite(cSprite* sprite)
 {
     SDL_DestroyTexture(sprite->texture);
-    sprite->rect = (SDL_Rect) {0, 0, 0, 0};
+    sprite->drawRect = (SDL_Rect) {0, 0, 0, 0};
+    sprite->srcClipRect = (SDL_Rect) {0, 0, 0, 0};
     sprite->id = 0;
     sprite->scale = 0;
     sprite->degrees = 0;
@@ -52,7 +54,7 @@ void destroyCSprite(cSprite* sprite)
  */
 void drawCSprite(cSprite sprite, cCamera camera, bool update)
 {
-    SDL_RenderCopyEx(mainRenderer, sprite.texture, &((SDL_Rect) {.x = 0, .y = 0, .w = sprite.rect.w, .h = sprite.rect.h}), &((SDL_Rect) {.x = sprite.rect.x - (camera.rect.x * windowW / camera.rect.w), .y = sprite.rect.y - (camera.rect.y * windowH / camera.rect.h), .w = sprite.rect.w * sprite.scale * camera.zoom, .h = sprite.rect.h * sprite.scale * camera.zoom}), sprite.degrees, NULL, sprite.flip);
+    SDL_RenderCopyEx(mainRenderer, sprite.texture, &(sprite.srcClipRect), &((SDL_Rect) {.x = sprite.drawRect.x - (camera.rect.x * windowW / camera.rect.w), .y = sprite.drawRect.y - (camera.rect.y * windowH / camera.rect.h), .w = sprite.drawRect.w * sprite.scale * camera.zoom, .h = sprite.drawRect.h * sprite.scale * camera.zoom}), sprite.degrees, NULL, sprite.flip);
     if (update)
         SDL_RenderPresent(mainRenderer);
 }
@@ -114,7 +116,7 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
         {
             if (model.sprites[i].drawPriority == priority)
             {
-                SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {.x = 0, .y = 0, .w = model.sprites[i].rect.w, .h = model.sprites[i].rect.h}), &((SDL_Rect) {.x = model.rect.x + model.sprites[i].rect.x - (camera.rect.x * windowW / camera.rect.w), .y = model.rect.y + model.sprites[i].rect.y  - (camera.rect.y * windowH / camera.rect.h), .w = model.sprites[i].rect.w * (model.sprites[i].scale * model.scale * camera.zoom), .h = model.sprites[i].rect.h * (model.sprites[i].scale * model.scale * camera.zoom)}), model.sprites[i].degrees + model.degrees, NULL, (model.sprites[i].flip + model.flip) % 4);
+                SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &(model.sprites[i].srcClipRect), &((SDL_Rect) {.x = model.rect.x + model.sprites[i].drawRect.x - (camera.rect.x * windowW / camera.rect.w), .y = model.rect.y + model.sprites[i].drawRect.y  - (camera.rect.y * windowH / camera.rect.h), .w = model.sprites[i].drawRect.w * (model.sprites[i].scale * model.scale * camera.zoom), .h = model.sprites[i].drawRect.h * (model.sprites[i].scale * model.scale * camera.zoom)}), model.sprites[i].degrees + model.degrees, NULL, (model.sprites[i].flip + model.flip) % 4);
             }
         }
     }

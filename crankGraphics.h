@@ -13,7 +13,8 @@
 typedef struct _cSprite {
     SDL_Texture* texture;
     int id;
-    SDL_Rect rect;
+    SDL_Rect drawRect;
+    SDL_Rect srcClipRect;
     double scale;
     SDL_RendererFlip flip;
     double degrees;
@@ -66,7 +67,7 @@ typedef struct _cScene {
 } cScene;
 
 //function prototypes:
-void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect rect, double scale, SDL_RendererFlip flip, double degrees, void* subclass, int drawPriority);
+void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, void* subclass, int drawPriority);
 void destroyCSprite(cSprite* sprite);
 void drawCSprite(cSprite sprite, cCamera camera, bool update);
 void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, int x, int y, int w, int h, double scale, SDL_RendererFlip flip, double degrees, void* subclass, int drawPriority);

@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
     cSprite mouseSprite;
-    initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 150, 120}, 1.0, SDL_FLIP_NONE, 0.0, NULL, 5);
+    initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, NULL, 5);
     cCamera testCamera;
     initCCamera(&testCamera, (SDL_Rect) {0, 0, 20, 10}, 1.0);
     cScene testScene;
@@ -26,8 +26,8 @@ int main(int argc, char* argv[])
             }
             if (e.type == SDL_KEYDOWN)
             {
-                mouseSprite.rect.x -= (testCamera.rect.x * windowW / testCamera.rect.w);
-                mouseSprite.rect.y -= (testCamera.rect.y * windowH / testCamera.rect.h);
+                mouseSprite.drawRect.x -= (testCamera.rect.x * windowW / testCamera.rect.w);  //subtract out camera offset
+                mouseSprite.drawRect.y -= (testCamera.rect.y * windowH / testCamera.rect.h);
 
                 if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
                     quit = true;
@@ -43,8 +43,8 @@ int main(int argc, char* argv[])
                 if (e.key.keysym.scancode == SDL_SCANCODE_D)
                     testCamera.rect.x++;
 
-                mouseSprite.rect.x += (testCamera.rect.x * windowW / testCamera.rect.w);
-                mouseSprite.rect.y += (testCamera.rect.y * windowH / testCamera.rect.h);
+                mouseSprite.drawRect.x += (testCamera.rect.x * windowW / testCamera.rect.w);  //add back camera offset
+                mouseSprite.drawRect.y += (testCamera.rect.y * windowH / testCamera.rect.h);
 
             }
             if (e.type == SDL_MOUSEBUTTONDOWN)
@@ -57,8 +57,8 @@ int main(int argc, char* argv[])
             }
             if (e.type == SDL_MOUSEMOTION)
             {
-                mouseSprite.rect.x = e.motion.x - (mouseSprite.rect.w / 2) + (testCamera.rect.x * windowW / testCamera.rect.w);
-                mouseSprite.rect.y = e.motion.y - (mouseSprite.rect.h / 2) + (testCamera.rect.y * windowH / testCamera.rect.h);
+                mouseSprite.drawRect.x = e.motion.x - (mouseSprite.drawRect.w / 2) + (testCamera.rect.x * windowW / testCamera.rect.w);
+                mouseSprite.drawRect.y = e.motion.y - (mouseSprite.drawRect.h / 2) + (testCamera.rect.y * windowH / testCamera.rect.h);
             }
         }
         drawCScene(&testScene, true);
