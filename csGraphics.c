@@ -1,4 +1,4 @@
-#include "crankGraphics.h"
+#include "csGraphics.h"
 
 /** \brief Initializes a cSprite object. You may want to create a wrapper method.
  *

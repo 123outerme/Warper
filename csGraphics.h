@@ -1,7 +1,7 @@
-#ifndef CRANKGRAPHICS_H_INCLUDED
-#define CRANKGRAPHICS_H_INCLUDED
+#ifndef CSGRAPHICS_H_INCLUDED
+#define CSGRAPHICS_H_INCLUDED
 
-#include "crankMain.h"
+#include "csMain.h"
 
 #ifndef bool
     #define bool char
@@ -89,4 +89,4 @@ void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
 
-#endif // CRANKGRAPHICS_H_INCLUDED
+#endif // CSGRAPHICS_H_INCLUDED

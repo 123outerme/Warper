@@ -1,5 +1,5 @@
-#ifndef CRANKUTILITY_H_INCLUDED
-#define CRANKUTILITY_H_INCLUDED
+#ifndef CSUTILITY_H_INCLUDED
+#define CSUTILITY_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,4 +23,4 @@ int digits(int num);
 void* freeThisMem(void* x);
 char* removeNewline(char* stuff, char replacement, int maxLength);
 
-#endif // CRANKUTILITY_H_INCLUDED
+#endif // CSUTILITY_H_INCLUDED

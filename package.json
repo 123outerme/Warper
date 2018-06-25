@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "a 2d action platformer with teleportation mechanics",
   "dependencies": {
-    "Crank": "^0.1.0"
+    "CoSprite": "^0.3.0"
   },
   "main": "main.c",
   "repository": {

@@ -1,11 +1,11 @@
-#include "crankMain.h"
+#include "csMain.h"
 
 #define IMG_INIT_FLAGS IMG_INIT_PNG
 
 /** \brief Initializes an SDL window and all of Piston's inner stuff.
  * \return Error code: Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
  */
-int initCrank(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize)
+int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize)
 {
     int status = 0;
     mainWindow = NULL;
@@ -89,7 +89,7 @@ int initCrank(char* iconPath, char* windowName, int windowWidth, int windowHeigh
     return status;
 }
 
-void closeCrank()
+void closeCoSprite()
 {
     TTF_CloseFont(mainFont);
     //TTF_CloseFont(smallFont);

@@ -1,20 +1,20 @@
-#ifndef CRANKMAIN_H_INCLUDED
-#define CRANKMAIN_H_INCLUDED
+#ifndef CSMAIN_H_INCLUDED
+#define CSMAIN_H_INCLUDED
 
-/* ++ Crank Engine version 0.2.0 - last update 6/25/2018 ++
-  -- initCrank() error codes:  --
+/* ++ CoSprite Engine version 0.3.1 - last update 6/25/2018 ++
+  -- initCoSprite() error codes:  --
   error code 0: No error
   error code 1: SDL systems failed to initialize
   error code 2: Window could not be created
   error code 3: Renderer failed to initialize
 */
 
-#ifndef CRANK_VERSION
-    #define CRANK_VERSION_MAJOR 0
-    #define CRANK_VERSION_MINOR 3
-    #define CRANK_VERSION_PATCH 1
-    #define CRANK_VERSION "0.3.1"
-#endif //CRANK_VERSION
+#ifndef COSPRITE_VERSION
+    #define COSPRITE_VERSION_MAJOR 0
+    #define COSPRITE_VERSION_MINOR 3
+    #define COSPRITE_VERSION_PATCH 2
+    #define COSPRITE_VERSION "0.3.2"
+#endif //CoSprite_VERSION
 
 //#includes:
 #include <stdio.h>
@@ -43,8 +43,8 @@
 
 
 //function prototypes:
-int initCrank();
-void closeCrank();
+int initCoSprite();
+void closeCoSprite();
 bool loadIMG(char* imgPath, SDL_Texture** dest);
 bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
 SDL_Keycode getKey(bool useMouse);
@@ -61,4 +61,4 @@ int windowW, windowH;
 bool canDrawText;
 int soundVolume, musicVolume;
 
-#endif // CRANKMAIN_H_INCLUDED
+#endif // CSMAIN_H_INCLUDED

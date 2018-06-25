@@ -1,5 +1,5 @@
-#ifndef CRANKFILE_H_INCLUDED
-#define CRANKFILE_H_INCLUDED
+#ifndef CSFILE_H_INCLUDED
+#define CSFILE_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,11 +1,11 @@
-#include "crankMain.h"
-#include "crankGraphics.h"
-#include "crankFile.h"
-#include "crankUtility.h"
+#include "csMain.h"
+#include "csGraphics.h"
+#include "csFile.h"
+#include "csUtility.h"
 
 int main(int argc, char* argv[])
 {
-    int error = initCrank("", "Warper", 960, 480, "assets/Px437_ITT_BIOS_X.ttf", 24);
+    int error = initCoSprite("", "Warper", 960, 480, "assets/Px437_ITT_BIOS_X.ttf", 24);
     SDL_Event e;
     bool quit = false;
     SDL_Texture* mouseTexture, * playerTexture;
@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
     initCSprite(&playerSprite, playerTexture, 1, (SDL_Rect) {0, 24, 120, 120}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);
     cText versionText;
-    initCText(&versionText, CRANK_VERSION, (SDL_Rect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, true, 5);
+    initCText(&versionText, COSPRITE_VERSION, (SDL_Rect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, true, 5);
     cCamera testCamera;
     initCCamera(&testCamera, (SDL_Rect) {0, 0, 20, 10}, 1.0, 0.0);
     cScene testScene;
@@ -85,6 +85,6 @@ int main(int argc, char* argv[])
         drawCScene(&testScene, true);
     }
     destroyCScene(&testScene);
-    closeCrank();
+    closeCoSprite();
     return error;
 }
