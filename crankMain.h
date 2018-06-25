@@ -1,13 +1,20 @@
 #ifndef CRANKMAIN_H_INCLUDED
 #define CRANKMAIN_H_INCLUDED
 
-/* ++ Crank Engine version 0.1.0 - last update 6/7/2018 ++
+/* ++ Crank Engine version 0.2.0 - last update 6/25/2018 ++
   -- initCrank() error codes:  --
   error code 0: No error
   error code 1: SDL systems failed to initialize
   error code 2: Window could not be created
   error code 3: Renderer failed to initialize
 */
+
+#ifndef CRANK_VERSION
+    #define CRANK_VERSION_MAJOR 0
+    #define CRANK_VERSION_MINOR 2
+    #define CRANK_VERSION_PATCH 0
+    #define CRANK_VERSION "0.1.0"
+#endif //CRANK_VERSION
 
 //#includes:
 #include <stdio.h>

@@ -11,11 +11,13 @@ int main(int argc, char* argv[])
     SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
     cSprite mouseSprite;
-    initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, NULL, 5);
+    initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, NULL, 1);
+    cText versionText;
+    initCText(&versionText, CRANK_VERSION, (SDL_Rect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, 2);
     cCamera testCamera;
     initCCamera(&testCamera, (SDL_Rect) {0, 0, 20, 10}, 1.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, &mouseSprite, 1, NULL, 0, NULL, 0, NULL, 0);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, &mouseSprite, 1, NULL, 0, NULL, 0, &versionText, 1);
     while(!quit)
     {
         while(SDL_PollEvent(&e))
