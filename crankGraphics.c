@@ -279,7 +279,7 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* s
     if (stringCount > 0)
     {
         scenePtr->strings = calloc(stringCount, sizeof(cText*));
-        for(int i = 0; i < spriteCount; i++)
+        for(int i = 0; i < stringCount; i++)
             scenePtr->strings[i] = strings[i];
     }
     else
