@@ -89,6 +89,34 @@ int initCrank(char* iconPath, char* windowName, int windowWidth, int windowHeigh
     return status;
 }
 
+void closeCrank()
+{
+    TTF_CloseFont(mainFont);
+    //TTF_CloseFont(smallFont);
+	if (mainScreen)
+        SDL_FreeSurface(mainScreen);
+    if (mainWindow)
+        SDL_DestroyWindow(mainWindow);
+    if (mainRenderer)
+        SDL_DestroyRenderer(mainRenderer);
+    /*for(int i = 0; i < MAX_SOUNDS; i++)
+    {
+        if (audioArray[i])
+            Mix_FreeChunk(audioArray[i]);
+    }*/
+
+    /*for(int i = 0; i < MAX_MUSIC; i++)
+    {
+        if (musicArray[i])
+            Mix_FreeMusic(musicArray[i]);
+    }*/
+
+    TTF_Quit();
+    IMG_Quit();
+    Mix_CloseAudio();
+    SDL_Quit();
+}
+
 /** \brief Loads an image into a SDL_Texture*
  *
  * \param imgPath - valid string filepath (relative or absolute)

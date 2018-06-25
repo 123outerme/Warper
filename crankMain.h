@@ -37,6 +37,7 @@
 
 //function prototypes:
 int initCrank();
+void closeCrank();
 bool loadIMG(char* imgPath, SDL_Texture** dest);
 bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
 SDL_Keycode getKey(bool useMouse);
