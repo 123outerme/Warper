@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
     initCSprite(&playerSprite, playerTexture, 1, (SDL_Rect) {0, 24, 120, 120}, (SDL_Rect) {15, 0, 120, 120}, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);
     cText versionText;
-    initCText(&versionText, COSPRITE_VERSION, (SDL_Rect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, true, 5);
+    initCText(&versionText, COSPRITE_VERSION, (SDL_Rect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
     initCCamera(&testCamera, (SDL_Rect) {0, 0, 20, 10}, 1.0, 0.0);
     cScene testScene;
@@ -61,6 +61,12 @@ int main(int argc, char* argv[])
 
                 if (e.key.keysym.scancode == SDL_SCANCODE_RIGHT)
                     testCamera.rect.x++;
+
+                if (e.key.keysym.scancode == SDL_SCANCODE_Q)  //camera rotation won't be controllable in final game obviously
+                    testCamera.degrees -= 5;
+
+                if (e.key.keysym.scancode == SDL_SCANCODE_E)
+                    testCamera.degrees += 5;
 
                 //mouseSprite.drawRect.x += (testCamera.rect.x * windowW / testCamera.rect.w);  //add back camera offset
                 //mouseSprite.drawRect.y += (testCamera.rect.y * windowH / testCamera.rect.h);

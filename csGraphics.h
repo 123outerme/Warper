@@ -8,6 +8,11 @@
     #define false 0
     #define true 1
 #endif // bool
+#ifndef PI
+    #define PI (3.14159265359879)
+    #define radToDeg(x) (180.0 * x / PI)
+    #define degToRad(x) (x * PI / 180.0)
+#endif // PI
 
 //struct definitions:
 typedef struct _cSprite {
@@ -37,10 +42,13 @@ typedef struct _c2DModel {  //essentially a 2D version of a wireframe model: A c
 
 typedef struct _cText {
     char* string;
+    SDL_Texture* texture;
     SDL_Rect rect;
     int drawPriority; /**< 0 - not drawn. 1-5 - drawn. Lower number = drawn later */
     SDL_Color textColor;
     SDL_Color bgColor;
+    SDL_RendererFlip flip;
+    double degrees;
     bool fixed;  /**< if true, won't be affected by camera movement */
 } cText;
 
@@ -77,7 +85,7 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update);
 void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, int x, int y, int w, int h, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyC2DModel(c2DModel* model);
 void drawC2DModel(c2DModel model, cCamera camera, bool update);
-void initCText(cText* text, char* string, SDL_Rect rect, SDL_Color textColor, SDL_Color bgColor, bool fixed, int drawPriority);
+void initCText(cText* text, char* string, SDL_Rect rect, SDL_Color textColor, SDL_Color bgColor, SDL_RendererFlip flip, double degrees, bool fixed, int drawPriority);
 void destroyCText(cText* text);
 void drawCText(cText text, cCamera camera, bool update);
 void initCResource(cResource* res, char* filepath);
