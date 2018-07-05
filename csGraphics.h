@@ -59,10 +59,9 @@ typedef struct _cCamera {
 } cCamera;
 
 typedef struct _cResource {
-    char* filepath;
-    SDL_Texture* texture;
-    SDL_Rect rect;
     void* subclass;
+    void (*drawingRoutine)(void*);
+    int drawPriority; /**< 0 - not drawn. 1-5 - drawn. Lower number = drawn later */
 } cResource;
 
 typedef struct _cScene {
@@ -88,7 +87,8 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update);
 void initCText(cText* text, char* string, SDL_Rect rect, SDL_Color textColor, SDL_Color bgColor, SDL_RendererFlip flip, double degrees, bool fixed, int drawPriority);
 void destroyCText(cText* text);
 void drawCText(cText text, cCamera camera, bool update);
-void initCResource(cResource* res, char* filepath);
+void initCResource(cResource* res, void* subclass, void (*drawingRoutine)(void*), int drawPriority);
+void drawCResource(cResource* res);
 void destroyCResource(cResource* res);
 void initCCamera(cCamera* camera, SDL_Rect rect, double zoom, double degrees);
 void destroyCCamera(cCamera* camera);

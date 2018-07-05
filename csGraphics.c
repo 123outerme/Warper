@@ -240,13 +240,23 @@ void drawCText(cText text, cCamera camera, bool update)
 /** \brief Loads in an image resource
  *
  * \param res - cResource pointer
- * \param filepath - valid string filepath (relative or absolute)
+ * \param subclass - struct containing your data
+ * \param drawingMethod - function pointer to your drawing method. Must have only one argument, which is your subclass
  */
-void initCResource(cResource* res, char* filepath)
+void initCResource(cResource* res, void* subclass, void (*drawingRoutine)(void*), int drawPriority)
 {
-    res->filepath = filepath;
-    loadIMG(filepath, &(res->texture));
-    SDL_QueryTexture(res->texture, NULL, NULL, &(res->rect.w), &(res->rect.h));
+    res->subclass = subclass;
+    res->drawingRoutine = drawingRoutine;
+    res->drawPriority = drawPriority;
+}
+
+/** \brief draws a CResource
+ *
+ * \param res - pointer to your cResource
+ */
+void drawCResource(cResource* res)
+{
+    (*res->drawingRoutine)(res->subclass);
 }
 
 /** \brief clears out a cResource and its memory
@@ -255,10 +265,9 @@ void initCResource(cResource* res, char* filepath)
  */
 void destroyCResource(cResource* res)
 {
-    strcpy(res->filepath, "\0");
-    SDL_DestroyTexture(res->texture);
-    res->rect.w = 0;
-    res->rect.h = 0;
+    res->subclass = NULL;
+    res->drawingRoutine = NULL;
+    res->drawPriority = 0;
 }
 
 /** \brief initializes a cCamera and its memory
@@ -407,6 +416,12 @@ void drawCScene(cScene* scenePtr, bool redraw)
         {
             if (scenePtr->models[i]->drawPriority == priority)
                 drawC2DModel(*(scenePtr->models[i]), *(scenePtr->camera), false);
+        }
+
+        for(int i = 0; i < scenePtr->resCount; i++)
+        {
+            if (scenePtr->resources[i]->drawPriority == priority)
+                drawCResource(scenePtr->resources[i]);
         }
 
         for(int i = 0; i < scenePtr->stringCount; i++)
