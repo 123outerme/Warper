@@ -1,5 +1,5 @@
 @set project=Warper
-@ROBOCOPY %cd% "C:\Program Files\Git\code\%project%" *.c *.h *.txt *.ico *.bin *.rc *.bat *.png *.ttf *.ogg *.mp3 *.mp4 *.html *.css *.md /MIR /XD dirs .git media
+@ROBOCOPY %cd% "C:\Program Files\Git\code\%project%" *.c *.h *.txt *.ico *.bin *.rc *.bat *.png *.ttf *.ogg *.mp3 *.mp4 *.html *.css *.md /MIR /XD dirs .git media SDL
 @cd "C:\Program Files\Git\code\%project%"
 @set commitMessage=""
 @IF [%1]==[] (

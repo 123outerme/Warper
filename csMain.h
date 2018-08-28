@@ -11,10 +11,11 @@
 
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
-    #define COSPRITE_VERSION_MINOR 4
-    #define COSPRITE_VERSION_PATCH 0
-    #define COSPRITE_VERSION "0.4.0"
+    #define COSPRITE_VERSION_MINOR 5
+    #define COSPRITE_VERSION_PATCH 1
+    #define COSPRITE_VERSION "0.5.1"
 #endif //CoSprite_VERSION
+#define SDL_MAIN_HANDLED 1
 
 //#includes:
 #include <stdio.h>
@@ -27,6 +28,7 @@
 #include "SDL/SDL_image.h" //This is included so we can use PNGs.
 #include "SDL/SDL_ttf.h"   //This is included for text stuff
 #include "SDL/SDL_mixer.h" //This is included for audio
+
 
 //#defines:
 #ifndef bool
@@ -47,9 +49,8 @@ int initCoSprite();
 void closeCoSprite();
 bool loadIMG(char* imgPath, SDL_Texture** dest);
 bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
-SDL_Keycode getKey(bool useMouse);
-SDL_Keycode waitForKey(bool useMouse);
 int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended);
+
 
 //global variable declarations:
 SDL_Window* mainWindow;

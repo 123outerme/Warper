@@ -2,8 +2,8 @@
 
 #define IMG_INIT_FLAGS IMG_INIT_PNG
 
-/** \brief Initializes an SDL window and all of Piston's inner stuff.
- * \return Error code: Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
+/** \brief Initializes an SDL window and all of CoSprite's inner stuff.
+ * \return Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
  */
 int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize)
 {
@@ -160,64 +160,6 @@ bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts)
     return true;
 }
 
-/** \brief gets a keypress
- *
- * \param useMouse - whether or not to count a click as a key
- * \return key you pressed as an SDL_Keycode, or -1 if a quit signal was sent
- */
-SDL_Keycode getKey(bool useMouse)
-{
-    SDL_Event e;
-    SDL_Keycode keycode = 0;
-    while(SDL_PollEvent(&e) != 0)
-    {
-        if(e.type == SDL_QUIT)
-            keycode = -1;
-        else
-        {
-            if(e.type == SDL_KEYDOWN)
-                keycode = e.key.keysym.sym;
-            if (e.type == SDL_MOUSEBUTTONDOWN && useMouse)
-                keycode = 1;
-        }
-    }
-    return keycode;
-}
-
-/** \brief Just like getKey(), except it waits
- *
- * \param useMouse - whether or not to count a click as a key
- * \return key you pressed as an SDL_Keycode, or -1 if a quit signal was sent
- */
-SDL_Keycode waitForKey(bool useMouse)
-{
-    SDL_Event e;
-    bool quit = false;
-    SDL_Keycode keycode = SDLK_ESCAPE;
-    while(!quit)
-    {
-        while(SDL_PollEvent(&e) != 0)
-        {
-            if(e.type == SDL_QUIT)
-                quit = true;
-            else
-            {
-                if(e.type == SDL_KEYDOWN)
-                {
-                    keycode = e.key.keysym.sym;
-                    quit = true;
-                }
-                if (e.type == SDL_MOUSEBUTTONDOWN && useMouse)
-                {
-                    keycode = 1;
-                    quit = true;
-                }
-            }
-        }
-    }
-    return keycode;
-}
-
 /** \brief converts text to a texture
  *
  * \param text - text you want converted to a texture
@@ -225,7 +167,7 @@ SDL_Keycode waitForKey(bool useMouse)
  * \param maxW - How wide the text can be before wrapping
  * \param color - SDL_Color struct of color to be used
  * \param isBlended - true always
- * \return
+ * \return int[2] holding {width, height}
  *
  */
 int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended)
