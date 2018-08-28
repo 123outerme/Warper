@@ -1,18 +1,51 @@
 #ifndef CSGRAPHICS_H_INCLUDED
 #define CSGRAPHICS_H_INCLUDED
 
-#include "csMain.h"
+/* ++ CoSprite 2D Engine ++
+  -- initCoSprite() error codes:  --
+  error code 0: No error
+  error code 1: SDL systems failed to initialize
+  error code 2: Window could not be created
+  error code 3: Renderer failed to initialize
+*/
 
+#ifndef COSPRITE_VERSION
+    #define COSPRITE_VERSION_MAJOR 0
+    #define COSPRITE_VERSION_MINOR 5
+    #define COSPRITE_VERSION_PATCH 2
+    #define COSPRITE_VERSION "0.5.2"
+#endif //COSPRITE_VERSION
+#define SDL_MAIN_HANDLED 1
+
+//#includes:
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+#include <ctype.h>
+#include "SDL/SDL.h"       //This is included because it's an SDL2 program... duh
+#include "SDL/SDL_image.h" //This is included so we can use PNGs.
+#include "SDL/SDL_ttf.h"   //This is included for text stuff
+#include "SDL/SDL_mixer.h" //This is included for audio
+
+
+//#defines:
 #ifndef bool
     #define bool char
     #define false 0
     #define true 1
 #endif // bool
+#ifndef NULL
+    #define NULL ((void*) 0)
+#endif //NULL
 #ifndef PI
     #define PI (3.14159265359879)
     #define radToDeg(x) (180.0 * x / PI)
     #define degToRad(x) (x * PI / 180.0)
 #endif // PI
+
+#define boolToString(bool) (bool ? "true" : "false")
 
 //struct definitions:
 typedef struct _cSprite {
@@ -78,6 +111,12 @@ typedef struct _cScene {
 } cScene;
 
 //function prototypes:
+int initCoSprite();
+void closeCoSprite();
+bool loadIMG(char* imgPath, SDL_Texture** dest);
+bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
+int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended);
+
 void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyCSprite(cSprite* sprite);
 void drawCSprite(cSprite sprite, cCamera camera, bool update);
@@ -96,5 +135,15 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* s
 void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
+
+//global variable declarations:
+SDL_Window* mainWindow;
+SDL_Surface* mainScreen;
+SDL_Renderer* mainRenderer;
+TTF_Font* mainFont;
+
+int windowW, windowH;
+bool canDrawText;
+int soundVolume, musicVolume;
 
 #endif // CSGRAPHICS_H_INCLUDED

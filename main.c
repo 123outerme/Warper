@@ -1,4 +1,4 @@
-#include "csMain.h"
+//#include "csMain.h"
 #include "csGraphics.h"
 #include "csFile.h"
 #include "csIO.h"
@@ -37,6 +37,8 @@ int main(int argc, char* argv[])
                 if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
                     quit = true;
 
+                if (e.key.keysym.scancode == SDL_SCANCODE_F12)
+                    printf("%d, %d x %d/%d [%d, %d]\n", playerSprite.drawRect.x, playerSprite.drawRect.y, playerSprite.drawRect.w, playerSprite.drawRect.h, windowW, windowH);
 
                 if (e.key.keysym.scancode == SDL_SCANCODE_W)
                     playerSprite.drawRect.y -= 6;
