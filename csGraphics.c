@@ -54,12 +54,13 @@ void destroyCSprite(cSprite* sprite)
  * \param sprite - cSprite you want drawn
  * \param camera - cCamera to be used for drawing
  * \param update - if true, immediately presents renderer
+ * \param fixedOverride - if true, acts as if sprite.fixed is true
  */
-void drawCSprite(cSprite sprite, cCamera camera, bool update)
+void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride)
 {
     int x = sprite.drawRect.x;
     int y = sprite.drawRect.y;
-    if (!sprite.fixed)
+    if (!(sprite.fixed | fixedOverride) )
     {
         float s = sin(degToRad(camera.degrees));
         float c = cos(degToRad(camera.degrees));
@@ -72,8 +73,8 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update)
         x = xnew + (windowW / 2 - sprite.drawRect.w / 2);
         y = ynew + (windowH / 2 - sprite.drawRect.h / 2);
     }
-    x -= !sprite.fixed * (camera.rect.x * windowW / camera.rect.w);
-    y -= !sprite.fixed * (camera.rect.y * windowH / camera.rect.h);
+    x -= !(sprite.fixed | fixedOverride) * (camera.rect.x * windowW / camera.rect.w);
+    y -= !(sprite.fixed | fixedOverride) * (camera.rect.y * windowH / camera.rect.h);
     SDL_RenderCopyEx(mainRenderer, sprite.texture, &(sprite.srcClipRect), &((SDL_Rect) {.x = x, .y = y, .w = sprite.drawRect.w * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom), .h = sprite.drawRect.h * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom)}), sprite.degrees + !sprite.fixed * camera.degrees, NULL, sprite.flip);
     if (update)
         SDL_RenderPresent(mainRenderer);
@@ -139,29 +140,14 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
         {
             if (model.sprites[i].drawPriority == priority)
             {
-                int x = model.rect.x + model.sprites[i].drawRect.x;
-                int y = model.rect.y + model.sprites[i].drawRect.y;
-                if (!model.fixed | !model.sprites[i].fixed)
-                {
-                    float s = sin(degToRad(camera.degrees));
-                    float c = cos(degToRad(camera.degrees));
-                    x -= (windowW / 2 - model.rect.w / 2);
-                    y -= (windowH / 2 - model.rect.h / 2);
-
-                    int xnew = x * c - y * s;
-                    int ynew = x * s + y * c;
-
-                    x = xnew + (windowW / 2 - model.rect.w / 2);
-                    y = ynew + (windowH / 2 - model.rect.h / 2);
-                }
-                x -= (!model.fixed | !model.sprites[i].fixed) * (camera.rect.x * windowW / camera.rect.w);
-                y -= (!model.fixed | !model.sprites[i].fixed) * (camera.rect.y * windowH / camera.rect.h);
-                SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &(model.sprites[i].srcClipRect), &((SDL_Rect) {.x = x, .y = y, .w = model.sprites[i].drawRect.w * (model.sprites[i].scale * model.scale * ((model.fixed | model.sprites[i].fixed) ? 1.0 : camera.zoom)), .h = model.sprites[i].drawRect.h * (model.sprites[i].scale * model.scale * ((model.fixed | model.sprites[i].fixed) ? 1.0 : camera.zoom))}), model.sprites[i].degrees + model.degrees + !(model.fixed | model.sprites[i].fixed) * camera.degrees, NULL, (model.sprites[i].flip + model.flip) % 4);
+                model.sprites[i].drawRect.x += model.rect.x;
+                model.sprites[i].drawRect.y += model.rect.y;
+                drawCSprite(model.sprites[i], camera, update, model.fixed);
+                model.sprites[i].drawRect.x -= model.rect.x;
+                model.sprites[i].drawRect.y -= model.rect.y;
             }
         }
     }
-    if (update)
-        SDL_RenderPresent(mainRenderer);
 }
 
 /** \brief initializes a cText object
@@ -409,7 +395,7 @@ void drawCScene(cScene* scenePtr, bool redraw)
         for(int i = 0; i < scenePtr->spriteCount; i++)
         {
             if (scenePtr->sprites[i]->drawPriority == priority)
-                drawCSprite(*(scenePtr->sprites[i]), *(scenePtr->camera), false);
+                drawCSprite(*(scenePtr->sprites[i]), *(scenePtr->camera), false, false);
         }
 
         for(int i = 0; i < scenePtr->modelCount; i++)

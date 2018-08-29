@@ -11,9 +11,9 @@
 
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
-    #define COSPRITE_VERSION_MINOR 5
-    #define COSPRITE_VERSION_PATCH 2
-    #define COSPRITE_VERSION "0.5.2"
+    #define COSPRITE_VERSION_MINOR 6
+    #define COSPRITE_VERSION_PATCH 0
+    #define COSPRITE_VERSION "0.6.0"
 #endif //COSPRITE_VERSION
 #define SDL_MAIN_HANDLED 1
 
@@ -119,7 +119,7 @@ int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, 
 
 void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyCSprite(cSprite* sprite);
-void drawCSprite(cSprite sprite, cCamera camera, bool update);
+void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride);
 void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, int x, int y, int w, int h, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyC2DModel(c2DModel* model);
 void drawC2DModel(c2DModel model, cCamera camera, bool update);
