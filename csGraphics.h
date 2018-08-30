@@ -53,6 +53,7 @@ typedef struct _cSprite {
     int id;
     SDL_Rect drawRect;
     SDL_Rect srcClipRect;
+    SDL_Point center;
     double scale;
     SDL_RendererFlip flip;
     double degrees;
@@ -65,6 +66,7 @@ typedef struct _c2DModel {  //essentially a 2D version of a wireframe model: A c
     cSprite* sprites;
     int numSprites;
     SDL_Rect rect;
+    SDL_Point center;
     double scale;
     SDL_RendererFlip flip;
     double degrees;
@@ -117,10 +119,10 @@ bool loadIMG(char* imgPath, SDL_Texture** dest);
 bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
 int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended);
 
-void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
+void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, SDL_Point* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyCSprite(cSprite* sprite);
 void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride);
-void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, int x, int y, int w, int h, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
+void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, SDL_Point position, SDL_Point* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority);
 void destroyC2DModel(c2DModel* model);
 void drawC2DModel(c2DModel model, cCamera camera, bool update);
 void initCText(cText* text, char* string, SDL_Rect rect, SDL_Color textColor, SDL_Color bgColor, SDL_RendererFlip flip, double degrees, bool fixed, int drawPriority);
@@ -135,6 +137,7 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* s
 void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
+SDL_Point rotatePoint(SDL_Point pt, SDL_Point center, int degrees, bool visualize, SDL_Color visualizeColor);
 
 //global variable declarations:
 SDL_Window* mainWindow;

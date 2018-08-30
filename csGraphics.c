@@ -15,12 +15,18 @@
  * \param fixed - if true, won't be affected by a scene's camera
  * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
  */
-void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
+void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, SDL_Rect drawRect, SDL_Rect srcClipRect, SDL_Point* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
 {
     sprite->texture = texture;
     sprite->id = id;
     sprite->drawRect = drawRect;
     sprite->srcClipRect = srcClipRect;
+
+    if (center != NULL)
+        sprite->center = *center;
+    else
+        sprite->center = (SDL_Point) {drawRect.w / 2, drawRect.h / 2};
+
     sprite->scale = scale;
     sprite->degrees = degrees;
     sprite->flip = flip;
@@ -58,36 +64,26 @@ void destroyCSprite(cSprite* sprite)
  */
 void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride)
 {
-    int x = sprite.drawRect.x;
-    int y = sprite.drawRect.y;
-    if (!(sprite.fixed | fixedOverride) )
+    SDL_Point point;
+    point.x = sprite.drawRect.x;
+    point.y = sprite.drawRect.y;
+    if (!(sprite.fixed | fixedOverride))
     {
-        float s = sin(degToRad(camera.degrees));
-        float c = cos(degToRad(camera.degrees));
-        x -= (windowW / 2 - sprite.drawRect.w / 2);
-        y -= (windowH / 2 - sprite.drawRect.h / 2);
-
-        int xnew = x * c - y * s;
-        int ynew = x * s + y * c;
-
-        x = xnew + (windowW / 2 - sprite.drawRect.w / 2);
-        y = ynew + (windowH / 2 - sprite.drawRect.h / 2);
+        point = rotatePoint(point, (SDL_Point) {windowW / 2 - sprite.center.x, windowH / 2 - sprite.center.y}, camera.degrees, false, (SDL_Color) {0,0,0,0});
+        point.x -= camera.rect.x * windowW / camera.rect.w;
+        point.y -= camera.rect.y * windowH / camera.rect.h;
     }
-    x -= !(sprite.fixed | fixedOverride) * (camera.rect.x * windowW / camera.rect.w);
-    y -= !(sprite.fixed | fixedOverride) * (camera.rect.y * windowH / camera.rect.h);
-    SDL_RenderCopyEx(mainRenderer, sprite.texture, &(sprite.srcClipRect), &((SDL_Rect) {.x = x, .y = y, .w = sprite.drawRect.w * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom), .h = sprite.drawRect.h * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom)}), sprite.degrees + !sprite.fixed * camera.degrees, NULL, sprite.flip);
+    SDL_RenderCopyEx(mainRenderer, sprite.texture, &(sprite.srcClipRect), &((SDL_Rect) {.x = point.x, .y = point.y, .w = sprite.drawRect.w * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom), .h = sprite.drawRect.h * sprite.scale * (sprite.fixed ? 1.0 : camera.zoom)}), sprite.degrees + !sprite.fixed * camera.degrees, &sprite.center, sprite.flip);
     if (update)
         SDL_RenderPresent(mainRenderer);
 }
 
-/** \brief Initializes a cSprite object. You may want to create a wrapper method.
+/** \brief Initializes a c2DModel object.
  *
  * \param model - a pointer to your model.
- * \param sprites - a pointer that holds your sprites
- * \param x - x position onscreen
- * \param y - y position onscreen
- * \param w - width of your sprite
- * \param h - height of your sprite
+ * \param sprites - a pointer that holds your sprites.
+ * \param position - x/y of your model. Width and height will be filled in automatically.
+ * \param center - a pointer to an SDL_Point that is the relative center. NULL to be (w/2, h/2).
  * \param scale - size * this == drawn size
  * \param flip - SDL_RenderFlip value
  * \param degrees - rotation angle in degrees
@@ -95,11 +91,22 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
  * \param subclass - void*. Do with it what you will, isn't used internally
  * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
  */
-void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, int x, int y, int w, int h, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
+void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, SDL_Point position, SDL_Point* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
 {
     model->sprites = (numSprites) ? sprites : NULL;
     model->numSprites = numSprites;
-    model->rect = (SDL_Rect) {.x = x, .y = y, .w = w, .h = h};
+    model->rect = (SDL_Rect) {position.x, position.y, 0, 0};
+    for(int i = 0; i < numSprites; i++)
+    {
+        if (model->rect.w < sprites[i].drawRect.x + sprites[i].drawRect.w)
+            model->rect.w = sprites[i].drawRect.x + sprites[i].drawRect.w;
+        if (model->rect.h < sprites[i].drawRect.y + sprites[i].drawRect.h)
+            model->rect.h = sprites[i].drawRect.y + sprites[i].drawRect.h;
+    }
+    if (center != NULL)
+        model->center = *center;
+    else
+        model->center = (SDL_Point) {model->rect.w / 2, model->rect.h / 2};
     model->scale = scale;
     model->flip = flip;
     model->degrees = degrees;
@@ -140,11 +147,62 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
         {
             if (model.sprites[i].drawPriority == priority)
             {
+                {
+                    /*SDL_Point point = {model.sprites[i].drawRect.x + model.rect.x, model.sprites[i].drawRect.y + model.rect.y};
+                    {
+                        float s = sin(degToRad(model.degrees));
+                        float c = cos(degToRad(model.degrees));
+                        x -= (model.rect.x + model.center.x);
+                        y -= (model.rect.y + model.center.y);
+
+                        int xnew = x * c - y * s;
+                        int ynew = x * s + y * c;
+
+                        x = xnew + (model.rect.x + model.center.x);
+                        y = ynew + (model.rect.y + model.center.y);
+                    }*/
+                    /*SDL_Point spriteCenter = (SDL_Point) {point.x + model.sprites[i].center.x, point.y + model.sprites[i].center.y};
+                    SDL_Point modelCenter = (SDL_Point) {model.rect.x + model.center.x, model.rect.y + model.center.y};
+
+                    point = rotatePoint(point, modelCenter, model.degrees, true, (SDL_Color) {0xFF, 0x00, 0x00, 0xFF});
+                    //spriteCenter = rotatePoint(spriteCenter, modelCenter, model.degrees, true, (SDL_Color) {0xFF, 0x00, 0xFF, 0xFF});
+                    //point = rotatePoint(point, spriteCenter, model.sprites[i].degrees, true, (SDL_Color) {0x00, 0xFF, 0x00, 0xFF});
+
+                    if (!(model.sprites[i].fixed | model.fixed))
+                    {
+                        point = rotatePoint(point, (SDL_Point) {windowW / 2 - model.sprites[i].center.x, windowH / 2 - model.sprites[i].center.y}, camera.degrees, true, (SDL_Color) {0x00, 0x00, 0xFF, 0xFF});
+
+                        point.x -= camera.rect.x * windowW / camera.rect.w;
+                        point.y -= camera.rect.y * windowH / camera.rect.h;
+                    }
+                    / *
+                    SDL_Point point;
+                    point.x = model.sprites[i].drawRect.x + model.rect.x;
+                    point.y = model.sprites[i].drawRect.y + model.rect.y;
+                    model.center.x += model.rect.x;
+                    model.center.y += model.rect.y;
+                    point = rotatePoint(point, model.center, model.degrees);
+                    model.center.x -= model.rect.x;
+                    model.center.y -= model.rect.y;
+                    if (!(model.sprites[i].fixed | model.fixed))
+                    {
+                        point = rotatePoint(point, model.sprites[i].center, camera.degrees);
+                        point.x -= camera.rect.x * windowW / camera.rect.w;
+                        point.y -= camera.rect.y * windowH / camera.rect.h;
+                    }* /
+
+                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &(model.sprites[i].srcClipRect), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.zoom), .h = model.sprites[i].drawRect.h * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.zoom)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), NULL, model.sprites[i].flip + model.flip);
+                    if (update)
+                        SDL_RenderPresent(mainRenderer);*/
+                }
                 model.sprites[i].drawRect.x += model.rect.x;
                 model.sprites[i].drawRect.y += model.rect.y;
+                //model.sprites[i].degrees += model.degrees;
                 drawCSprite(model.sprites[i], camera, update, model.fixed);
                 model.sprites[i].drawRect.x -= model.rect.x;
                 model.sprites[i].drawRect.y -= model.rect.y;
+                //model.sprites[i].degrees -= model.degrees;
+
             }
         }
     }
@@ -204,18 +262,14 @@ void drawCText(cText text, cCamera camera, bool update)
     int* wh = loadTextTexture(text.string, &text.texture, text.rect.w, text.textColor, true);
     text.rect.w = wh[0];
     text.rect.h = wh[1];
+
     if (!text.fixed)
     {
-        float s = sin(degToRad(camera.degrees));
-        float c = cos(degToRad(camera.degrees));
-        text.rect.x -= (windowW / 2 - text.rect.w / 2);
-        text.rect.y -= (windowH / 2 - text.rect.h / 2);
+        SDL_Point point = {text.rect.x, text.rect.y};
+        point = rotatePoint(point, (SDL_Point) {windowW / 2 - text.rect.w / 2, windowH / 2 - text.rect.h / 2}, camera.degrees, false, (SDL_Color) {0,0,0,0});
 
-        int xnew = text.rect.x * c - text.rect.y * s;
-        int ynew = text.rect.x * s + text.rect.y * c;
-
-        text.rect.x = xnew + (windowW / 2 - text.rect.w / 2) - (camera.rect.x * windowW / camera.rect.w);
-        text.rect.y = ynew + (windowH / 2 - text.rect.h / 2) - (camera.rect.y * windowH / camera.rect.h);
+        text.rect.x = point.x - (camera.rect.x * windowW / camera.rect.w);
+        text.rect.y = point.y - (camera.rect.y * windowH / camera.rect.h);
     }
     SDL_SetRenderDrawColor(mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
     SDL_RenderCopyEx(mainRenderer, text.texture, NULL, &text.rect, text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
@@ -641,3 +695,31 @@ int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, 
     return wh;
 }
 //
+/** \brief rotates one point around another.
+* \param pt - your point you want rotated
+* \param center - the center point to rotate <pt> around
+* \param degrees - the amount of rotation in degrees
+* \return an SDL_Point with the rotated point
+*/
+SDL_Point rotatePoint(SDL_Point pt, SDL_Point center, int degrees, bool visualize, SDL_Color visualizeColor)
+{
+
+    float s = sin(degToRad(degrees));
+    float c = cos(degToRad(degrees));
+
+    pt.x -= center.x;
+    pt.y -= center.y;
+
+    int xnew = pt.x * c - pt.y * s;
+    int ynew = pt.x * s + pt.y * c;
+
+    pt.x = xnew + center.x;
+    pt.y = ynew + center.y;
+
+    if (visualize)
+    {
+        SDL_SetRenderDrawColor(mainRenderer, visualizeColor.r, visualizeColor.g, visualizeColor.b, visualizeColor.a);
+        SDL_RenderFillRect(mainRenderer, &((SDL_Rect) {pt.x, pt.y, 8, 8}));
+    }
+    return pt;
+}
