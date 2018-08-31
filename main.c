@@ -22,6 +22,7 @@ const int legRotations[10] = {0, -14, -24, -26, -29, -33, -28, -23, -18, -8};
 int main(int argc, char* argv[])
 {
     const int TILE_SIZE = 32;
+    int range = 7 * TILE_SIZE;  //10 * TILE_SIZE was a good range
     int error = initCoSprite("", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE);
     int frame = 0, framerate = 0, targetTime = calcWaitTime(60), sleepFor = 0;
     SDL_Texture* mouseTexture, * playerTexture;
@@ -29,7 +30,6 @@ int main(int argc, char* argv[])
     loadIMG("assets/tilesheet.png", &playerTexture);
     cSprite mouseSprite;
     c2DModel playerModel;
-
     {
         player thisPlayer = initPlayer(10);
         cSprite playerSprites[7];
@@ -67,14 +67,31 @@ int main(int argc, char* argv[])
             {
                 //loadIMG("assets/cb1.bmp", &mouseSprite.texture); // you can load new images on the fly and they'll be automatically used next frame
                 mouseSprite.degrees = 180.0;  //or just change the rotation
-                playerModel.rect.x = e.button.x - (playerModel.rect.w / 2);// + (testCamera.rect.x * windowW / testCamera.rect.w);
-                playerModel.rect.y = e.button.y - (playerModel.rect.h / 2);// + (testCamera.rect.y * windowH / testCamera.rect.h);
 
+                SDL_SetTextureColorMod(mouseSprite.texture, 0x80, 0x00, 0x00);
+                SDL_SetTextureAlphaMod(mouseSprite.texture, 0x80);
             }
             if (e.type == SDL_MOUSEBUTTONUP)
             {
-                mouseSprite.degrees = 0.0;
                 //loadIMG("assets/cb.bmp", &mouseSprite.texture);
+                mouseSprite.degrees = 0.0;
+
+                SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
+                SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
+
+                int newX = e.button.x - (playerModel.rect.w / 2);// + (testCamera.rect.x * windowW / testCamera.rect.w);
+                int newY = e.button.y - (playerModel.rect.h / 2);// + (testCamera.rect.y * windowH / testCamera.rect.h);
+                if (getDistance(playerModel.rect.x, playerModel.rect.y, newX, newY) > range)
+                {
+                    double angle = atan((double) (newY - playerModel.rect.y) / (newX - playerModel.rect.x));
+                    playerModel.rect.x += range * cos(angle) * (1 - 2 * (newX - playerModel.rect.x < 0));
+                    playerModel.rect.y += range * sin(angle) * (1 - 2 * (newX - playerModel.rect.x < 0));  //remember, bounds of inverse tan
+                }
+                else
+                {
+                    playerModel.rect.x = newX;
+                    playerModel.rect.y = newY;
+                }
             }
             if (e.type == SDL_MOUSEMOTION)
             {
@@ -119,7 +136,7 @@ int main(int argc, char* argv[])
 
             //printf("%d\n", playerSubclass->walkFrame % 20);
             if (playerSubclass->walkFrame % 20 > 0 || previousX != playerModel.rect.x || previousY != playerModel.rect.y)
-            playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
+                playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
 
             playerModel.sprites[2].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * armRotations[(playerSubclass->walkFrame / 2) % 10];
             playerModel.sprites[3].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * armRotations[(playerSubclass->walkFrame / 2) % 10];
@@ -156,9 +173,13 @@ int main(int argc, char* argv[])
             SDL_Delay(sleepFor);  //FPS limiter; rests for (16 - time spent) ms per frame, effectively making each frame run for ~16 ms, or 60 FPS
         lastFrame = SDL_GetTicks();
 
+
         //mouseSprite.drawRect.x += (testCamera.rect.x * windowW / testCamera.rect.w);  //add back camera offset
         //mouseSprite.drawRect.y += (testCamera.rect.y * windowH / testCamera.rect.h);
-        drawCScene(&testScene, true);
+        drawCScene(&testScene, false);
+        SDL_SetRenderDrawColor(mainRenderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_RenderDrawLine(mainRenderer, playerModel.rect.x + playerModel.rect.w / 2, playerModel.rect.y + playerModel.rect.h / 2, mouseSprite.drawRect.x + mouseSprite.drawRect.w / 2, mouseSprite.drawRect.y + mouseSprite.drawRect.h / 2);
+        SDL_RenderPresent(mainRenderer);
     }
 
     destroyCScene(&testScene);

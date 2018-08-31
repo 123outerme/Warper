@@ -12,8 +12,8 @@
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
     #define COSPRITE_VERSION_MINOR 6
-    #define COSPRITE_VERSION_PATCH 0
-    #define COSPRITE_VERSION "0.6.0"
+    #define COSPRITE_VERSION_PATCH 1
+    #define COSPRITE_VERSION "0.6.1"
 #endif //COSPRITE_VERSION
 #define SDL_MAIN_HANDLED 1
 
@@ -89,7 +89,7 @@ typedef struct _cText {
 
 typedef struct _cCamera {
     SDL_Rect rect;
-    double zoom;
+    double scale;
     double degrees;
 } cCamera;
 
@@ -131,13 +131,13 @@ void drawCText(cText text, cCamera camera, bool update);
 void initCResource(cResource* res, void* subclass, void (*drawingRoutine)(void*), int drawPriority);
 void drawCResource(cResource* res);
 void destroyCResource(cResource* res);
-void initCCamera(cCamera* camera, SDL_Rect rect, double zoom, double degrees);
+void initCCamera(cCamera* camera, SDL_Rect rect, double scale, double degrees);
 void destroyCCamera(cCamera* camera);
 void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* sprites[], int spriteCount, c2DModel* models[], int modelCount, cResource* resources[], int resCount, cText* strings[], int stringCount);
 void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
-SDL_Point rotatePoint(SDL_Point pt, SDL_Point center, int degrees, bool visualize, SDL_Color visualizeColor);
+SDL_Point rotatePoint(SDL_Point pt, SDL_Point center, int degrees);
 
 //global variable declarations:
 SDL_Window* mainWindow;

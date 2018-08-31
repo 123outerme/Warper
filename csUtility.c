@@ -83,3 +83,9 @@ char* removeNewline(char* stuff, char replacement, int maxLength)
     }
     return stuff;
 }
+
+
+int getDistance(int x1, int y1, int x2, int y2)
+{
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+}
