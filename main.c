@@ -20,7 +20,7 @@ typedef struct _player {
 player initPlayer(int maxHealth);
 
 const int armRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
-const int legRotations[10] = {0, -14, -24, -26, -29, -33, -28, -23, -18, -8};
+const int footRotations[10] = {0, -14, -24, -26, -29, -33, -28, -23, -18, -8};
 
 int main(int argc, char* argv[])
 {
@@ -48,16 +48,17 @@ int main(int argc, char* argv[])
         SDL_Texture* playerTexture;
         loadIMG("assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
-        cSprite playerSprites[7];
+        cSprite playerSprites[8];
         initCSprite(&mouseSprite, mouseTexture, 0, (cDoubleRect) {0, 0, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
         initCSprite(&playerSprites[0], playerTexture, 1, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
-        initCSprite(&playerSprites[1], playerTexture, 2, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
-        initCSprite(&playerSprites[2], playerTexture, 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left arm
-        initCSprite(&playerSprites[3], playerTexture, 4, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right arm
-        initCSprite(&playerSprites[4], playerTexture, 5, (cDoubleRect) {TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //legs
-        initCSprite(&playerSprites[5], playerTexture, 6, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
-        initCSprite(&playerSprites[6], playerTexture, 7, (cDoubleRect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
-        initC2DModel(&playerModel, playerSprites, 7, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
+        initCSprite(&playerSprites[1], playerTexture, 2, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
+        initCSprite(&playerSprites[2], playerTexture, 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, 2.5 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2.5 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //left arm
+        initCSprite(&playerSprites[3], playerTexture, 4, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2.5 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2.5 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right arm
+        initCSprite(&playerSprites[4], playerTexture, 5, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, 0, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left leg
+        initCSprite(&playerSprites[5], playerTexture, 6, (cDoubleRect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4.5 * TILE_SIZE, 0, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right leg
+        initCSprite(&playerSprites[6], playerTexture, 7, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
+        initCSprite(&playerSprites[7], playerTexture, 8, (cDoubleRect) {1.5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
+        initC2DModel(&playerModel, playerSprites, 8, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
     c2DModel mapModel;
     {
@@ -151,6 +152,7 @@ int main(int argc, char* argv[])
             testCamera.degrees = 0;
             testCamera.rect.x = 0;
             testCamera.rect.y = 0;
+            testCamera.scale = 1.0;
         }
 
         if (keyStates[SDL_SCANCODE_W] || keyStates[SDL_SCANCODE_A] ||
@@ -168,17 +170,23 @@ int main(int argc, char* argv[])
                 playerModel.rect.x -= 6;
                 playerModel.flip = SDL_FLIP_HORIZONTAL;
                 playerModel.sprites[2].drawPriority = 4;
-                playerModel.sprites[3].drawPriority = 2;
-                playerModel.sprites[5].drawPriority = 4;
-                playerModel.sprites[6].drawPriority = 2;
+                playerModel.sprites[3].drawPriority = 1;  //arm priority
+
+                playerModel.sprites[4].drawPriority = 4;
+                playerModel.sprites[5].drawPriority = 2;  //leg priority
+                playerModel.sprites[6].drawPriority = 4;
+                playerModel.sprites[7].drawPriority = 2;  //foot priority
             }
             else
             {
                 playerModel.flip = SDL_FLIP_NONE;
-                playerModel.sprites[2].drawPriority = 2;
-                playerModel.sprites[3].drawPriority = 4;
-                playerModel.sprites[5].drawPriority = 2;
-                playerModel.sprites[6].drawPriority = 4;
+                playerModel.sprites[2].drawPriority = 1;
+                playerModel.sprites[3].drawPriority = 4;  //arm priority
+
+                playerModel.sprites[4].drawPriority = 2;
+                playerModel.sprites[5].drawPriority = 4;  //leg priority
+                playerModel.sprites[6].drawPriority = 2;
+                playerModel.sprites[7].drawPriority = 4;  //foot priority
             }
 
             if (keyStates[SDL_SCANCODE_S])
@@ -194,8 +202,8 @@ int main(int argc, char* argv[])
             playerModel.sprites[2].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * armRotations[(playerSubclass->walkFrame / 2) % 10];
             playerModel.sprites[3].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * armRotations[(playerSubclass->walkFrame / 2) % 10];
 
-            playerModel.sprites[5].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
-            playerModel.sprites[6].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
+            playerModel.sprites[6].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * footRotations[(playerSubclass->walkFrame / 2) % 10];
+            playerModel.sprites[7].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * footRotations[(playerSubclass->walkFrame / 2) % 10];
         }
         if (playerModel.rect.y - playerModel.rect.h / 2 < testCamera.rect.y * windowH / testCamera.rect.h / testCamera.scale)
             testCamera.rect.y -= testCamera.rect.h / 4;
@@ -220,6 +228,12 @@ int main(int argc, char* argv[])
 
         if (keyStates[SDL_SCANCODE_C])
             playerModel.degrees += 5;
+
+        if (keyStates[SDL_SCANCODE_MINUS])
+            testCamera.scale -= .05;
+
+        if (keyStates[SDL_SCANCODE_EQUALS])
+            testCamera.scale += .05;
 
         frame++;
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
