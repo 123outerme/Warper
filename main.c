@@ -14,6 +14,9 @@ typedef struct _player {
 
 #define calcWaitTime(x) x == 0 ? 0 : 1000 / x
 
+#define TILEMAP_X 60  //(windowW / TILE_SIZE)
+#define TILEMAP_Y 30  //(windowH / TILE_SIZE)
+
 player initPlayer(int maxHealth);
 
 const int armRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
@@ -23,14 +26,14 @@ int main(int argc, char* argv[])
 {
     const int TILE_SIZE = 32;
     int range = 7 * TILE_SIZE;  //10 * TILE_SIZE was a good range
-    int error = initCoSprite("", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE);
-    int tilemap[(windowW / TILE_SIZE)][(windowH / TILE_SIZE)];
+    int error = initCoSprite("assets/cb.bmp", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE);
+    int tilemap[TILEMAP_X][TILEMAP_Y];
 
-    for(int x = 0; x < windowW / TILE_SIZE; x++)
+    for(int x = 0; x < TILEMAP_X; x++)
     {
-        for(int y = 0; y < windowH / TILE_SIZE; y++)
+        for(int y = 0; y < TILEMAP_Y; y++)
         {
-            if (x == 0 || y == 0 || x + 1 == windowW / TILE_SIZE || y + 1 == windowH / TILE_SIZE)
+            if (x == 0 || y == 0 || x + 1 == TILEMAP_X || y + 1 == TILEMAP_Y)
                 tilemap[x][y] = 1;
             else
                 tilemap[x][y] = 0;
@@ -54,21 +57,21 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[4], playerTexture, 5, (cDoubleRect) {TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //legs
         initCSprite(&playerSprites[5], playerTexture, 6, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
         initCSprite(&playerSprites[6], playerTexture, 7, (cDoubleRect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
-        initC2DModel(&playerModel, playerSprites, 7, (cDoublePt) {TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
+        initC2DModel(&playerModel, playerSprites, 7, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
     c2DModel mapModel;
     {
         SDL_Texture* tilesetTexture;
         loadIMG("assets/tilesheet.png", &tilesetTexture);
-        cSprite* tileSprites = calloc(windowW / TILE_SIZE * windowH / TILE_SIZE, sizeof(cSprite));
-        for(int x = 0; x < windowW / TILE_SIZE; x++)
+        cSprite* tileSprites = calloc(TILEMAP_X * TILEMAP_Y, sizeof(cSprite));
+        for(int x = 0; x < TILEMAP_X; x++)
         {
-            for(int y = 0; y < windowH / TILE_SIZE; y++)
+            for(int y = 0; y < TILEMAP_Y; y++)
             {
-                initCSprite(&tileSprites[x * windowH / TILE_SIZE + y], tilesetTexture, tilemap[x][y], (cDoubleRect) {TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {(tilemap[x][y] / 32) * TILE_SIZE, (tilemap[x][y] % 32) * TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+                initCSprite(&tileSprites[x * TILEMAP_Y + y], tilesetTexture, tilemap[x][y], (cDoubleRect) {TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {(tilemap[x][y] / 32) * TILE_SIZE, (tilemap[x][y] % 32) * TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
             }
         }
-        initC2DModel(&mapModel, tileSprites, windowW / TILE_SIZE * windowH / TILE_SIZE, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+        initC2DModel(&mapModel, tileSprites, TILEMAP_X * TILEMAP_Y, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
     }
     cText FPStext;
     cText versionText;
@@ -76,7 +79,7 @@ int main(int argc, char* argv[])
     initCText(&FPStext, "0", (cDoubleRect) {windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
     initCText(&versionText, COSPRITE_VERSION, (cDoubleRect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
-    initCCamera(&testCamera, (cDoubleRect) {0, 0, windowW / 4, windowH / 4}, 1.0, 0.0);
+    initCCamera(&testCamera, (cDoubleRect) {0, 0, windowW, windowH}, 1.0, 0.0);
     cScene testScene;
     initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
@@ -194,17 +197,17 @@ int main(int argc, char* argv[])
             playerModel.sprites[5].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
             playerModel.sprites[6].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
         }
-        if (keyStates[SDL_SCANCODE_UP] || playerModel.rect.y + playerModel.rect.h / 2 < testCamera.rect.y * windowH / testCamera.rect.h / testCamera.scale)
-            testCamera.rect.y--;
+        if (playerModel.rect.y - playerModel.rect.h / 2 < testCamera.rect.y * windowH / testCamera.rect.h / testCamera.scale)
+            testCamera.rect.y -= testCamera.rect.h / 4;
 
-        if (keyStates[SDL_SCANCODE_LEFT] || playerModel.rect.x + playerModel.rect.w / 2 < testCamera.rect.x * windowW / testCamera.rect.w / testCamera.scale)
-            testCamera.rect.x--;
+        if (playerModel.rect.x - playerModel.rect.w / 2 < testCamera.rect.x * windowW / testCamera.rect.w / testCamera.scale)
+            testCamera.rect.x -= testCamera.rect.w / 4;
 
-        if (keyStates[SDL_SCANCODE_DOWN] || playerModel.rect.y + playerModel.rect.h / 2 > (testCamera.rect.y + testCamera.rect.h) * windowH / testCamera.rect.h / testCamera.scale)
-            testCamera.rect.y++;
+        if (playerModel.rect.y + playerModel.rect.h * 1.5 > (testCamera.rect.y + testCamera.rect.h) * windowH / testCamera.rect.h / testCamera.scale)
+            testCamera.rect.y += testCamera.rect.h / 4;
 
-        if (keyStates[SDL_SCANCODE_RIGHT] || playerModel.rect.x + playerModel.rect.w / 2 > (testCamera.rect.x + testCamera.rect.w) * windowW / testCamera.rect.w / testCamera.scale)
-            testCamera.rect.x++;
+        if (playerModel.rect.x + playerModel.rect.w * 1.5 > (testCamera.rect.x + testCamera.rect.w) * windowW / testCamera.rect.w / testCamera.scale)
+            testCamera.rect.x += testCamera.rect.w / 4;  //later, introduce a screen scrolling var that gets set here instead
 
         if (keyStates[SDL_SCANCODE_Q])  //camera rotation won't be controllable in final game obviously
             testCamera.degrees -= 5;
