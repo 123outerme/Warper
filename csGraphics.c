@@ -141,9 +141,9 @@ void destroyC2DModel(c2DModel* model)
  */
 void drawC2DModel(c2DModel model, cCamera camera, bool update)
 {
-    for(int i = 0; i < model.numSprites; i++)
+    for(int priority = 5; priority >= 1; priority--)
     {
-        for(int priority = 5; priority >= 1; priority--)
+        for(int i = 0; i < model.numSprites; i++)
         {
             if (model.sprites[i].drawPriority == priority)
             {
@@ -162,7 +162,7 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                         point.y -= camera.rect.y * windowH / camera.rect.h;
                     }
 
-                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = (int) point.x, .y = (int) point.y, .w = (int) model.sprites[i].drawRect.w * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = (int) model.sprites[i].drawRect.h * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
+                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
                     if (update)
                         SDL_RenderPresent(mainRenderer);
                 }
@@ -410,10 +410,11 @@ void destroyCScene(cScene* scenePtr)
  * \param scenePtr - pointer to your cScene
  * \param redraw - if nonzero, will update the screen
  */
-void drawCScene(cScene* scenePtr, bool redraw)
+void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
 {
     SDL_SetRenderDrawColor(mainRenderer, scenePtr->bgColor.r, scenePtr->bgColor.g, scenePtr->bgColor.b, scenePtr->bgColor.a);
-    SDL_RenderClear(mainRenderer);
+    if (clearScreen)
+        SDL_RenderClear(mainRenderer);
     for(int priority = 5; priority >= 1; priority--)
     {
         for(int i = 0; i < scenePtr->spriteCount; i++)
@@ -674,14 +675,14 @@ int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, 
 cDoublePt rotatePoint(cDoublePt pt, cDoublePt center, int degrees)
 {
 
-    float s = sin(degToRad(degrees));
-    float c = cos(degToRad(degrees));
+    double s = sin(degToRad(degrees));
+    double c = cos(degToRad(degrees));
 
     pt.x -= center.x;
     pt.y -= center.y;
 
-    int xnew = pt.x * c - pt.y * s;
-    int ynew = pt.x * s + pt.y * c;
+    double xnew = pt.x * c - pt.y * s;
+    double ynew = pt.x * s + pt.y * c;
 
     pt.x = xnew + center.x;
     pt.y = ynew + center.y;

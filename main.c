@@ -50,10 +50,10 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[0], playerTexture, 1, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, 2, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
         initCSprite(&playerSprites[2], playerTexture, 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left arm
-        initCSprite(&playerSprites[3], playerTexture, 4, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //right arm
+        initCSprite(&playerSprites[3], playerTexture, 4, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 2, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right arm
         initCSprite(&playerSprites[4], playerTexture, 5, (cDoubleRect) {TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //legs
-        initCSprite(&playerSprites[5], playerTexture, 6, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //left foot
-        initCSprite(&playerSprites[6], playerTexture, 7, (cDoubleRect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //right foot
+        initCSprite(&playerSprites[5], playerTexture, 6, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
+        initCSprite(&playerSprites[6], playerTexture, 7, (cDoubleRect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {2.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
         initC2DModel(&playerModel, playerSprites, 7, (cDoublePt) {TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
     c2DModel mapModel;
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
     initCText(&FPStext, "0", (cDoubleRect) {windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
     initCText(&versionText, COSPRITE_VERSION, (cDoubleRect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
-    initCCamera(&testCamera, (cDoubleRect) {0, 0, 20, 10}, 1.0, 0.0);
+    initCCamera(&testCamera, (cDoubleRect) {0, 0, windowW / 4, windowH / 4}, 1.0, 0.0);
     cScene testScene;
     initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
@@ -106,8 +106,8 @@ int main(int argc, char* argv[])
                 SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
 
-                int newX = e.button.x - (playerModel.rect.w / 2);// + (testCamera.rect.x * windowW / testCamera.rect.w);
-                int newY = e.button.y - (playerModel.rect.h / 2);// + (testCamera.rect.y * windowH / testCamera.rect.h);
+                int newX = (e.button.x + (testCamera.rect.x * windowW / testCamera.rect.w)) / testCamera.scale - playerModel.rect.w / 2;
+                int newY = (e.button.y + (testCamera.rect.y * windowH / testCamera.rect.h)) / testCamera.scale - playerModel.rect.h / 2;
                 if (getDistance(playerModel.rect.x, playerModel.rect.y, newX, newY) > range)
                 {
                     double angle = atan((double) (newY - playerModel.rect.y) / (newX - playerModel.rect.x));
@@ -142,6 +142,14 @@ int main(int argc, char* argv[])
         else
             FPStext.drawPriority = 0;
 
+        if (keyStates[SDL_SCANCODE_F2])
+        {
+            playerModel.degrees = 0;
+            testCamera.degrees = 0;
+            testCamera.rect.x = 0;
+            testCamera.rect.y = 0;
+        }
+
         if (keyStates[SDL_SCANCODE_W] || keyStates[SDL_SCANCODE_A] ||
             keyStates[SDL_SCANCODE_S] || keyStates[SDL_SCANCODE_D] ||
             playerSubclass->walkFrame % 20 > 0)
@@ -156,9 +164,19 @@ int main(int argc, char* argv[])
             {
                 playerModel.rect.x -= 6;
                 playerModel.flip = SDL_FLIP_HORIZONTAL;
+                playerModel.sprites[2].drawPriority = 4;
+                playerModel.sprites[3].drawPriority = 2;
+                playerModel.sprites[5].drawPriority = 4;
+                playerModel.sprites[6].drawPriority = 2;
             }
             else
+            {
                 playerModel.flip = SDL_FLIP_NONE;
+                playerModel.sprites[2].drawPriority = 2;
+                playerModel.sprites[3].drawPriority = 4;
+                playerModel.sprites[5].drawPriority = 2;
+                playerModel.sprites[6].drawPriority = 4;
+            }
 
             if (keyStates[SDL_SCANCODE_S])
                 playerModel.rect.y += 6;
@@ -176,17 +194,16 @@ int main(int argc, char* argv[])
             playerModel.sprites[5].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
             playerModel.sprites[6].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
         }
+        if (keyStates[SDL_SCANCODE_UP] || playerModel.rect.y + playerModel.rect.h / 2 < testCamera.rect.y * windowH / testCamera.rect.h / testCamera.scale)
+            testCamera.rect.y--;
 
-        if (keyStates[SDL_SCANCODE_UP])
-                testCamera.rect.y--;
-
-        if (keyStates[SDL_SCANCODE_LEFT])
+        if (keyStates[SDL_SCANCODE_LEFT] || playerModel.rect.x + playerModel.rect.w / 2 < testCamera.rect.x * windowW / testCamera.rect.w / testCamera.scale)
             testCamera.rect.x--;
 
-        if (keyStates[SDL_SCANCODE_DOWN])
+        if (keyStates[SDL_SCANCODE_DOWN] || playerModel.rect.y + playerModel.rect.h / 2 > (testCamera.rect.y + testCamera.rect.h) * windowH / testCamera.rect.h / testCamera.scale)
             testCamera.rect.y++;
 
-        if (keyStates[SDL_SCANCODE_RIGHT])
+        if (keyStates[SDL_SCANCODE_RIGHT] || playerModel.rect.x + playerModel.rect.w / 2 > (testCamera.rect.x + testCamera.rect.w) * windowW / testCamera.rect.w / testCamera.scale)
             testCamera.rect.x++;
 
         if (keyStates[SDL_SCANCODE_Q])  //camera rotation won't be controllable in final game obviously
@@ -214,10 +231,10 @@ int main(int argc, char* argv[])
 
         //mouseSprite.drawRect.x += (testCamera.rect.x * windowW / testCamera.rect.w);  //add back camera offset
         //mouseSprite.drawRect.y += (testCamera.rect.y * windowH / testCamera.rect.h);
-        drawCScene(&testScene, false);
-        SDL_SetRenderDrawColor(mainRenderer, 0x00, 0x00, 0x00, 0xFF);
+        drawCScene(&testScene, true, true);
+        /*SDL_SetRenderDrawColor(mainRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderDrawLine(mainRenderer, playerModel.rect.x + playerModel.rect.w / 2, playerModel.rect.y + playerModel.rect.h / 2, mouseSprite.drawRect.x + mouseSprite.drawRect.w / 2, mouseSprite.drawRect.y + mouseSprite.drawRect.h / 2);
-        SDL_RenderPresent(mainRenderer);
+        SDL_RenderPresent(mainRenderer);*/
     }
 
     destroyCScene(&testScene);

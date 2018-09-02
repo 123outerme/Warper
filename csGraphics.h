@@ -148,7 +148,7 @@ void initCCamera(cCamera* camera, cDoubleRect rect, double scale, double degrees
 void destroyCCamera(cCamera* camera);
 void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* sprites[], int spriteCount, c2DModel* models[], int modelCount, cResource* resources[], int resCount, cText* strings[], int stringCount);
 void destroyCScene(cScene* scenePtr);
-void drawCScene(cScene* scenePtr, bool redraw);
+void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
 cDoublePt rotatePoint(cDoublePt pt, cDoublePt center, int degrees);
 
