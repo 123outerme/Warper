@@ -195,6 +195,12 @@ int main(int argc, char* argv[])
         if (keyStates[SDL_SCANCODE_E])
             testCamera.degrees += 5;
 
+        if (keyStates[SDL_SCANCODE_Z])
+            playerModel.degrees -= 5;
+
+        if (keyStates[SDL_SCANCODE_C])
+            playerModel.degrees += 5;
+
         frame++;
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
         framerate = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));  //multiplied by 1000 on both sides since 1000f / ms == 1f / s
