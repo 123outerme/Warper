@@ -35,6 +35,7 @@
     #define bool char
     #define false 0
     #define true 1
+    #define boolToString(bool) (bool ? "true" : "false")
 #endif // bool
 #ifndef NULL
     #define NULL ((void*) 0)
@@ -45,7 +46,7 @@
     #define degToRad(x) (x * PI / 180.0)
 #endif // PI
 
-#define boolToString(bool) (bool ? "true" : "false")
+
 
 //struct definitions:
 typedef struct _cSprite {

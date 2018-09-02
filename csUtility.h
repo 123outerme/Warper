@@ -12,7 +12,7 @@
     #define bool char
     #define false 0
     #define true 1
-    #define printBool(x) (x ? "true" : "false")
+    #define boolToString(bool) (bool ? "true" : "false")
 #endif // bool
 #ifndef NULL
     #define NULL ((void*) 0)

@@ -11,7 +11,11 @@
     #define bool char
     #define false 0
     #define true 1
+    #define boolToString(bool) (bool ? "true" : "false")
 #endif // bool
+#ifndef NULL
+    #define NULL ((void*) 0)
+#endif //NULL
 
 //function prototypes:
 int createFile(char* filePath);

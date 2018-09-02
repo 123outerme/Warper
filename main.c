@@ -24,13 +24,26 @@ int main(int argc, char* argv[])
     const int TILE_SIZE = 32;
     int range = 7 * TILE_SIZE;  //10 * TILE_SIZE was a good range
     int error = initCoSprite("", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE);
+    int tilemap[(windowW / TILE_SIZE)][(windowH / TILE_SIZE)];
+
+    for(int x = 0; x < windowW / TILE_SIZE; x++)
+    {
+        for(int y = 0; y < windowH / TILE_SIZE; y++)
+        {
+            if (x == 0 || y == 0 || x + 1 == windowW / TILE_SIZE || y + 1 == windowH / TILE_SIZE)
+                tilemap[x][y] = 1;
+            else
+                tilemap[x][y] = 0;
+        }
+    }
     int frame = 0, framerate = 0, targetTime = calcWaitTime(60), sleepFor = 0;
-    SDL_Texture* mouseTexture, * playerTexture;
+    SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
-    loadIMG("assets/tilesheet.png", &playerTexture);
     cSprite mouseSprite;
     c2DModel playerModel;
     {
+        SDL_Texture* playerTexture;
+        loadIMG("assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
         cSprite playerSprites[7];
         initCSprite(&mouseSprite, mouseTexture, 0, (SDL_Rect) {0, 0, 80, 80}, (SDL_Rect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
@@ -43,6 +56,20 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[6], playerTexture, 7, (SDL_Rect) {1.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (SDL_Rect) {1.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((SDL_Point) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);  //right foot
         initC2DModel(&playerModel, playerSprites, 7, (SDL_Point) {TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
+    c2DModel mapModel;
+    {
+        SDL_Texture* tilesetTexture;
+        loadIMG("assets/tilesheet.png", &tilesetTexture);
+        cSprite* tileSprites = calloc(windowW / TILE_SIZE * windowH / TILE_SIZE, sizeof(cSprite));
+        for(int x = 0; x < windowW / TILE_SIZE; x++)
+        {
+            for(int y = 0; y < windowH / TILE_SIZE; y++)
+            {
+                initCSprite(&tileSprites[x * windowH / TILE_SIZE + y], tilesetTexture, tilemap[x][y], (SDL_Rect) {TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE}, (SDL_Rect) {(tilemap[x][y] / 32) * TILE_SIZE, (tilemap[x][y] % 32) * TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+            }
+        }
+        initC2DModel(&mapModel, tileSprites, windowW / TILE_SIZE * windowH / TILE_SIZE, (SDL_Point) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+    }
     cText FPStext;
     cText versionText;
     char FPSstring[3] = "   ";
@@ -51,7 +78,7 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (SDL_Rect) {0, 0, 20, 10}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[1]) {&playerModel}, 1, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     SDL_Event e;
     bool quit = false;
@@ -126,7 +153,12 @@ int main(int argc, char* argv[])
                 playerModel.rect.y -= 6;
 
             if (keyStates[SDL_SCANCODE_A])
+            {
                 playerModel.rect.x -= 6;
+                playerModel.flip = SDL_FLIP_HORIZONTAL;
+            }
+            else
+                playerModel.flip = SDL_FLIP_NONE;
 
             if (keyStates[SDL_SCANCODE_S])
                 playerModel.rect.y += 6;
