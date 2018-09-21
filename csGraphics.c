@@ -164,7 +164,23 @@ void importC2DModel(c2DModel* model, char* filepath)
     {
         readLine(filepath, i + 1, 2048, &data);
         strncpy(model->sprites[i].textureFilepath, strtok(data, "{,}"), MAX_PATH);
-        loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
+        if (i == 0)
+            loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
+        else
+        {
+            bool found = false;
+            for(int x = i - 1; x >= 0; x--)
+            {
+                if (!strcmp(model->sprites[i].textureFilepath, model->sprites[x].textureFilepath))
+                {
+                    model->sprites[i].texture = model->sprites[x].texture;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
+        }
         model->sprites[i].id = strtol(strtok(NULL, "{,}"), NULL, 10);
         model->sprites[i].drawRect.x = strtod(strtok(NULL, "{,}"), NULL);
         model->sprites[i].drawRect.y = strtod(strtok(NULL, "{,}"), NULL);
