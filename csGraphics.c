@@ -3,7 +3,8 @@
 /** \brief Initializes a cSprite object. You may want to create a wrapper method.
  *
  * \param sprite - a pointer to your sprite.
- * \param texture - a SDL_Texture* that holds your sprite's image
+ * \param texture - an SDL_Texture with your sprite's image
+ * \param textureFilepath - a char* that holds your texture's filepath
  * \param x - x position onscreen
  * \param y - y position onscreen
  * \param w - width of your sprite
@@ -15,9 +16,10 @@
  * \param fixed - if true, won't be affected by a scene's camera
  * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
  */
-void initCSprite(cSprite* sprite, SDL_Texture* texture, int id, cDoubleRect drawRect, cDoubleRect srcClipRect, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
+void initCSprite(cSprite* sprite, SDL_Texture* texture, char* textureFilepath, int id, cDoubleRect drawRect, cDoubleRect srcClipRect, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
 {
     sprite->texture = texture;
+    strncpy(sprite->textureFilepath, textureFilepath, MAX_PATH);
     sprite->id = id;
     sprite->drawRect = drawRect;
     sprite->srcClipRect = srcClipRect;
@@ -93,7 +95,9 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
  */
 void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, cDoublePt position, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
 {
-    model->sprites = (numSprites) ? sprites : NULL;
+    model->sprites = calloc(numSprites, sizeof(cSprite));
+    memcpy((void*) model->sprites, (void*) sprites, numSprites * sizeof(cSprite));
+    //model->sprites = (numSprites) ? sprites : NULL;
     model->numSprites = numSprites;
     model->rect = (cDoubleRect) {position.x, position.y, 0, 0};
     for(int i = 0; i < numSprites; i++)
@@ -123,6 +127,7 @@ void destroyC2DModel(c2DModel* model)
 {
     for(int i = 0; i < model->numSprites; i++)
         destroyCSprite(&model->sprites[i]);
+    free(model->sprites);
     model->rect = (cDoubleRect) {0, 0, 0, 0};
     model->scale = 0;
     model->degrees = 0;
@@ -131,6 +136,80 @@ void destroyC2DModel(c2DModel* model)
     free(model->subclass);
     model->subclass = NULL;
     model->drawPriority = 0;
+}
+
+/** \brief loads a C2DModel from a file
+ *
+ * \param model - c2DModel you want the data to be loaded to
+ * \param filepath - where to get the file from
+*/
+void importC2DModel(c2DModel* model, char* filepath)
+{
+    char* data = calloc(2048, sizeof(char));
+    readLine(filepath, 0, 2048, &data);
+    model->numSprites = strtol(strtok(data, "{,}"), NULL, 10);
+    model->rect.x = strtod(strtok(NULL, "{,}"), NULL);
+    model->rect.y = strtod(strtok(NULL, "{,}"), NULL);
+    model->rect.w = strtod(strtok(NULL, "{,}"), NULL);
+    model->rect.h = strtod(strtok(NULL, "{,}"), NULL);
+    model->center.x = strtod(strtok(NULL, "{,}"), NULL);
+    model->center.y = strtod(strtok(NULL, "{,}"), NULL);
+    model->scale = strtod(strtok(NULL, "{,}"), NULL);
+    model->flip = strtol(strtok(NULL, "{,}"), NULL, 10);
+    model->degrees = strtod(strtok(NULL, "{,}"), NULL);
+    model->drawPriority = strtol(strtok(NULL, "{,}"), NULL, 10);
+    model->fixed = strtol(strtok(NULL, "{,}"), NULL, 10);
+    model->sprites = calloc(model->numSprites, sizeof(cSprite));
+    for(int i = 0; i < model->numSprites; i++)
+    {
+        readLine(filepath, i + 1, 2048, &data);
+        strncpy(model->sprites[i].textureFilepath, strtok(data, "{,}"), MAX_PATH);
+        loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
+        model->sprites[i].id = strtol(strtok(NULL, "{,}"), NULL, 10);
+        model->sprites[i].drawRect.x = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].drawRect.y = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].drawRect.w = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].drawRect.h = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].srcClipRect.x = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].srcClipRect.y = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].srcClipRect.w = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].srcClipRect.h = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].center.x = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].center.y = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].scale = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].flip = strtol(strtok(NULL, "{,}"), NULL, 10);
+        model->sprites[i].degrees = strtod(strtok(NULL, "{,}"), NULL);
+        model->sprites[i].drawPriority = strtol(strtok(NULL, "{,}"), NULL, 10);
+        model->sprites[i].fixed = strtol(strtok(NULL, "{,}"), NULL, 10);
+        model->sprites[i].subclass = NULL;
+    }
+    free(data);
+    model->subclass = NULL;
+}
+
+/** \brief converts a c2DModel into text and saves it to a file
+ *
+ * \param model - c2DModel you want saved
+ * \param filepath - where to save the file to
+*/
+void exportC2DModel(c2DModel* model, char* filepath)
+{
+    createFile(filepath);
+    char* data = calloc(2048, sizeof(char));
+    snprintf(data, 2048, "{%d,%f,%f,%f,%f,%f,%f,%f,%d,%f,%d,%d}", model->numSprites, model->rect.x, model->rect.y, model->rect.w,
+             model->rect.h, model->center.x, model->center.y, model->scale, model->flip, model->degrees,
+             model->drawPriority, model->fixed);
+    appendLine(filepath, data, true);
+    for(int i = 0; i < model->numSprites; i++)
+    {
+        snprintf(data, 2048, "{%s,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%f,%d,%d}", model->sprites[i].textureFilepath, model->sprites[i].id,
+                 model->sprites[i].drawRect.x, model->sprites[i].drawRect.y, model->sprites[i].drawRect.w, model->sprites[i].drawRect.h,
+                 model->sprites[i].srcClipRect.x, model->sprites[i].srcClipRect.y, model->sprites[i].srcClipRect.w,
+                 model->sprites[i].srcClipRect.h, model->sprites[i].center.x, model->sprites[i].center.y, model->sprites[i].scale,
+                 model->sprites[i].flip, model->sprites[i].degrees, model->sprites[i].drawPriority, model->sprites[i].fixed);
+        appendLine(filepath, data, true);
+    }
+    free(data);
 }
 
 /** \brief draws a c2DModel to the screen
@@ -245,6 +324,8 @@ void drawCText(cText text, cCamera camera, bool update)
     SDL_RenderCopyEx(mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
     SDL_SetRenderDrawColor(mainRenderer, r, g, b, a);
     SDL_DestroyTexture(text.texture);
+    if (update)
+        SDL_RenderPresent(mainRenderer);
 }
 
 /** \brief Loads in an image resource
@@ -513,7 +594,6 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
         Mix_Volume(-1, soundVolume);  //sets all channels to the sound level soundVolume
         musicVolume = MIX_MAX_VOLUME;
         Mix_VolumeMusic(musicVolume);
-        mainScreen = NULL;
         mainRenderer = NULL;
         mainFont = NULL;
         mainWindow = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -526,7 +606,6 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
         {
             windowW = windowWidth;
             windowH = windowHeight;
-            mainScreen = SDL_GetWindowSurface(mainWindow);
             mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
             if(!mainRenderer)
             {
@@ -567,8 +646,6 @@ void closeCoSprite()
 {
     TTF_CloseFont(mainFont);
     //TTF_CloseFont(smallFont);
-	if (mainScreen)
-        SDL_FreeSurface(mainScreen);
     if (mainWindow)
         SDL_DestroyWindow(mainWindow);
     if (mainRenderer)
@@ -688,4 +765,142 @@ cDoublePt rotatePoint(cDoublePt pt, cDoublePt center, int degrees)
     pt.y = ynew + center.y;
 
     return pt;
+}
+
+/** \brief Creates a file, or clears contents if it exists.
+ *
+ * \param filePath - valid string filepath (relative or absolute)
+ * \return Error code: Code 0: No error. Code -1: Error opening
+ */
+int createFile(char* filePath)
+{
+	FILE* filePtr;
+	filePtr = fopen(filePath,"w");
+	if (!filePtr)
+	{
+		printf("Error opening/creating file!\n");
+		return -1;
+	}
+	else
+    {
+        fclose(filePtr);
+		return 0;
+    }
+}
+
+/** \brief Checks if a file exists and if it has certain number of lines.
+ *
+ * \param filePath - valid string filepath (relative or absolute)
+ * \param desiredLines - Compares this number to actual lines. If desiredLines < 0, gets number of lines instead.
+ * \return 1 if desiredLines >= 0 and desiredLines >= lines. 0 otherwise. If desiredLines < 0, returns number of lines instead.
+ */
+int checkFile(char* filePath, int desiredLines)
+{
+    FILE* filePtr = fopen(filePath, "r");
+	if (!filePtr)
+		return false;
+    char ch;
+    int lines = 0;
+    while(!feof(filePtr))
+    {
+      ch = fgetc(filePtr);
+      if(ch == '\n')
+      {
+        lines++;
+      }
+    }
+    fclose(filePtr);
+    return desiredLines >= 0 ? lines >= desiredLines : lines;
+}
+
+/** \brief Adds a line of text to the end of a file
+ *
+ * \param filePath - valid string filepath (relative or absolute)
+ * \param stuff - string containing desired text.
+ * \return Error code: Code 0: No error. Code -1: Error opening file
+ */
+int appendLine(char* filePath, char* stuff, bool addNewline)
+{
+	FILE* filePtr;
+	filePtr = fopen(filePath,"a");
+	if (!filePtr)
+	{
+		printf("Error opening file!\n");
+		return -1;
+	}
+	else
+	{
+		fprintf(filePtr, (addNewline ? "%s\n" : "%s"), stuff);
+		fclose(filePtr);
+		return 0;
+	}
+}
+
+/** \brief inserts a line at a certain position, if the file isn't too big
+ *
+ * \param
+ * \param
+ * \param
+ * \param
+ * \return -1 if failed to open or supply a valid line num, 0 if succeeded
+ */
+int replaceLine(char* filePath, int lineNum, char* stuff, int maxLength, bool addNewline)
+{
+    int maxLines = checkFile(filePath, -1) + 1;
+    //printf("%d\n", maxLines);
+    if (lineNum < 0 || lineNum > maxLines)
+        return -1;
+    char** allLines = calloc(maxLines, sizeof(char*));
+    if (!allLines)
+        return -1;
+    for(int i = 0; i < maxLines; i++)
+    {
+        allLines[i] = calloc(maxLength, sizeof(char));
+        if (!readLine(filePath, i, maxLength, &(allLines[i])))
+            return -1;
+        //printf("%s\n", allLines[i]);
+    }
+
+    strncpy(allLines[lineNum], stuff, maxLength);
+    if (addNewline)
+        strncat(allLines[lineNum], "\n", maxLength);
+    //printf("%s at %d\n", allLines[lineNum], lineNum);
+
+    createFile(filePath);
+    for(int i = 0; i < maxLines; i++)
+    {
+        if (appendLine(filePath, allLines[i], false) == -1)
+            return -1;
+        //printf("%s\n", allLines[i]);
+    }
+
+    return 0;
+}
+
+/** \brief Reads a line of a file.
+ *
+ * \param filePath - valid string filepath (relative or absolute)
+ * \param lineNum - the line number (starting from 0)
+ * \param maxLength - how long the string should be, max.
+ * \param output - valid pointer to your char* (should not be read-only)
+ * \return NULL if it fails, otherwise your string
+ */
+char* readLine(char* filePath, int lineNum, int maxLength, char** output)
+{
+	FILE* filePtr = fopen(filePath,"r");
+	if (!filePtr || !*output)
+		return NULL;
+	else
+	{
+        char* thisLine = calloc(maxLength, sizeof(char));
+        fseek(filePtr, 0, SEEK_SET);
+        for(int p = 0; p <= lineNum; p++)
+            fgets(thisLine, maxLength, filePtr);
+        //printf("%s @ %d\n", thisLine, thisLine);
+        strncpy(*output, thisLine, maxLength);
+        //printf("%s @ %d\n", output, output);
+        fclose(filePtr);
+        free(thisLine);
+        return *output;
+	}
 }

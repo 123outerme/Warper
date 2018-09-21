@@ -32,7 +32,6 @@ bool setKey(SDL_Scancode key, int keyslot);
 
 //global variable declarations:
 SDL_Scancode keymaps[MAX_KEYMAPS];
-
 #define KEY_UP keymaps[0]
 #define KEY_DOWN keymaps[1]
 #define KEY_LEFT keymaps[2]
