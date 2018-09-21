@@ -19,7 +19,6 @@
 #endif //NULL
 
 int randInt(int low, int high, bool inclusive);
-char* intToString(int value, char* result);
 int digits(int num);
 void* freeThisMem(void* x);
 char* removeNewline(char* stuff, char replacement, int maxLength);
