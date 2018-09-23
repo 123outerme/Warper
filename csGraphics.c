@@ -257,7 +257,7 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                         point.y -= camera.rect.y * windowH / camera.rect.h;
                     }
 
-                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
+                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
                     if (update)
                         SDL_RenderPresent(mainRenderer);
                 }
