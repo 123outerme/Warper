@@ -168,17 +168,16 @@ void importC2DModel(c2DModel* model, char* filepath)
             loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
         else
         {
-            bool found = false;
+            model->sprites[i].texture = NULL;
             for(int x = i - 1; x >= 0; x--)
             {
                 if (!strcmp(model->sprites[i].textureFilepath, model->sprites[x].textureFilepath))
                 {
                     model->sprites[i].texture = model->sprites[x].texture;
-                    found = true;
                     break;
                 }
             }
-            if (!found)
+            if (!model->sprites[i].texture)
                 loadIMG(model->sprites[i].textureFilepath, &(model->sprites[i].texture));
         }
         model->sprites[i].id = strtol(strtok(NULL, "{,}"), NULL, 10);
