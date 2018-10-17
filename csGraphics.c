@@ -71,13 +71,13 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
     point = rotatePoint(point, (cDoublePt) {sprite.drawRect.x + sprite.center.x * scale, sprite.drawRect.y + sprite.center.y * scale}, sprite.degrees);
     if (!(sprite.fixed | fixedOverride))
     {
-        point = rotatePoint(point, (cDoublePt) {windowW / 2, windowH / 2}, camera.degrees);
-        point.x -= camera.rect.x * windowW / camera.rect.w;
-        point.y -= camera.rect.y * windowH / camera.rect.h;
+        point = rotatePoint(point, (cDoublePt) {global.windowW / 2, global.windowH / 2}, camera.degrees);
+        point.x -= camera.rect.x * global.windowW / camera.rect.w;
+        point.y -= camera.rect.y * global.windowH / camera.rect.h;
     }
-    SDL_RenderCopyEx(mainRenderer, sprite.texture, &((SDL_Rect) {sprite.srcClipRect.x, sprite.srcClipRect.y, sprite.srcClipRect.w, sprite.srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = sprite.drawRect.w * sprite.scale * (sprite.fixed ? 1.0 : camera.scale), .h = sprite.drawRect.h * sprite.scale * (sprite.fixed ? 1.0 : camera.scale)}), sprite.degrees + (!sprite.fixed * camera.degrees), &((SDL_Point) {0, 0}), sprite.flip);
+    SDL_RenderCopyEx(global.mainRenderer, sprite.texture, &((SDL_Rect) {sprite.srcClipRect.x, sprite.srcClipRect.y, sprite.srcClipRect.w, sprite.srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = sprite.drawRect.w * sprite.scale * (sprite.fixed ? 1.0 : camera.scale), .h = sprite.drawRect.h * sprite.scale * (sprite.fixed ? 1.0 : camera.scale)}), sprite.degrees + (!sprite.fixed * camera.degrees), &((SDL_Point) {0, 0}), sprite.flip);
     if (update)
-        SDL_RenderPresent(mainRenderer);
+        SDL_RenderPresent(global.mainRenderer);
 }
 
 /** \brief Initializes a c2DModel object.
@@ -250,15 +250,15 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
 
                     if (!(model.sprites[i].fixed | model.fixed))
                     {
-                        point = rotatePoint(point, (cDoublePt) {windowW / 2 , windowH / 2}, camera.degrees);
+                        point = rotatePoint(point, (cDoublePt) {global.windowW / 2 , global.windowH / 2}, camera.degrees);
 
-                        point.x -= camera.rect.x * windowW / camera.rect.w;
-                        point.y -= camera.rect.y * windowH / camera.rect.h;
+                        point.x -= camera.rect.x * global.windowW / camera.rect.w;
+                        point.y -= camera.rect.y * global.windowH / camera.rect.h;
                     }
 
-                    SDL_RenderCopyEx(mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
+                    SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
                     if (update)
-                        SDL_RenderPresent(mainRenderer);
+                        SDL_RenderPresent(global.mainRenderer);
                 }
                 /*model.sprites[i].drawRect.x += model.rect.x;
                 model.sprites[i].drawRect.y += model.rect.y;
@@ -321,8 +321,8 @@ void destroyCText(cText* text)
 void drawCText(cText text, cCamera camera, bool update)
 {
     Uint8 r, g, b, a;
-    SDL_GetRenderDrawColor(mainRenderer, &r, &g, &b, &a);
-    SDL_SetRenderDrawColor(mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
+    SDL_GetRenderDrawColor(global.mainRenderer, &r, &g, &b, &a);
+    SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
     int* wh = loadTextTexture(text.string, &text.texture, text.rect.w, text.textColor, true);
     text.rect.w = wh[0];
     text.rect.h = wh[1];
@@ -330,17 +330,17 @@ void drawCText(cText text, cCamera camera, bool update)
     if (!text.fixed)
     {
         cDoublePt point = {text.rect.x, text.rect.y};
-        point = rotatePoint(point, (cDoublePt) {windowW / 2 - text.rect.w / 2, windowH / 2 - text.rect.h / 2}, camera.degrees);
+        point = rotatePoint(point, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
 
-        text.rect.x = point.x - (camera.rect.x * windowW / camera.rect.w);
-        text.rect.y = point.y - (camera.rect.y * windowH / camera.rect.h);
+        text.rect.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
+        text.rect.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
     }
-    SDL_SetRenderDrawColor(mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
-    SDL_RenderCopyEx(mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
-    SDL_SetRenderDrawColor(mainRenderer, r, g, b, a);
+    SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
+    SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
+    SDL_SetRenderDrawColor(global.mainRenderer, r, g, b, a);
     SDL_DestroyTexture(text.texture);
     if (update)
-        SDL_RenderPresent(mainRenderer);
+        SDL_RenderPresent(global.mainRenderer);
 }
 
 /** \brief Loads in an image resource
@@ -508,9 +508,9 @@ void destroyCScene(cScene* scenePtr)
  */
 void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
 {
-    SDL_SetRenderDrawColor(mainRenderer, scenePtr->bgColor.r, scenePtr->bgColor.g, scenePtr->bgColor.b, scenePtr->bgColor.a);
+    SDL_SetRenderDrawColor(global.mainRenderer, scenePtr->bgColor.r, scenePtr->bgColor.g, scenePtr->bgColor.b, scenePtr->bgColor.a);
     if (clearScreen)
-        SDL_RenderClear(mainRenderer);
+        SDL_RenderClear(global.mainRenderer);
     for(int priority = 5; priority >= 1; priority--)
     {
         for(int i = 0; i < scenePtr->spriteCount; i++)
@@ -539,10 +539,10 @@ void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
     }
 
     if (redraw)
-        SDL_RenderPresent(mainRenderer);
+        SDL_RenderPresent(global.mainRenderer);
 }
 
-/** \brief Draws text to the screen using mainFont, wrapped and bounded
+/** \brief Draws text to the screen using `global.mainFont`, wrapped and bounded
  *
  * \param input - text to be drawn
  * \param x - x value of first letter
@@ -554,17 +554,17 @@ void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
  */
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render)
 {
-    if (canDrawText)
+    if (global.canDrawText)
     {
         SDL_Texture* txtTexture = NULL;
         int* wh;
         wh = loadTextTexture(input, &txtTexture, maxW, color, true);
-        SDL_RenderCopy(mainRenderer, txtTexture, &((SDL_Rect){.w = *wh > maxW ? maxW : *wh, .h = *(wh + 1) > maxH ? maxH : *(wh + 1)}),
+        SDL_RenderCopy(global.mainRenderer, txtTexture, &((SDL_Rect){.w = *wh > maxW ? maxW : *wh, .h = *(wh + 1) > maxH ? maxH : *(wh + 1)}),
                                                  &((SDL_Rect){.x =  x, .y = y, .w = *wh > maxW ? maxW : *wh, .h = *(wh + 1) > maxH ? maxH : *(wh + 1)}));
 
 
         if (render)
-            SDL_RenderPresent(mainRenderer);
+            SDL_RenderPresent(global.mainRenderer);
         SDL_DestroyTexture(txtTexture);
     }
 }
@@ -573,9 +573,10 @@ void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bo
 #define IMG_INIT_FLAGS IMG_INIT_PNG
 
 /** \brief Initializes an SDL window and all of CoSprite's inner stuff.
+ *
  * \return Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
  */
-int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize)
+int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, SDL_Color transparentColor)
 {
     int status = 0;
     mainWindow = NULL;
@@ -604,13 +605,13 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
         }
         else
         //Mix_Init(MIX_INIT_OGG);  //deprecated?
-        soundVolume = MIX_MAX_VOLUME;
+        global.soundVolume = MIX_MAX_VOLUME;
         Mix_AllocateChannels(32);
-        Mix_Volume(-1, soundVolume);  //sets all channels to the sound level soundVolume
-        musicVolume = MIX_MAX_VOLUME;
-        Mix_VolumeMusic(musicVolume);
-        mainRenderer = NULL;
-        mainFont = NULL;
+        Mix_Volume(-1, global.soundVolume);  //sets all channels to the sound level global.soundVolume
+        global.musicVolume = MIX_MAX_VOLUME;
+        Mix_VolumeMusic(global.musicVolume);
+        global.mainRenderer = NULL;
+        global.mainFont = NULL;
         mainWindow = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         if (!mainWindow)
         {
@@ -619,31 +620,35 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
         }
         else
         {
-            windowW = windowWidth;
-            windowH = windowHeight;
-            mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
-            if(!mainRenderer)
+            global.windows = calloc(1, sizeof(SDL_Window*));
+            global.windows[0] = mainWindow;
+            global.windowsOpen = 1;
+            global.windowW = windowWidth;
+            global.windowH = windowHeight;
+            global.mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
+            if(!global.mainRenderer)
             {
                 printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
                 return 3;
             }
             else
             {
+                global.colorKey = transparentColor;
                 SDL_Surface* iconSurface = IMG_Load(iconPath);
                 SDL_SetWindowIcon(mainWindow, iconSurface);
                 SDL_FreeSurface(iconSurface);
-                SDL_SetRenderDrawBlendMode(mainRenderer, SDL_BLENDMODE_BLEND);
-                SDL_SetRenderDrawColor(mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-                SDL_RenderSetLogicalSize(mainRenderer, windowWidth, windowHeight);
-                SDL_RenderClear(mainRenderer);
-                loadTTFont(fontPath, &mainFont, fontSize);
+                SDL_SetRenderDrawBlendMode(global.mainRenderer, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+                SDL_RenderSetLogicalSize(global.mainRenderer, windowWidth, windowHeight);
+                SDL_RenderClear(global.mainRenderer);
+                loadTTFont(fontPath, &global.mainFont, fontSize);
                 //loadTTFont(FONT_FILE_NAME, &smallFont, 20);
-                if (!mainFont)
+                if (!global.mainFont)
                 {
-                    canDrawText = false;
+                    global.canDrawText = false;
                     status = 4;
                 }
-                canDrawText = true;
+                global.canDrawText = true;
                 srand((unsigned int) time(NULL));
                 /*if (checkFile(CONFIG_FILE_NAME, SIZE_OF_SCANCODE_ARRAY))
                 {
@@ -657,14 +662,16 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
     return status;
 }
 
+/** \brief Uninitializes CoSprite. Usually you run this just before the program exits.
+*/
 void closeCoSprite()
 {
-    TTF_CloseFont(mainFont);
+    TTF_CloseFont(global.mainFont);
     //TTF_CloseFont(smallFont);
     if (mainWindow)
         SDL_DestroyWindow(mainWindow);
-    if (mainRenderer)
-        SDL_DestroyRenderer(mainRenderer);
+    if (global.mainRenderer)
+        SDL_DestroyRenderer(global.mainRenderer);
     /*for(int i = 0; i < MAX_SOUNDS; i++)
     {
         if (audioArray[i])
@@ -683,6 +690,45 @@ void closeCoSprite()
     SDL_Quit();
 }
 
+/** \brief Opens another SDL2 Window and saves its information to the coSprite object `global`.
+ *
+ * \param windowPtr - the SDL_Window object you define for this window.
+ * \param windowName - a string containing the name you want the window to have.
+ * \param windowWidth - how wide the window should be, in pixels
+ * \param window Height - how tall the window should be, in pixels
+ * \return the position of the window in `global.windows[]`
+*/
+int openCWindow(SDL_Window* windowPtr, char* windowName, int windowWidth, int windowHeight)
+{
+    windowPtr = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    global.windows = realloc((void*) global.windows, global.windowsOpen + 1);
+    global.windows[global.windowsOpen] = windowPtr;
+    return global.windowsOpen++;
+}
+
+/** \brief closes a SDL2 window you opened with CoSprite.
+ *
+ * \param windowPos - the position of the window you want closed in `global.windows[]`. 0 is always the main window
+*/
+void closeCWindow(int windowPos)
+{
+    SDL_DestroyWindow(global.windows[windowPos]);
+    global.windows[windowPos] = NULL;
+    SDL_Window* theseWindows[global.windowsOpen];
+    if (windowPos < global.windowsOpen - 1)
+    {
+        int k = 0;
+        for(int i = 0; i < global.windowsOpen; i++)
+        {
+            if (global.windows[i] != NULL)
+                theseWindows[k++] = global.windows[i];
+        }
+        memcpy(global.windows, theseWindows, k * sizeof(SDL_Window*));
+    }
+    global.windows = realloc((void*) global.windows, global.windowsOpen - 1);
+    global.windowsOpen--;
+}
+
 /** \brief Loads an image into a SDL_Texture*
  *
  * \param imgPath - valid string filepath (relative or absolute)
@@ -697,8 +743,8 @@ bool loadIMG(char* imgPath, SDL_Texture** dest)
 	printf("Unable to load image for %s! SDL_Error: %s\n", imgPath, SDL_GetError());
         return false;
     }
-    SDL_SetColorKey(surf, 1, SDL_MapRGB(surf->format, 255, 28, 198));
-    *dest = SDL_CreateTextureFromSurface(mainRenderer, surf);
+    SDL_SetColorKey(surf, 1, SDL_MapRGB(surf->format, global.colorKey.r, global.colorKey.g, global.colorKey.b));
+    *dest = SDL_CreateTextureFromSurface(global.mainRenderer, surf);
     if (!(*dest))
     {
         printf("Unable to create texture for %s! SDL_Error: %s\n", imgPath, SDL_GetError());
@@ -741,10 +787,10 @@ int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, 
     static int wh[] = {0, 0};
     SDL_Surface* txtSurface = NULL;
     if (isBlended)
-        txtSurface = TTF_RenderText_Blended_Wrapped(mainFont, text, color, maxW);
+        txtSurface = TTF_RenderText_Blended_Wrapped(global.mainFont, text, color, maxW);
 //    else
 //        txtSurface = TTF_RenderText(smallFont, text, color, ((SDL_Color) {181, 182, 173}));
-    *dest = SDL_CreateTextureFromSurface(mainRenderer, txtSurface);
+    *dest = SDL_CreateTextureFromSurface(global.mainRenderer, txtSurface);
     if (!*dest)
     {
         printf("Text texture could not be loaded! SDL Error: %s\n", SDL_GetError());

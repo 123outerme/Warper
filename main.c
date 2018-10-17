@@ -15,8 +15,8 @@ typedef struct _player {
 
 #define calcWaitTime(x) x == 0 ? 0 : 1000 / x
 
-#define TILEMAP_X 60  //(windowW / TILE_SIZE)
-#define TILEMAP_Y 30  //(windowH / TILE_SIZE)
+#define TILEMAP_X 60  //(global.windowW / TILE_SIZE)
+#define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
 
@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
         argv = argv;
     const int TILE_SIZE = 32;
     int range = 7 * TILE_SIZE;  //10 * TILE_SIZE was a good range
-    int error = initCoSprite("assets/cb.bmp", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE);
+    int error = initCoSprite("assets/cb.bmp", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, (SDL_Color) {255, 28, 198, 0xFF});
     int tilemap[TILEMAP_X][TILEMAP_Y];
 
     for(int x = 0; x < TILEMAP_X; x++)
@@ -84,10 +84,10 @@ int main(int argc, char* argv[])
     cText FPStext;
     cText versionText;
     char FPSstring[3] = "   ";
-    initCText(&FPStext, "0", (cDoubleRect) {windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
+    initCText(&FPStext, "0", (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
     initCText(&versionText, COSPRITE_VERSION, (cDoubleRect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
-    initCCamera(&testCamera, (cDoubleRect) {0, 0, windowW, windowH}, 1.0, 0.0);
+    initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
     initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
@@ -118,8 +118,8 @@ int main(int argc, char* argv[])
                 SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
 
-                int newX = (e.button.x + (testCamera.rect.x * windowW / testCamera.rect.w)) / testCamera.scale - (playerModel.rect.w * playerModel.scale) / 2;
-                int newY = (e.button.y + (testCamera.rect.y * windowH / testCamera.rect.h)) / testCamera.scale - (playerModel.rect.h * playerModel.scale) / 2;
+                int newX = (e.button.x + (testCamera.rect.x * global.windowW / testCamera.rect.w)) / testCamera.scale - (playerModel.rect.w * playerModel.scale) / 2;
+                int newY = (e.button.y + (testCamera.rect.y * global.windowH / testCamera.rect.h)) / testCamera.scale - (playerModel.rect.h * playerModel.scale) / 2;
                 if (getDistance(playerModel.rect.x * playerModel.scale, playerModel.rect.y * playerModel.scale, newX, newY) > range)
                 {
                     double angle = atan((double) (newY - playerModel.rect.y * playerModel.scale) / (newX - playerModel.rect.x * playerModel.scale));
@@ -134,20 +134,20 @@ int main(int argc, char* argv[])
             }
             if (e.type == SDL_MOUSEMOTION)
             {
-                mouseSprite.drawRect.x = e.motion.x - (mouseSprite.drawRect.w / 2)/* + (testCamera.rect.x * windowW / testCamera.rect.w)*/;
-                mouseSprite.drawRect.y = e.motion.y - (mouseSprite.drawRect.h / 2)/* + (testCamera.rect.y * windowH / testCamera.rect.h)*/;
+                mouseSprite.drawRect.x = e.motion.x - (mouseSprite.drawRect.w / 2)/* + (testCamera.rect.x * global.windowW / testCamera.rect.w)*/;
+                mouseSprite.drawRect.y = e.motion.y - (mouseSprite.drawRect.h / 2)/* + (testCamera.rect.y * global.windowH / testCamera.rect.h)*/;
             }
         }
 
         const Uint8* keyStates = SDL_GetKeyboardState(NULL);
-        //mouseSprite.drawRect.x -= (testCamera.rect.x * windowW / testCamera.rect.w);  //subtract out camera offset
-        //mouseSprite.drawRect.y -= (testCamera.rect.y * windowH / testCamera.rect.h);
+        //mouseSprite.drawRect.x -= (testCamera.rect.x * global.windowW / testCamera.rect.w);  //subtract out camera offset
+        //mouseSprite.drawRect.y -= (testCamera.rect.y * global.windowH / testCamera.rect.h);
 
         if (keyStates[SDL_SCANCODE_ESCAPE])
             quit = true;
 
         if (keyStates[SDL_SCANCODE_F1])
-            printf("%.0f, %.0f x %.0f/%.0f [%d, %d]\n", playerModel.rect.x, playerModel.rect.y, playerModel.rect.w, playerModel.rect.h, windowW, windowH);
+            printf("%.0f, %.0f x %.0f/%.0f [%d, %d]\n", playerModel.rect.x, playerModel.rect.y, playerModel.rect.w, playerModel.rect.h, global.windowW, global.windowH);
 
         if (keyStates[SDL_SCANCODE_F12])
             FPStext.drawPriority = 5;
@@ -245,16 +245,16 @@ int main(int argc, char* argv[])
             playerModel.sprites[9].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[9].drawPriority == 4)) + playerSubclass->walkFrame / 2) % 20];
         }
 
-        if (playerModel.rect.y * playerModel.scale - (playerModel.rect.h * playerModel.scale) / 8 * playerModel.scale < testCamera.rect.y * windowH / testCamera.rect.h / testCamera.scale)
+        if (playerModel.rect.y * playerModel.scale - (playerModel.rect.h * playerModel.scale) / 8 * playerModel.scale < testCamera.rect.y * global.windowH / testCamera.rect.h / testCamera.scale)
             testCamera.rect.y -= testCamera.rect.h / 4;
 
-        if (playerModel.rect.x * playerModel.scale - (playerModel.rect.w * playerModel.scale) / 2  < testCamera.rect.x * windowW / testCamera.rect.w / testCamera.scale)
+        if (playerModel.rect.x * playerModel.scale - (playerModel.rect.w * playerModel.scale) / 2  < testCamera.rect.x * global.windowW / testCamera.rect.w / testCamera.scale)
             testCamera.rect.x -= testCamera.rect.w / 4;
 
-        if ((playerModel.rect.y + playerModel.rect.h) * playerModel.scale > (testCamera.rect.y + testCamera.rect.h) * windowH / testCamera.rect.h / testCamera.scale)
+        if ((playerModel.rect.y + playerModel.rect.h) * playerModel.scale > (testCamera.rect.y + testCamera.rect.h) * global.windowH / testCamera.rect.h / testCamera.scale)
             testCamera.rect.y += testCamera.rect.h / 4;
 
-        if ((playerModel.rect.x + playerModel.rect.w * 1.5) * playerModel.scale > (testCamera.rect.x + testCamera.rect.w) * windowW / testCamera.rect.w / testCamera.scale)
+        if ((playerModel.rect.x + playerModel.rect.w * 1.5) * playerModel.scale > (testCamera.rect.x + testCamera.rect.w) * global.windowW / testCamera.rect.w / testCamera.scale)
             testCamera.rect.x += testCamera.rect.w / 4;  //later, introduce a screen scrolling var that gets set here instead
 
         if (keyStates[SDL_SCANCODE_Q])  //camera rotation won't be controllable in final game obviously
@@ -285,15 +285,15 @@ int main(int argc, char* argv[])
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
         framerate = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));  //multiplied by 1000 on both sides since 1000f / ms == 1f / s
                 snprintf(FPSstring, 3, "%d", framerate);
-        initCText(&FPStext, FPSstring, (cDoubleRect) {windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, FPStext.drawPriority);
+        initCText(&FPStext, FPSstring, (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, FPStext.drawPriority);
 
         if ((sleepFor = targetTime - (SDL_GetTicks() - lastFrame)) > 0)
             SDL_Delay(sleepFor);  //FPS limiter; rests for (16 - time spent) ms per frame, effectively making each frame run for ~16 ms, or 60 FPS
         lastFrame = SDL_GetTicks();
 
 
-        //mouseSprite.drawRect.x += (testCamera.rect.x * windowW / testCamera.rect.w);  //add back camera offset
-        //mouseSprite.drawRect.y += (testCamera.rect.y * windowH / testCamera.rect.h);
+        //mouseSprite.drawRect.x += (testCamera.rect.x * global.windowW / testCamera.rect.w);  //add back camera offset
+        //mouseSprite.drawRect.y += (testCamera.rect.y * global.windowH / testCamera.rect.h);
         drawCScene(&testScene, true, true);
         if (keyStates[SDL_SCANCODE_P])
             waitForKey(false);

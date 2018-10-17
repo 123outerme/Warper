@@ -11,9 +11,9 @@
 
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
-    #define COSPRITE_VERSION_MINOR 8
-    #define COSPRITE_VERSION_PATCH 3
-    #define COSPRITE_VERSION "0.8.3"
+    #define COSPRITE_VERSION_MINOR 9
+    #define COSPRITE_VERSION_PATCH 0
+    #define COSPRITE_VERSION "0.9.0"
 #endif //COSPRITE_VERSION
 #define SDL_MAIN_HANDLED 1
 
@@ -52,6 +52,19 @@
 
 
 //struct definitions:
+typedef struct _coSprite {
+    SDL_Window** windows;
+    int windowsOpen;
+    SDL_Renderer* mainRenderer;
+    TTF_Font* mainFont;
+    int windowW;
+    int windowH;
+    SDL_Color colorKey;
+    bool canDrawText;
+    int soundVolume;
+    int musicVolume;
+} coSprite;
+
 typedef struct _cDoubleRect {
     double x;
     double y;
@@ -134,6 +147,8 @@ typedef struct _cScene {
 //initialization
 int initCoSprite();
 void closeCoSprite();
+int openCWindow(SDL_Window* windowPtr, char* windowName, int windowWidth, int windowHeight);
+void closeCWindow(int windowPos);
 bool loadIMG(char* imgPath, SDL_Texture** dest);
 bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts);
 int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended);
@@ -171,11 +186,6 @@ char* readLine(char* filePath, int lineNum, int maxLength, char** output);
 
 //global variable declarations:
 SDL_Window* mainWindow;
-SDL_Renderer* mainRenderer;
-TTF_Font* mainFont;
-
-int windowW, windowH;
-bool canDrawText;
-int soundVolume, musicVolume;
+coSprite global;
 
 #endif // CSGRAPHICS_H_INCLUDED
