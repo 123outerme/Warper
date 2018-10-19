@@ -569,6 +569,142 @@ void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bo
     }
 }
 
+/** \brief uses SAT to check whether one sprite is colliding onscreen with another
+ * \param sprite1 - The first cSprite
+ * \param sprite2 - The second cSprite
+ * \return true if they are colliding, false if not
+*/
+bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separation Axis Theorem
+{
+    cDoublePt center1 = (cDoublePt) {(sprite1.center.x + sprite1.drawRect.x) * sprite1.scale, (sprite1.center.y + sprite1.drawRect.y) * sprite1.scale};
+
+    cDoublePt corners1[4] = {rotatePoint((cDoublePt) {sprite1.drawRect.x * sprite1.scale, sprite1.drawRect.y * sprite1.scale}, center1, sprite1.degrees),
+    rotatePoint((cDoublePt) {(sprite1.drawRect.x + sprite1.drawRect.w) * sprite1.scale, sprite1.drawRect.y * sprite1.scale}, center1, sprite1.degrees),
+    rotatePoint((cDoublePt) {(sprite1.drawRect.x + sprite1.drawRect.w * sprite1.scale), (sprite1.drawRect.y + sprite1.drawRect.h) * sprite1.scale}, center1, sprite1.degrees),
+    rotatePoint((cDoublePt) {sprite1.drawRect.x * sprite1.scale, (sprite1.drawRect.y + sprite1.drawRect.h * sprite1.scale)}, center1, sprite1.degrees)};
+    //we find the corners of the first sprite, taking into account scale, center of rotation, and angle
+
+    cDoublePt center2 = (cDoublePt) {(sprite2.center.x + sprite2.drawRect.x) * sprite2.scale, (sprite2.center.y + sprite2.drawRect.y) * sprite2.scale};
+
+    cDoublePt corners2[4] = {rotatePoint((cDoublePt) {sprite2.drawRect.x * sprite2.scale, sprite2.drawRect.y * sprite2.scale}, center2, sprite2.degrees),
+    rotatePoint((cDoublePt) {(sprite2.drawRect.x + sprite2.drawRect.w) * sprite2.scale, sprite2.drawRect.y * sprite2.scale}, center2, sprite2.degrees),
+    rotatePoint((cDoublePt) {(sprite2.drawRect.x + sprite2.drawRect.w * sprite2.scale), (sprite2.drawRect.y + sprite2.drawRect.h) * sprite2.scale}, center2, sprite2.degrees),
+    rotatePoint((cDoublePt) {sprite2.drawRect.x * sprite2.scale, (sprite2.drawRect.y + sprite2.drawRect.h * sprite2.scale)}, center2, sprite2.degrees)};
+    //and same for the second sprite
+
+    /*SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    SDL_RenderClear(global.mainRenderer);
+    SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xFF);
+
+    for(int i = 0; i < 4; i++)
+        SDL_RenderDrawPoint(global.mainRenderer, corners1[i].x, corners1[i].y);  //debugging corner generation
+
+    for(int i = 0; i < 4; i++)
+        SDL_RenderDrawPoint(global.mainRenderer, corners2[i].x, corners2[i].y);
+
+    SDL_RenderPresent(global.mainRenderer);
+    waitForKey(true);*/
+
+    double normals[4] = {sprite1.degrees, sprite1.degrees + 90, sprite2.degrees, sprite2.degrees + 90};
+    //since we know we're dealing with rectangles, the normals can just be the angle each sprite is at and the angle + 90 degrees
+    bool collision = true;
+
+    /*int firstPts[2] = {0, 0};  //debugging found points
+    int secondPts[2] = {0, 0};*/
+    for(int i = 0; i < 4; i++)
+    {
+        double min1 = sqrt(pow(corners1[0].x, 2) + pow(corners1[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[0].y, corners1[0].x))));
+        double max1 = min1;
+        for(int x = 1; x < 4; x++)
+        {
+            //sqrt(x^2 + y^2) * cos(theta);  //this is the projection of the selected corner onto a plane with some angle `theta` between them
+            //essentially we get the magnitude of a vector from 0,0 to x,y (call it V) then multiply by the cosine of (the normal's angle - the angle of V)
+            double newVal = sqrt(pow(corners1[x].x, 2) + pow(corners1[x].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[x].y, corners1[x].x))));
+            if (newVal > max1)
+            {
+                max1 = newVal;
+                //firstPts[1] = x;
+            }
+            if (newVal < min1)
+            {
+                min1 = newVal;
+                //firstPts[0] = x;
+            }
+            //and we need to determine the minimum (closest to axis origin) and maximum (farther from axis origin)
+            //by looping through each point, finding the projected point
+
+        }
+
+        double min2 = sqrt(pow(corners2[0].x, 2) + pow(corners2[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners2[0].y, corners2[0].x))));
+        double max2 = min2;
+        for(int x = 1; x < 4; x++)
+        {
+            double newVal = sqrt(pow(corners2[x].x, 2) + pow(corners2[x].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners2[x].y, corners2[x].x))));
+            if (newVal > max2)
+            {
+                max2 = newVal;
+                //secondPts[1] = x;
+            }
+            if (newVal < min2)
+            {
+                min2 = newVal;
+                //secondPts[0] = x;
+            }
+        }
+        //and the same thing for the second object as well
+
+        /*printf("%.2f degrees\n%d, %d\n%d, %d\n\n%f, %f\n%f, %f\n\n", normals[i], firstPts[0], firstPts[1], secondPts[0], secondPts[1], min1, max1, min2, max2);
+
+        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = min1, .y = 0, .w = max1 - min1, .h = 4}));
+        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = min2, .y = 6, .w = max2 - min2, .h = 4}));
+        SDL_RenderPresent(global.mainRenderer);  //debugging projection
+        waitForKey(true);*/
+
+        //printf("%f or %f\n", min2 - max1, min1 - max2);
+        if (min2 > max1 || min1 > max2)
+        {
+            collision = false;
+            break;
+        }
+        //check for intersections of the two projected lines
+        //  if not found, return false (because according to SAT if one gap in projections is found, there's a separating axis there)
+        //  else continue
+    }
+    return collision;
+}
+
+/** \brief checks whether a model's general hitbox collides with another (fast)
+ * \param model1 - The first c2DModel
+ * \param model2 - The second c2DModel
+ * \param fast - if false checks each sprite of each model, else checks models' general hitbox
+ * \return true if probably colliding, false if definitely not
+*/
+bool checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast)
+{
+    if (fast)
+    {
+        cSprite sprite1;
+        initCSprite(&sprite1, NULL, ".", 0, (cDoubleRect) {model1.rect.x * model1.scale, model1.rect.y * model1.scale, model1.rect.w * model1.scale, model1.rect.h * model1.scale}, model1.rect, &model1.center, model1.scale, model1.flip, model1.degrees, false, NULL, 0);
+        cSprite sprite2;
+        initCSprite(&sprite2, NULL, ".", 0, (cDoubleRect) {model2.rect.x * model2.scale, model2.rect.y * model2.scale, model2.rect.w * model2.scale, model2.rect.h * model2.scale}, model2.rect, &model2.center, model2.scale, model2.flip, model2.degrees, false, NULL, 0);
+        return checkCSpriteCollision(sprite1, sprite2);
+    }
+    else
+    {
+        bool collisionFound = false;
+        for(int i = 0; i < model1.numSprites; i++)
+        {
+            for(int x = 0; x < model2.numSprites; x++)
+            {
+                collisionFound = checkCSpriteCollision(model1.sprites[i], model2.sprites[x]);
+                if (collisionFound)
+                    break;
+            }
+        }
+        return collisionFound;
+    }
+}
+
 //
 #define IMG_INIT_FLAGS IMG_INIT_PNG
 

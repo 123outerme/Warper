@@ -20,8 +20,6 @@ typedef struct _player {
 #define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
-bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2);
-bool checkC2DModelCollision(c2DModel model1, c2DModel model2);
 int checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int airID);
 
 const int upperArmRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
@@ -52,12 +50,12 @@ int main(int argc, char* argv[])
     SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
     cSprite mouseSprite;
-    cSprite testSprite;
+    /*cSprite testSprite;
     {
         SDL_Texture* testTexture;
         loadIMG("assets/cb.bmp", &testTexture);
         initCSprite(&testSprite, testTexture, "assets/cb.bmp", 0, (cDoubleRect) {TILE_SIZE, TILE_SIZE, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 0);
-    }
+    }*/
     c2DModel playerModel;
     {
         SDL_Texture* playerTexture;
@@ -97,11 +95,11 @@ int main(int argc, char* argv[])
     cText versionText;
     char FPSstring[3] = "   ";
     initCText(&FPStext, "0", (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
-    initCText(&versionText, COSPRITE_VERSION, (cDoubleRect){0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
+    initCText(&versionText, COSPRITE_VERSION, (cDoubleRect) {0, 0, 150, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&mouseSprite, &testSprite}, 2, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     SDL_Event e;
     bool quit = false;
@@ -377,116 +375,6 @@ player initPlayer(int maxHealth)
     inittedPlayer.yVeloc = 0;
     inittedPlayer.grounded = false;
     return inittedPlayer;
-}
-
-/*bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)
-{
-    return (sprite1.drawRect.x * sprite1.scale < (sprite2.drawRect.x + sprite2.drawRect.w) * sprite2.scale &&
-    (sprite1.drawRect.x + sprite1.drawRect.w) * sprite1.scale > sprite2.drawRect.x * sprite2.scale &&
-    sprite1.drawRect.y * sprite1.scale < (sprite2.drawRect.y + sprite2.drawRect.h) * sprite2.scale &&
-    (sprite1.drawRect.y + sprite1.drawRect.h) * sprite2.scale > sprite2.drawRect.y * sprite2.scale);
-}*/
-
-
-
-bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separation Axis Theorem
-{
-    cDoublePt center1 = (cDoublePt) {(sprite1.center.x + sprite1.drawRect.x) * sprite1.scale, (sprite1.center.y + sprite1.drawRect.y) * sprite1.scale};
-
-    cDoublePt corners1[4] = {rotatePoint((cDoublePt) {sprite1.drawRect.x * sprite1.scale, sprite1.drawRect.y * sprite1.scale}, center1, sprite1.degrees),
-    rotatePoint((cDoublePt) {(sprite1.drawRect.x + sprite1.drawRect.w) * sprite1.scale, sprite1.drawRect.y * sprite1.scale}, center1, sprite1.degrees),
-    rotatePoint((cDoublePt) {(sprite1.drawRect.x + sprite1.drawRect.w * sprite1.scale), (sprite1.drawRect.y + sprite1.drawRect.h) * sprite1.scale}, center1, sprite1.degrees),
-    rotatePoint((cDoublePt) {sprite1.drawRect.x * sprite1.scale, (sprite1.drawRect.y + sprite1.drawRect.h * sprite1.scale)}, center1, sprite1.degrees)};
-
-
-    cDoublePt center2 = (cDoublePt) {(sprite2.center.x + sprite2.drawRect.x) * sprite2.scale, (sprite2.center.y + sprite2.drawRect.y) * sprite2.scale};
-
-    cDoublePt corners2[4] = {rotatePoint((cDoublePt) {sprite2.drawRect.x * sprite2.scale, sprite2.drawRect.y * sprite2.scale}, center2, sprite2.degrees),
-    rotatePoint((cDoublePt) {(sprite2.drawRect.x + sprite2.drawRect.w) * sprite2.scale, sprite2.drawRect.y * sprite2.scale}, center2, sprite2.degrees),
-    rotatePoint((cDoublePt) {(sprite2.drawRect.x + sprite2.drawRect.w * sprite2.scale), (sprite2.drawRect.y + sprite2.drawRect.h) * sprite2.scale}, center2, sprite2.degrees),
-    rotatePoint((cDoublePt) {sprite2.drawRect.x * sprite2.scale, (sprite2.drawRect.y + sprite2.drawRect.h * sprite2.scale)}, center2, sprite2.degrees)};
-
-    /*SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-    SDL_RenderClear(global.mainRenderer);
-    SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xFF);
-
-    for(int i = 0; i < 4; i++)
-        SDL_RenderDrawPoint(global.mainRenderer, corners1[i].x, corners1[i].y);  /debugging corner generation
-
-    for(int i = 0; i < 4; i++)
-        SDL_RenderDrawPoint(global.mainRenderer, corners2[i].x, corners2[i].y);
-
-    SDL_RenderPresent(global.mainRenderer);
-    waitForKey(true);*/
-
-    double normals[4] = {sprite1.degrees, sprite1.degrees + 90, sprite2.degrees, sprite2.degrees + 90};
-    bool collision = true;
-
-    /*int firstPts[2] = {0, 0};  //debugging found points
-    int secondPts[2] = {0, 0};*/
-    for(int i = 0; i < 4; i++)
-    {
-        double min1 = sqrt(pow(corners1[0].x, 2) + pow(corners1[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[0].y, corners1[0].x))));
-        double max1 = min1;
-        for(int x = 1; x < 4; x++)
-        {
-            double newVal = sqrt(pow(corners1[x].x, 2) + pow(corners1[x].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[x].y, corners1[x].x))));
-            if (newVal > max1)
-            {
-                max1 = newVal;
-                //firstPts[1] = x;
-            }
-            if (newVal < min1)
-            {
-                min1 = newVal;
-                //firstPts[0] = x;
-            }
-        }
-
-        double min2 = sqrt(pow(corners2[0].x, 2) + pow(corners2[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners2[0].y, corners2[0].x))));
-        double max2 = min2;
-        for(int x = 1; x < 4; x++)
-        {
-            //sqrt(x^2 + y^2) * cos(theta);
-            double newVal = sqrt(pow(corners2[x].x, 2) + pow(corners2[x].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners2[x].y, corners2[x].x))));
-            if (newVal > max2)
-            {
-                max2 = newVal;
-                //secondPts[1] = x;
-            }
-            if (newVal < min2)
-            {
-                min2 = newVal;
-                //secondPts[0] = x;
-            }
-        }
-        //project points along the normal
-        /*printf("%.2f degrees\n%d, %d\n%d, %d\n\n%f, %f\n%f, %f\n\n", normals[i], firstPts[0], firstPts[1], secondPts[0], secondPts[1], min1, max1, min2, max2);
-
-        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = min1, .y = 0, .w = max1 - min1, .h = 4}));
-        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = min2, .y = 6, .w = max2 - min2, .h = 4}));
-        SDL_RenderPresent(global.mainRenderer);  //debugging projection
-        waitForKey(true);*/
-
-        //printf("%f or %f\n", min2 - max1, min1 - max2);
-        if (min2 > max1 || min1 > max2)
-        {
-            collision = false;
-            break;
-        }
-        //check for intersections
-        //  if not found, return false, else continue true
-    }
-    return collision;
-}
-
-bool checkC2DModelCollision(c2DModel model1, c2DModel model2)
-{
-    cSprite sprite1;
-    initCSprite(&sprite1, NULL, ".", 0, (cDoubleRect) {model1.rect.x * model1.scale, model1.rect.y * model1.scale, model1.rect.w * model1.scale, model1.rect.h * model1.scale}, model1.rect, &model1.center, model1.scale, model1.flip, model1.degrees, false, NULL, 0);
-    cSprite sprite2;
-    initCSprite(&sprite2, NULL, ".", 0, (cDoubleRect) {model2.rect.x * model2.scale, model2.rect.y * model2.scale, model2.rect.w * model2.scale, model2.rect.h * model2.scale}, model2.rect, &model2.center, model2.scale, model2.flip, model2.degrees, false, NULL, 0);
-    return checkCSpriteCollision(sprite1, sprite2);
 }
 
 int checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int airID)  //doesn't work

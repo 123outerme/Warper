@@ -12,8 +12,8 @@
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
     #define COSPRITE_VERSION_MINOR 9
-    #define COSPRITE_VERSION_PATCH 0
-    #define COSPRITE_VERSION "0.9.0"
+    #define COSPRITE_VERSION_PATCH 1
+    #define COSPRITE_VERSION "0.9.1"
 #endif //COSPRITE_VERSION
 #define SDL_MAIN_HANDLED 1
 
@@ -91,6 +91,17 @@ typedef struct _cSprite {
     bool fixed;  /**< if true, won't be affected by camera movement */
     void* subclass;  /**< fill with any extraneous data or pointer to another struct */
 } cSprite;
+
+/*typedef struct _cCircle {
+    cDoublePt pt;
+    double r;
+    cDoublePt center;
+    double scale;
+    SDL_RendererFlip flip;
+    double degrees;
+    int drawPriority;  / **< 0 - not drawn. 1-5 - drawn. Lower number = drawn later * /
+    bool fixed;  / **< if true, won't be affected by camera movement * /
+} cCircle;*/
 
 typedef struct _c2DModel {  //essentially a 2D version of a wireframe model: A collection of sprites with relative coordinates
     cSprite* sprites;
@@ -174,6 +185,9 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* s
 void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
+bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2);
+bool checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast);
+
 cDoublePt rotatePoint(cDoublePt pt, cDoublePt center, int degrees);
 
 //file I/O
