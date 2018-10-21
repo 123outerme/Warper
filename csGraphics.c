@@ -572,9 +572,9 @@ void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bo
 /** \brief uses SAT to check whether one sprite is colliding onscreen with another
  * \param sprite1 - The first cSprite
  * \param sprite2 - The second cSprite
- * \return true if they are colliding, false if not
+ * \return Minimum translation vector for the collision (mag 0 if no collision)
 */
-bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separation Axis Theorem
+cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separation Axis Theorem
 {
     cDoublePt center1 = (cDoublePt) {(sprite1.center.x + sprite1.drawRect.x) * sprite1.scale, (sprite1.center.y + sprite1.drawRect.y) * sprite1.scale};
 
@@ -607,7 +607,7 @@ bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separa
 
     double normals[4] = {sprite1.degrees, sprite1.degrees + 90, sprite2.degrees, sprite2.degrees + 90};
     //since we know we're dealing with rectangles, the normals can just be the angle each sprite is at and the angle + 90 degrees
-    bool collision = true;
+    cDoubleVector minTranslationVector = (cDoubleVector) {-1, 0};
 
     /*int firstPts[2] = {0, 0};  //debugging found points
     int secondPts[2] = {0, 0};*/
@@ -661,25 +661,36 @@ bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using the Separa
         waitForKey(true);*/
 
         //printf("%f or %f\n", min2 - max1, min1 - max2);
-        if (min2 > max1 || min1 > max2)
+        if (min2 >= max1 || min1 >= max2)
         {
-            collision = false;
+            minTranslationVector = (cDoubleVector) {0, 0};
             break;
+        }
+        else
+        {
+            double overlap;
+            if (min2 < max1)
+                overlap = fabs(max1 - min2);
+            else
+                overlap = fabs(max2 - min1);
+
+            if (overlap < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
+                minTranslationVector = (cDoubleVector) {overlap, normals[i]};
         }
         //check for intersections of the two projected lines
         //  if not found, return false (because according to SAT if one gap in projections is found, there's a separating axis there)
         //  else continue
     }
-    return collision;
+    return minTranslationVector;
 }
 
 /** \brief checks whether a model's general hitbox collides with another (fast)
  * \param model1 - The first c2DModel
  * \param model2 - The second c2DModel
  * \param fast - if false checks each sprite of each model, else checks models' general hitbox
- * \return true if probably colliding, false if definitely not
+ * \return Minimum translation vector (mag 0 if not colliding)
 */
-bool checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast)
+cDoubleVector checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast)
 {
     if (fast)
     {
@@ -691,17 +702,18 @@ bool checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast)
     }
     else
     {
-        bool collisionFound = false;
+        cDoubleVector mtv = (cDoubleVector) {-1, 0};
         for(int i = 0; i < model1.numSprites; i++)
         {
             for(int x = 0; x < model2.numSprites; x++)
             {
-                collisionFound = checkCSpriteCollision(model1.sprites[i], model2.sprites[x]);
-                if (collisionFound)
-                    break;
+                cDoubleVector collisionV;
+                collisionV = checkCSpriteCollision(model1.sprites[i], model2.sprites[x]);
+                if (collisionV.magnitude < mtv.magnitude || mtv.magnitude == -1)
+                    mtv = collisionV;
             }
         }
-        return collisionFound;
+        return mtv;
     }
 }
 

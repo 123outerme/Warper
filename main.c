@@ -20,7 +20,7 @@ typedef struct _player {
 #define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
-int checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int airID);
+cDoubleVector checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID);
 
 const int upperArmRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
 const int lowerArmRotations[20] = {0, 20, 35, 52, 60, 70, 57, 40, 25, 11, 0, -14, -18, -25, -34, -45, -30, -21, -16, -6};
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[8], playerTexture, "assets/tilesheet.png", 9, (cDoubleRect) {0.5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {3.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
         initCSprite(&playerSprites[9], playerTexture, "assets/tilesheet.png", 10, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
         initCSprite(&playerSprites[10], playerTexture, "assets/tilesheet.png", 11, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);  //hurtbox
-        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);  //hitbox
+        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
         initC2DModel(&playerModel, playerSprites, 12, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
     c2DModel mapModel;
@@ -132,14 +132,14 @@ int main(int argc, char* argv[])
                 int newY = (e.button.y + (testCamera.rect.y * global.windowH / testCamera.rect.h)) / testCamera.scale - (playerModel.rect.h * playerModel.scale) / 2;
                 if (getDistance(playerModel.rect.x * playerModel.scale, playerModel.rect.y * playerModel.scale, newX, newY) > range)
                 {
-                    double angle = atan((double) (newY - playerModel.rect.y * playerModel.scale) / (newX - playerModel.rect.x * playerModel.scale));
-                    playerModel.rect.x += range * cos(angle) * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0));
-                    playerModel.rect.y += range * sin(angle) * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0));  //remember, bounds of inverse tan
+                    double angle = atan2((double) (newY - playerModel.rect.y * playerModel.scale), (newX - playerModel.rect.x * playerModel.scale));
+                    playerModel.rect.x += range * cos(angle)/* * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0))*/;
+                    playerModel.rect.y += range * sin(angle)/* * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0))*/;  //remember, bounds of atan() require this
                 }
                 else
                 {
-                    playerModel.rect.x = newX / playerModel.scale;
-                    playerModel.rect.y = newY / playerModel.scale;
+                    playerModel.rect.x = ((newX * 6) / 6) / playerModel.scale;
+                    playerModel.rect.y = ((newY * 6) / 6) / playerModel.scale;
                 }
             }
             if (e.type == SDL_MOUSEMOTION)
@@ -187,7 +187,10 @@ int main(int argc, char* argv[])
         {
 
             if (keyStates[SDL_SCANCODE_W] && playerSubclass->grounded)
+            {
                 playerSubclass->yVeloc = -48;
+                playerSubclass->grounded = false;
+            }
 
             if (keyStates[SDL_SCANCODE_A])
             {
@@ -235,7 +238,8 @@ int main(int argc, char* argv[])
             //printf("%d\n", playerSubclass->walkFrame % 20);
         }
 
-        if (checkTilemapCollision(playerModel, mapModel, 0) == -1)
+        cDoubleVector collisionV = checkTilemapCollision(playerModel, mapModel, 10, 0);
+        if (!collisionV.magnitude)
         {
             playerSubclass->yVeloc += 8;
             if (playerSubclass->yVeloc > 48)
@@ -243,9 +247,13 @@ int main(int argc, char* argv[])
             playerSubclass->grounded = false;
         }
         else
+        {
+            double angle = degToRad(collisionV.degrees);
+            playerModel.rect.x -= collisionV.magnitude * cos(angle);
+            playerModel.rect.y -= collisionV.magnitude * sin(angle);
+            printf("%f, %.2f\n", collisionV.magnitude, collisionV.degrees);
             playerSubclass->grounded = true;
-
-        //printf("%d\n", checkTilemapCollision(playerModel, mapModel, -1));
+        }
 
         if (playerSubclass->xVeloc)
         {
@@ -298,13 +306,11 @@ int main(int argc, char* argv[])
 
         if (keyStates[SDL_SCANCODE_Q])
         {  //punch
-            mouseSprite.degrees -= 5;
         }
 
 
         if (keyStates[SDL_SCANCODE_E])
         {  //kick
-            mouseSprite.degrees += 5;
         }
 
         if (keyStates[SDL_SCANCODE_X])  //camera rotation won't be controllable in final game obviously
@@ -377,23 +383,31 @@ player initPlayer(int maxHealth)
     return inittedPlayer;
 }
 
-int checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int airID)  //doesn't work
+cDoubleVector checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID)
 {
-    cSprite sprite1 = playerModel.sprites[10];
-    sprite1.drawRect.x = (sprite1.drawRect.x * sprite1.scale) + (playerModel.rect.x * playerModel.scale);
-    sprite1.drawRect.y = (sprite1.drawRect.y * sprite1.scale) + (playerModel.rect.y * playerModel.scale);
+    cSprite sprite1 = playerModel.sprites[playerSprite];
+    sprite1.drawRect.x = ((sprite1.drawRect.x * sprite1.scale) + (playerModel.rect.x * playerModel.scale)) / sprite1.scale;  //divide by scale?
+    sprite1.drawRect.y = ((sprite1.drawRect.y * sprite1.scale) + (playerModel.rect.y * playerModel.scale)) / sprite1.scale;  //because it's just multiplied right back in, right?
     sprite1.drawRect.w *= sprite1.scale * playerModel.scale;
     sprite1.drawRect.h *= sprite1.scale * playerModel.scale;
+    sprite1.degrees += playerModel.degrees;
     cSprite sprite2;
-    int foundAt = -1;
+    cDoubleVector mtv = (cDoubleVector) {-1, 0};
+    bool collision = false;
     for(int i = 0; i < tilemapModel.numSprites; i++)
     {
         sprite2 = tilemapModel.sprites[i];
-        if (sprite2.id != airID && checkCSpriteCollision(sprite1, sprite2))
+        cDoubleVector collisionV = checkCSpriteCollision(sprite1, sprite2);
+        if (sprite2.id != airID && collisionV.magnitude)
         {
-            foundAt = i;
-            break;
+            if (collisionV.magnitude < mtv.magnitude || mtv.magnitude == -1)
+            {
+                mtv = collisionV;
+                collision = true;
+            }
         }
     }
-    return foundAt;
+    if (!collision)
+        mtv.magnitude = 0;
+    return mtv;
 }

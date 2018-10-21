@@ -12,8 +12,8 @@
 #ifndef COSPRITE_VERSION
     #define COSPRITE_VERSION_MAJOR 0
     #define COSPRITE_VERSION_MINOR 9
-    #define COSPRITE_VERSION_PATCH 1
-    #define COSPRITE_VERSION "0.9.1"
+    #define COSPRITE_VERSION_PATCH 2
+    #define COSPRITE_VERSION "0.9.2"
 #endif //COSPRITE_VERSION
 #define SDL_MAIN_HANDLED 1
 
@@ -76,6 +76,11 @@ typedef struct _cDoublePt {
     double x;
     double y;
 } cDoublePt;
+
+typedef struct _cDoubleVector {
+    double magnitude;
+    double degrees;
+} cDoubleVector;
 
 typedef struct _cSprite {
     SDL_Texture* texture;
@@ -185,8 +190,8 @@ void initCScene(cScene* scenePtr, SDL_Color bgColor, cCamera* camera, cSprite* s
 void destroyCScene(cScene* scenePtr);
 void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw);
 void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bool render);
-bool checkCSpriteCollision(cSprite sprite1, cSprite sprite2);
-bool checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast);
+cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2);
+cDoubleVector checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast);
 
 cDoublePt rotatePoint(cDoublePt pt, cDoublePt center, int degrees);
 
