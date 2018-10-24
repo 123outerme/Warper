@@ -15,7 +15,7 @@ git pull origin master --allow-unrelated-histories
 	@cd /d "%folder%\%project%"
 	@for /F "delims=" %%i in ('dir /b') do (rmdir "%%i" /s/q || del "%%i" /s/q)
 )
-@ROBOCOPY "C:\Program Files\Git\code\%project%" %~dp0 *.c *.h *.txt *.ico *.rc *.png *.bat *.html *.css *.json *.md /MIR /XD dirs .git warper warper-bin media
+@ROBOCOPY "C:\Program Files\Git\code\%project%" %~dp0 *.c *.h *.txt *.ico *.rc *.png *.bat *.html *.css *.json *.md *.am *.ac /MIR /XD dirs .git warper warper-bin media
 @cd "C:\Program Files\Git\code\%project%"
 @git init
 @git add -A

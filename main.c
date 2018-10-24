@@ -285,8 +285,9 @@ int main(int argc, char* argv[])
             playerModel.rect.y += totalY / result.collisions;
             int angle = abs(radToDeg(atan2(totalY / result.collisions, totalX / result.collisions)));
 
+            /*
             if (playerSubclass->yVeloc && playerSubclass->xVeloc)
-                printf("%d\n", angle);
+                printf("%d\n", angle);//*/
 
             if (angle % 180 >= 45 && angle % 180 <= 135)
             {
@@ -452,7 +453,7 @@ int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DMode
             {
                 result->mtvs[result->collisions] = collisionV;
                 result->tilesCollided[result->collisions++] = i;
-                //*
+                /*
                 SDL_SetRenderDrawColor(global.mainRenderer, 0x00, 0x00, 0xFF, 0xFF);
                 SDL_RenderDrawLine(global.mainRenderer, playerModel.rect.x + playerModel.sprites[playerSprite].drawRect.x, playerModel.rect.y + playerModel.sprites[playerSprite].drawRect.y, playerModel.rect.x + playerModel.sprites[playerSprite].drawRect.x + collisionV.magnitude * cos(degToRad(collisionV.degrees)), playerModel.rect.y + playerModel.sprites[playerSprite].drawRect.y + collisionV.magnitude * sin(degToRad(collisionV.degrees)));
                 SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
