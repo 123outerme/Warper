@@ -14,13 +14,19 @@ typedef struct _player {
     bool grounded;
 } player;
 
+typedef struct _collisionResult {
+    cDoubleVector* mtvs;
+    int* tilesCollided;
+    int collisions;
+} collisionResult;
+
 #define calcWaitTime(x) x == 0 ? 0 : 1000 / x
 
 #define TILEMAP_X 60  //(global.windowW / TILE_SIZE)
 #define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
-cDoubleVector checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID);
+int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID);
 
 const int upperArmRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
 const int lowerArmRotations[20] = {0, 20, 35, 52, 60, 70, 57, 40, 25, 11, 0, -14, -18, -25, -34, -45, -30, -21, -16, -6};
@@ -40,7 +46,7 @@ int main(int argc, char* argv[])
     {
         for(int y = 0; y < TILEMAP_Y; y++)
         {
-            if (x == 0 || y == 0 || x + 1 == TILEMAP_X || y + 1 == TILEMAP_Y)
+            if (x == 0 || y == 0 || x + 1 == TILEMAP_X || y + 1 == TILEMAP_Y || y == 7)
                 tilemap[x][y] = 1;
             else
                 tilemap[x][y] = 0;
@@ -50,18 +56,18 @@ int main(int argc, char* argv[])
     SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
     cSprite mouseSprite;
-    /*cSprite testSprite;
+    cSprite testSprite;
     {
         SDL_Texture* testTexture;
         loadIMG("assets/cb.bmp", &testTexture);
-        initCSprite(&testSprite, testTexture, "assets/cb.bmp", 0, (cDoubleRect) {TILE_SIZE, TILE_SIZE, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 0);
-    }*/
+        initCSprite(&testSprite, testTexture, "assets/cb.bmp", 0, (cDoubleRect) {3 * TILE_SIZE, 3 * TILE_SIZE, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 5);
+    }
     c2DModel playerModel;
     {
         SDL_Texture* playerTexture;
         loadIMG("assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
-        cSprite playerSprites[12];
+        cSprite playerSprites[14];
         initCSprite(&mouseSprite, mouseTexture, "assets/cb.bmp", 0, (cDoubleRect) {0, 0, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
         initCSprite(&playerSprites[0], playerTexture, "assets/tilesheet.png", 1, (cDoubleRect) {0.5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, "assets/tilesheet.png", 2, (cDoubleRect) {0.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
@@ -73,9 +79,11 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[7], playerTexture, "assets/tilesheet.png", 8, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, 0, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right leg
         initCSprite(&playerSprites[8], playerTexture, "assets/tilesheet.png", 9, (cDoubleRect) {0.5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {3.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
         initCSprite(&playerSprites[9], playerTexture, "assets/tilesheet.png", 10, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
-        initCSprite(&playerSprites[10], playerTexture, "assets/tilesheet.png", 11, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);  //hurtbox
-        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
-        initC2DModel(&playerModel, playerSprites, 12, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
+        initCSprite(&playerSprites[10], playerTexture, "assets/tilesheet.png", 11, (cDoubleRect) {TILE_SIZE / 2, 0, TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //floor hurtbox
+        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 4 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //wall/ceiling hurtbox
+        initCSprite(&playerSprites[12], playerTexture, "assets/tilesheet.png", 13, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //dmg hurtbox
+        initCSprite(&playerSprites[13], playerTexture, "assets/tilesheet.png", 14, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
+        initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
     }
     c2DModel mapModel;
     {
@@ -99,7 +107,7 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&mouseSprite, &testSprite}, 2, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     SDL_Event e;
     bool quit = false;
@@ -107,6 +115,8 @@ int main(int argc, char* argv[])
     int playerFlip = -1;
     while(!quit)
     {
+        double previousX = playerModel.rect.x;
+        double previousY = playerModel.rect.y;
         while(SDL_PollEvent(&e))
         {
             if (e.type == SDL_QUIT)
@@ -141,6 +151,12 @@ int main(int argc, char* argv[])
                     playerModel.rect.x = ((newX * 6) / 6) / playerModel.scale;
                     playerModel.rect.y = ((newY * 6) / 6) / playerModel.scale;
                 }
+                collisionResult result;
+                if (checkTilemapCollision(&result, playerModel, mapModel, 12, 0))
+                {
+                    playerModel.rect.x = previousX;
+                    playerModel.rect.y = previousY;
+                }
             }
             if (e.type == SDL_MOUSEMOTION)
             {
@@ -173,23 +189,21 @@ int main(int argc, char* argv[])
             testCamera.scale = 1.0;
             playerModel.scale = 1.0;
         }
-
-        /*if (keyStates[SDL_SCANCODE_G])
+        cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
+        if (keyStates[SDL_SCANCODE_G])
         {
-            printf("%s\n", boolToString(checkCSpriteCollision(mouseSprite, testSprite)));  //debugging checkCSpriteCollision()
-        }*/
 
-        double previousX = playerModel.rect.x;
-        double previousY = playerModel.rect.y;
+            mouseSprite.drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
+            mouseSprite.drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
+        }
 
         if (keyStates[SDL_SCANCODE_W] || keyStates[SDL_SCANCODE_A] ||
             keyStates[SDL_SCANCODE_S] || keyStates[SDL_SCANCODE_D])
         {
 
-            if (keyStates[SDL_SCANCODE_W] && playerSubclass->grounded)
+            if (keyStates[SDL_SCANCODE_W])  //jumping will not be in the final game
             {
-                playerSubclass->yVeloc = -48;
-                playerSubclass->grounded = false;
+                playerSubclass->yVeloc -= 14;
             }
 
             if (keyStates[SDL_SCANCODE_A])
@@ -238,21 +252,40 @@ int main(int argc, char* argv[])
             //printf("%d\n", playerSubclass->walkFrame % 20);
         }
 
-        cDoubleVector collisionV = checkTilemapCollision(playerModel, mapModel, 10, 0);
-        if (!collisionV.magnitude)
+
+        collisionResult result;
+        if (!checkTilemapCollision(&result, playerModel, mapModel, 10, 0))
         {
             playerSubclass->yVeloc += 8;
             if (playerSubclass->yVeloc > 48)
                 playerSubclass->yVeloc = 48;
             playerSubclass->grounded = false;
         }
-        else
+        if (!playerSubclass->grounded)
         {
-            double angle = degToRad(collisionV.degrees);
-            playerModel.rect.x -= collisionV.magnitude * cos(angle);
-            playerModel.rect.y -= collisionV.magnitude * sin(angle);
-            printf("%f, %.2f\n", collisionV.magnitude, collisionV.degrees);
+            for(int i = 0; i < result.collisions; i++)
+            {
+                playerModel.rect.x += result.mtvs[i].magnitude * cos(degToRad(result.mtvs[i].degrees));
+                playerModel.rect.y += result.mtvs[i].magnitude * sin(degToRad(result.mtvs[i].degrees));
+            }
             playerSubclass->grounded = true;
+            free(result.mtvs);
+            free(result.tilesCollided);
+        }
+
+        if (checkTilemapCollision(&result, playerModel, mapModel, 11, 0))
+        {
+            double totalX = 0, totalY = 0;
+            for(int i = 0; i < result.collisions; i++)
+            {
+                totalX += result.mtvs[i].magnitude * cos(degToRad(result.mtvs[i].degrees));
+                totalY += result.mtvs[i].magnitude * sin(degToRad(result.mtvs[i].degrees));
+            }
+            playerModel.rect.x += totalX / result.collisions;
+            playerModel.rect.y += totalY / result.collisions;
+            //playerSubclass->xVeloc = 0;
+            free(result.mtvs);
+            free(result.tilesCollided);
         }
 
         if (playerSubclass->xVeloc)
@@ -306,11 +339,13 @@ int main(int argc, char* argv[])
 
         if (keyStates[SDL_SCANCODE_Q])
         {  //punch
+            mouseSprite.degrees -= 5;
         }
 
 
         if (keyStates[SDL_SCANCODE_E])
         {  //kick
+            mouseSprite.degrees += 5;
         }
 
         if (keyStates[SDL_SCANCODE_X])  //camera rotation won't be controllable in final game obviously
@@ -383,7 +418,7 @@ player initPlayer(int maxHealth)
     return inittedPlayer;
 }
 
-cDoubleVector checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID)
+int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID)
 {
     cSprite sprite1 = playerModel.sprites[playerSprite];
     sprite1.drawRect.x = ((sprite1.drawRect.x * sprite1.scale) + (playerModel.rect.x * playerModel.scale)) / sprite1.scale;  //divide by scale?
@@ -392,22 +427,27 @@ cDoubleVector checkTilemapCollision(c2DModel playerModel, c2DModel tilemapModel,
     sprite1.drawRect.h *= sprite1.scale * playerModel.scale;
     sprite1.degrees += playerModel.degrees;
     cSprite sprite2;
-    cDoubleVector mtv = (cDoubleVector) {-1, 0};
-    bool collision = false;
+    result->mtvs = calloc(tilemapModel.numSprites, sizeof(cDoubleVector));
+    result->tilesCollided = calloc(tilemapModel.numSprites, sizeof(int));
+    result->collisions = 0;
     for(int i = 0; i < tilemapModel.numSprites; i++)
     {
         sprite2 = tilemapModel.sprites[i];
         cDoubleVector collisionV = checkCSpriteCollision(sprite1, sprite2);
         if (sprite2.id != airID && collisionV.magnitude)
         {
-            if (collisionV.magnitude < mtv.magnitude || mtv.magnitude == -1)
+            if (collisionV.magnitude)
             {
-                mtv = collisionV;
-                collision = true;
+                result->mtvs[result->collisions] = collisionV;
+                result->tilesCollided[result->collisions++] = i;
+                //*
+                SDL_SetRenderDrawColor(global.mainRenderer, 0x00, 0x00, 0xFF, 0xFF);
+                SDL_RenderDrawLine(global.mainRenderer, playerModel.rect.x + playerModel.sprites[playerSprite].drawRect.x, playerModel.rect.y + playerModel.sprites[playerSprite].drawRect.y, playerModel.rect.x + playerModel.sprites[playerSprite].drawRect.x + collisionV.magnitude * cos(degToRad(collisionV.degrees)), playerModel.rect.y + playerModel.sprites[playerSprite].drawRect.y + collisionV.magnitude * sin(degToRad(collisionV.degrees)));
+                SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+                SDL_RenderPresent(global.mainRenderer);
+                //*/
             }
         }
     }
-    if (!collision)
-        mtv.magnitude = 0;
-    return mtv;
+    return result->collisions;
 }

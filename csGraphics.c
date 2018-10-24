@@ -592,6 +592,10 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
     rotatePoint((cDoublePt) {sprite2.drawRect.x * sprite2.scale, (sprite2.drawRect.y + sprite2.drawRect.h * sprite2.scale)}, center2, sprite2.degrees)};
     //and same for the second sprite
 
+    //cDoublePt realCenter1 = {(corners1[0].x + sprite1.drawRect.w / 2) * sprite1.scale, (corners1[0].y + sprite1.drawRect.h / 2) * sprite1.scale};
+    //cDoublePt realCenter2 = {(corners2[0].x + sprite2.drawRect.w / 2) * sprite2.scale, (corners2[0].y + sprite2.drawRect.h / 2) * sprite2.scale};
+    //get their physical centers, not their draw rotation centers
+
     /*SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(global.mainRenderer);
     SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xFF);
@@ -605,12 +609,13 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
     SDL_RenderPresent(global.mainRenderer);
     waitForKey(true);*/
 
-    double normals[4] = {sprite1.degrees, sprite1.degrees + 90, sprite2.degrees, sprite2.degrees + 90};
+    double normals[8] = {sprite1.degrees, sprite1.degrees + 90, sprite2.degrees, sprite2.degrees + 90};
     //since we know we're dealing with rectangles, the normals can just be the angle each sprite is at and the angle + 90 degrees
     cDoubleVector minTranslationVector = (cDoubleVector) {-1, 0};
 
     /*int firstPts[2] = {0, 0};  //debugging found points
     int secondPts[2] = {0, 0};*/
+    int debugI = 0;
     for(int i = 0; i < 4; i++)
     {
         double min1 = sqrt(pow(corners1[0].x, 2) + pow(corners1[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[0].y, corners1[0].x))));
@@ -667,20 +672,35 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             break;
         }
         else
-        {
-            double overlap;
-            if (min2 < max1)
-                overlap = fabs(max1 - min2);
-            else
-                overlap = fabs(max2 - min1);
+        {  //finding the overlap is glitched with rotated stuff
+            double overlap = max1 - min2;
+            double degrees = normals[i];
 
-            if (overlap < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
-                minTranslationVector = (cDoubleVector) {overlap, normals[i]};
+            double o2 = max2 - min1;
+            if (overlap > o2)
+                overlap = o2;
+            if (min1 < min2)
+                degrees += 180;
+
+
+            if (fabs(overlap) < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
+            {
+                minTranslationVector = (cDoubleVector) {overlap, degrees};
+                debugI = i;
+            }
         }
         //check for intersections of the two projected lines
         //  if not found, return false (because according to SAT if one gap in projections is found, there's a separating axis there)
         //  else continue
     }
+    /*
+    if (minTranslationVector.magnitude)
+    {  //debugging MTV
+        SDL_SetRenderDrawColor(global.mainRenderer, 0xFF * (normals[debugI] == minTranslationVector.degrees), 0x00, 0xFF * (normals[debugI] != minTranslationVector.degrees), 0xFF);
+        SDL_RenderDrawLine(global.mainRenderer, corners1[0].x, corners1[0].y, corners1[0].x + minTranslationVector.magnitude * cos(degToRad(minTranslationVector.degrees)), corners1[0].y + minTranslationVector.magnitude * sin(degToRad(minTranslationVector.degrees)));
+        SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+        SDL_RenderPresent(global.mainRenderer);
+    }//*/
     return minTranslationVector;
 }
 
