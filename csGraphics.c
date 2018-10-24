@@ -672,11 +672,8 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             break;
         }
         else
-        {  //finding the overlap is glitched with rotated stuff
-            double overlap = max1 - min2;
-            double degrees = normals[i];
-
-            double o2 = max2 - min1;
+        {  //finding the overlap is glitched with rotated stuff, but almost fixed
+            double overlap = max1 - min2, o2 = max2 - min1, degrees = normals[i];
             if (overlap > o2)
                 overlap = o2;
             if (min1 < min2)

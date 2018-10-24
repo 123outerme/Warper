@@ -203,7 +203,7 @@ int main(int argc, char* argv[])
 
             if (keyStates[SDL_SCANCODE_W])  //jumping will not be in the final game
             {
-                playerSubclass->yVeloc -= 14;
+                playerSubclass->yVeloc = -14;
             }
 
             if (keyStates[SDL_SCANCODE_A])
@@ -283,7 +283,19 @@ int main(int argc, char* argv[])
             }
             playerModel.rect.x += totalX / result.collisions;
             playerModel.rect.y += totalY / result.collisions;
-            //playerSubclass->xVeloc = 0;
+            int angle = abs(radToDeg(atan2(totalY / result.collisions, totalX / result.collisions)));
+
+            if (playerSubclass->yVeloc && playerSubclass->xVeloc)
+                printf("%d\n", angle);
+
+            if (angle % 180 >= 45 && angle % 180 <= 135)
+            {
+                playerSubclass->yVeloc = 1;
+            }
+            if (playerSubclass->yVeloc && playerSubclass->xVeloc)
+            {
+                playerSubclass->xVeloc = 0;
+            }
             free(result.mtvs);
             free(result.tilesCollided);
         }
