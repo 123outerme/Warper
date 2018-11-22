@@ -672,12 +672,18 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             break;
         }
         else
-        {  //finding the overlap is glitched with rotated stuff, but almost fixed
+        {  //finding the overlap is glitched with rotated stuff when s1 pos closer to origin than s2, but almost fixed
             double overlap = max1 - min2, o2 = max2 - min1, degrees = normals[i];
-            if (overlap > o2)
+            if (o2 < overlap)
                 overlap = o2;
-            if (min1 < min2)
+            if (min1 < min2)  //somewhere around here is probably where MVT with rotated shapes is glitched
                 degrees += 180;
+
+            if (min1 > min2 && max1 < max2)
+                ;//1 inside 2
+
+            if (min2 > min1 && max2 < max1)
+                ;//2 inside 1
 
 
             if (fabs(overlap) < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
@@ -690,7 +696,7 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
         //  if not found, return false (because according to SAT if one gap in projections is found, there's a separating axis there)
         //  else continue
     }
-    /*
+    //*
     if (minTranslationVector.magnitude)
     {  //debugging MTV
         SDL_SetRenderDrawColor(global.mainRenderer, 0xFF * (normals[debugI] == minTranslationVector.degrees), 0x00, 0xFF * (normals[debugI] != minTranslationVector.degrees), 0xFF);
