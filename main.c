@@ -14,6 +14,12 @@ typedef struct _player {
     bool grounded;
 } player;
 
+typedef struct _spFX {
+    int* fxTimers;
+    bool* fxTimerOn;
+    int numFX;
+} spFX;
+
 typedef struct _collisionResult {
     cDoubleVector* mtvs;
     int* tilesCollided;
@@ -26,6 +32,11 @@ typedef struct _collisionResult {
 #define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
+spFX initSPFX(int numFX);
+void startSPFXTimer(spFX* FX, int index, int frames);
+void pauseResSPFXTimer(spFX* FX, int index, bool pause);
+void stopSPFXTimer(spFX* FX, int index);
+void freeSPFX(spFX* FX);
 int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID);
 
 const int upperArmRotations[10] = {0, 10, 20, 25, 28, 30, 28, 25, 21, 9};
@@ -55,35 +66,39 @@ int main(int argc, char* argv[])
     int frame = 0, framerate = 0, targetTime = calcWaitTime(60), sleepFor = 0;
     SDL_Texture* mouseTexture;
     loadIMG("assets/cb.bmp", &mouseTexture);
-    cSprite mouseSprite;
-    cSprite testSprite;
+    cSprite mouseSprite, testSprite;
     {
         SDL_Texture* testTexture;
         loadIMG("assets/cb.bmp", &testTexture);
         initCSprite(&testSprite, testTexture, "assets/cb.bmp", 0, (cDoubleRect) {3 * TILE_SIZE, 3 * TILE_SIZE, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 5);
     }
-    c2DModel playerModel;
+    c2DModel playerModel, spFXModel;
     {
         SDL_Texture* playerTexture;
         loadIMG("assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
+        spFX theseFX = initSPFX(1);
         cSprite playerSprites[14];
+        cSprite spFXSprites[1];
         initCSprite(&mouseSprite, mouseTexture, "assets/cb.bmp", 0, (cDoubleRect) {0, 0, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
+        initCSprite(&spFXSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
         initCSprite(&playerSprites[0], playerTexture, "assets/tilesheet.png", 1, (cDoubleRect) {0.5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, "assets/tilesheet.png", 2, (cDoubleRect) {0.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
-        initCSprite(&playerSprites[2], playerTexture, "assets/tilesheet.png", 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //upper left arm
+        initCSprite(&playerSprites[2], playerTexture, "assets/tilesheet.png", 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 2}), 1.0, SDL_FLIP_HORIZONTAL, 0.0, false, NULL, 1);  //upper left arm
         initCSprite(&playerSprites[3], playerTexture, "assets/tilesheet.png", 4, (cDoubleRect) {1.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //upper right arm
-        initCSprite(&playerSprites[4], playerTexture, "assets/tilesheet.png", 5, (cDoubleRect) {0, 2.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 1.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //lower left arm
+        initCSprite(&playerSprites[4], playerTexture, "assets/tilesheet.png", 5, (cDoubleRect) {0, 2.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 1.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_HORIZONTAL, 0.0, false, NULL, 1);  //lower left arm
         initCSprite(&playerSprites[5], playerTexture, "assets/tilesheet.png", 6, (cDoubleRect) {1.5 * TILE_SIZE, 2.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 1.25 * TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //lower right arm
         initCSprite(&playerSprites[6], playerTexture, "assets/tilesheet.png", 7, (cDoubleRect) {0.5 * TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {3.5 * TILE_SIZE, 0, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left leg
         initCSprite(&playerSprites[7], playerTexture, "assets/tilesheet.png", 8, (cDoubleRect) {TILE_SIZE, 3 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, 0, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 4}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right leg
         initCSprite(&playerSprites[8], playerTexture, "assets/tilesheet.png", 9, (cDoubleRect) {0.5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {3.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //left foot
         initCSprite(&playerSprites[9], playerTexture, "assets/tilesheet.png", 10, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
-        initCSprite(&playerSprites[10], playerTexture, "assets/tilesheet.png", 11, (cDoubleRect) {TILE_SIZE / 2, 0, TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);  //floor hurtbox
-        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 4 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //wall/ceiling hurtbox
+        initCSprite(&playerSprites[10], playerTexture, "assets/tilesheet.png", 11, (cDoubleRect) {TILE_SIZE / 2, 0, TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //floor hurtbox
+        initCSprite(&playerSprites[11], playerTexture, "assets/tilesheet.png", 12, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 4 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //wall/ceiling hurtbox
         initCSprite(&playerSprites[12], playerTexture, "assets/tilesheet.png", 13, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //dmg hurtbox
         initCSprite(&playerSprites[13], playerTexture, "assets/tilesheet.png", 14, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
-        initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 1);
+
+        initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 2);
+        initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
     }
     c2DModel mapModel;
     {
@@ -107,12 +122,14 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&mouseSprite, &testSprite}, 2, (c2DModel*[2]) {&playerModel, &mapModel}, 2, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&mouseSprite, &testSprite}, 2, (c2DModel*[3]) {&playerModel, &spFXModel, &mapModel}, 3, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
+    spFX* specialFX = (spFX*) spFXModel.subclass;
     SDL_Event e;
     bool quit = false;
     int startTime = SDL_GetTicks(), lastFrame = startTime;
     int playerFlip = -1;
+    bool walkBypass = false;
     while(!quit)
     {
         double previousX = playerModel.rect.x;
@@ -134,6 +151,8 @@ int main(int argc, char* argv[])
             {
                 //loadIMG("assets/cb.bmp", &mouseSprite.texture);
                 mouseSprite.degrees = 0.0;
+                walkBypass = true;
+                playerSubclass->walkFrame = 0;
 
                 SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
@@ -157,6 +176,17 @@ int main(int argc, char* argv[])
                     playerModel.rect.x = previousX;
                     playerModel.rect.y = previousY;
                 }
+                else
+                {
+                    spFXModel.sprites[0].drawPriority = 1;
+                    spFXModel.sprites[0].drawRect.x = previousX * 3 / 4 - TILE_SIZE / 3;
+                    spFXModel.sprites[0].drawRect.y = previousY * 3 / 4 + TILE_SIZE;
+                    startSPFXTimer(specialFX, 0, 12); //turn on a timer and display for 12 frames
+                }
+                if (playerModel.rect.x > previousX)
+                    playerFlip = SDL_FLIP_NONE;
+                if (playerModel.rect.x < previousX)
+                    playerFlip = SDL_FLIP_HORIZONTAL;
             }
             if (e.type == SDL_MOUSEMOTION)
             {
@@ -192,7 +222,6 @@ int main(int argc, char* argv[])
         cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
         if (keyStates[SDL_SCANCODE_G])
         {
-
             mouseSprite.drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
             mouseSprite.drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
         }
@@ -272,6 +301,8 @@ int main(int argc, char* argv[])
             free(result.mtvs);
             free(result.tilesCollided);
         }
+        else
+            walkBypass = false;
 
         if (checkTilemapCollision(&result, playerModel, mapModel, 11, 0))
         {
@@ -322,8 +353,8 @@ int main(int argc, char* argv[])
                 playerSubclass->yVeloc = 0;
             }
         }
-        if (playerSubclass->walkFrame % 20 > 0 || previousX != playerModel.rect.x || previousY != playerModel.rect.y)
-            playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
+        if ((playerSubclass->walkFrame % 20 > 0 || previousX != playerModel.rect.x || previousY != playerModel.rect.y) && !walkBypass)
+                playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
 
         playerModel.sprites[2].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
         playerModel.sprites[3].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
@@ -398,12 +429,26 @@ int main(int argc, char* argv[])
 
         //mouseSprite.drawRect.x += (testCamera.rect.x * global.windowW / testCamera.rect.w);  //add back camera offset
         //mouseSprite.drawRect.y += (testCamera.rect.y * global.windowH / testCamera.rect.h);
+        for(int i = 0; i < specialFX->numFX; i++)
+        {
+            if (specialFX->fxTimerOn[i])
+            {
+                specialFX->fxTimers[i]--;
+                if (specialFX->fxTimers[i] == 0)
+                {
+                    spFXModel.sprites[i].drawPriority = 0;
+                    stopSPFXTimer(specialFX, 0);
+                }
+            }
+        }
         drawCScene(&testScene, true, true);
         if (keyStates[SDL_SCANCODE_P])
             waitForKey(false);
         if (playerFlip != -1)
         {  //delays player model from flipping, eliminating visual glitch with rapidly flipping while in walking animation
             playerModel.flip = playerFlip;
+            //playerModel.sprites[8].flip = playerFlip;
+            //playerModel.sprites[9].flip = playerFlip;
             playerFlip = -1;
         }
         /*SDL_SetRenderDrawColor(mainRenderer, 0x00, 0x00, 0x00, 0xFF);
@@ -412,6 +457,7 @@ int main(int argc, char* argv[])
     }
 
     destroyCScene(&testScene);
+    freeSPFX(specialFX);
     closeCoSprite();
     return error;
 }
@@ -429,6 +475,42 @@ player initPlayer(int maxHealth)
     inittedPlayer.yVeloc = 0;
     inittedPlayer.grounded = false;
     return inittedPlayer;
+}
+
+spFX initSPFX(int numFX)
+{
+    spFX inittedSPFX;
+    inittedSPFX.numFX = numFX;
+    inittedSPFX.fxTimers = calloc(numFX, sizeof(int));
+    inittedSPFX.fxTimerOn = calloc(numFX, sizeof(int));
+    return inittedSPFX;
+}
+
+void startSPFXTimer(spFX* FX, int index, int frames)
+{
+    FX->fxTimers[index] = frames;
+    FX->fxTimerOn[index] = true;
+
+}
+
+void pauseResSPFXTimer(spFX* FX, int index, bool pause)
+{
+    FX->fxTimerOn[index] = !pause;
+}
+
+void stopSPFXTimer(spFX* FX, int index)
+{
+    FX->fxTimerOn[index] = false;
+    FX->fxTimers[index] = 0;
+}
+
+void freeSPFX(spFX* FX)
+{
+    FX->numFX = 0;
+    free(FX->fxTimers);
+    FX->fxTimers = NULL;
+    free(FX->fxTimerOn);
+    FX->fxTimerOn = NULL;
 }
 
 int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID)

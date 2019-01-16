@@ -256,7 +256,9 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                         point.y -= camera.rect.y * global.windowH / camera.rect.h;
                     }
 
-                    SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
+                    SDL_RendererFlip flipValue = model.flip + model.sprites[i].flip;
+
+                    SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.flip == model.sprites[i].flip ? SDL_FLIP_NONE : (model.sprites[i].flip + model.flip) % 4);
                     if (update)
                         SDL_RenderPresent(global.mainRenderer);
                 }
@@ -679,11 +681,11 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             if (min1 < min2)  //somewhere around here is probably where MVT with rotated shapes is glitched
                 degrees += 180;
 
-            if (min1 > min2 && max1 < max2)
+            /*if (min1 > min2 && max1 < max2)
                 ;//1 inside 2
 
             if (min2 > min1 && max2 < max1)
-                ;//2 inside 1
+                ;//2 inside 1*/
 
 
             if (fabs(overlap) < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
@@ -696,7 +698,7 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
         //  if not found, return false (because according to SAT if one gap in projections is found, there's a separating axis there)
         //  else continue
     }
-    //*
+    /*
     if (minTranslationVector.magnitude)
     {  //debugging MTV
         SDL_SetRenderDrawColor(global.mainRenderer, 0xFF * (normals[debugI] == minTranslationVector.degrees), 0x00, 0xFF * (normals[debugI] != minTranslationVector.degrees), 0xFF);
