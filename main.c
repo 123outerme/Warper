@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[13], playerTexture, "assets/tilesheet.png", 14, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
 
         initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 2);
-        initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
+        initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
     }
     c2DModel mapModel;
     {
@@ -179,8 +179,8 @@ int main(int argc, char* argv[])
                 else
                 {
                     spFXModel.sprites[0].drawPriority = 1;
-                    spFXModel.sprites[0].drawRect.x = previousX * 3 / 4 - TILE_SIZE / 3;
-                    spFXModel.sprites[0].drawRect.y = previousY * 3 / 4 + TILE_SIZE;
+                    spFXModel.sprites[0].drawRect.x = previousX;
+                    spFXModel.sprites[0].drawRect.y = previousY + TILE_SIZE;
                     startSPFXTimer(specialFX, 0, 12); //turn on a timer and display for 12 frames
                 }
                 if (playerModel.rect.x > previousX)
@@ -210,14 +210,13 @@ int main(int argc, char* argv[])
         else
             FPStext.drawPriority = 0;
 
-        if (keyStates[SDL_SCANCODE_F2])
+        if (keyStates[SDL_SCANCODE_F2])  //testing
         {
             playerModel.degrees = 0;
             testCamera.degrees = 0;
             testCamera.rect.x = 0;
             testCamera.rect.y = 0;
             testCamera.scale = 1.0;
-            playerModel.scale = 1.0;
         }
         cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
         if (keyStates[SDL_SCANCODE_G])
@@ -354,7 +353,7 @@ int main(int argc, char* argv[])
             }
         }
         if ((playerSubclass->walkFrame % 20 > 0 || previousX != playerModel.rect.x || previousY != playerModel.rect.y) && !walkBypass)
-                playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
+            playerSubclass->walkFrame = (playerSubclass->walkFrame + 1) % 40;
 
         playerModel.sprites[2].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
         playerModel.sprites[3].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
@@ -410,12 +409,6 @@ int main(int argc, char* argv[])
         if (keyStates[SDL_SCANCODE_EQUALS])
             testCamera.scale += .05;
 
-        if (keyStates[SDL_SCANCODE_LEFTBRACKET])
-            playerModel.scale -= .05;
-
-        if (keyStates[SDL_SCANCODE_RIGHTBRACKET])
-            playerModel.scale += .05;
-
         frame++;
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
         framerate = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));  //multiplied by 1000 on both sides since 1000f / ms == 1f / s
@@ -447,8 +440,6 @@ int main(int argc, char* argv[])
         if (playerFlip != -1)
         {  //delays player model from flipping, eliminating visual glitch with rapidly flipping while in walking animation
             playerModel.flip = playerFlip;
-            //playerModel.sprites[8].flip = playerFlip;
-            //playerModel.sprites[9].flip = playerFlip;
             playerFlip = -1;
         }
         /*SDL_SetRenderDrawColor(mainRenderer, 0x00, 0x00, 0x00, 0xFF);
