@@ -169,7 +169,6 @@ int main(int argc, char* argv[])
                 {
                     playerModel.rect.x = previousX;
                     playerModel.rect.y = previousY;
-
                 }
                 else
                 {
