@@ -256,9 +256,7 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                         point.y -= camera.rect.y * global.windowH / camera.rect.h;
                     }
 
-                    SDL_RendererFlip flipValue = model.flip + model.sprites[i].flip;
-
-                    SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.flip == model.sprites[i].flip ? SDL_FLIP_NONE : (model.sprites[i].flip + model.flip) % 4);
+                    SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}), &((SDL_Rect) {.x = point.x, .y = point.y, .w = model.sprites[i].drawRect.w * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale), .h = model.sprites[i].drawRect.h * model.scale * model.sprites[i].scale * (model.sprites[i].fixed ? 1.0 : camera.scale)}), model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees), &((SDL_Point) {0, 0}), model.sprites[i].flip + model.flip);
                     if (update)
                         SDL_RenderPresent(global.mainRenderer);
                 }
@@ -322,27 +320,27 @@ void destroyCText(cText* text)
  */
 void drawCText(cText text, cCamera camera, bool update)
 {
-    Uint8 r, g, b, a;
-    SDL_GetRenderDrawColor(global.mainRenderer, &r, &g, &b, &a);
-    SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
-    int* wh = loadTextTexture(text.string, &text.texture, text.rect.w, text.textColor, true);
-    text.rect.w = wh[0];
-    text.rect.h = wh[1];
+        Uint8 r, g, b, a;
+        SDL_GetRenderDrawColor(global.mainRenderer, &r, &g, &b, &a);
+        SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
+        int* wh = loadTextTexture(text.string, &text.texture, text.rect.w, text.textColor, true);
+        text.rect.w = wh[0];
+        text.rect.h = wh[1];
 
-    if (!text.fixed)
-    {
-        cDoublePt point = {text.rect.x, text.rect.y};
-        point = rotatePoint(point, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
+        if (!text.fixed)
+        {
+            cDoublePt point = {text.rect.x, text.rect.y};
+            point = rotatePoint(point, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
 
-        text.rect.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
-        text.rect.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
-    }
-    SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
-    SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
-    SDL_SetRenderDrawColor(global.mainRenderer, r, g, b, a);
-    SDL_DestroyTexture(text.texture);
-    if (update)
-        SDL_RenderPresent(global.mainRenderer);
+            text.rect.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
+            text.rect.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
+        }
+        SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
+        SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
+        SDL_SetRenderDrawColor(global.mainRenderer, r, g, b, a);
+        SDL_DestroyTexture(text.texture);
+        if (update)
+            SDL_RenderPresent(global.mainRenderer);
 }
 
 /** \brief Loads in an image resource
@@ -617,7 +615,7 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
 
     /*int firstPts[2] = {0, 0};  //debugging found points
     int secondPts[2] = {0, 0};*/
-    int debugI = 0;
+    //int debugI = 0;
     for(int i = 0; i < 4; i++)
     {
         double min1 = sqrt(pow(corners1[0].x, 2) + pow(corners1[0].y, 2)) * fabs(cos(fabs(degToRad(normals[i]) - atan2(corners1[0].y, corners1[0].x))));
@@ -674,24 +672,18 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             break;
         }
         else
-        {  //finding the overlap is glitched with rotated stuff when s1 pos closer to origin than s2, but almost fixed
+        {  //finding the overlap is glitched with rotated stuff, but almost fixed
             double overlap = max1 - min2, o2 = max2 - min1, degrees = normals[i];
-            if (o2 < overlap)
+            if (overlap > o2)
                 overlap = o2;
-            if (min1 < min2)  //somewhere around here is probably where MVT with rotated shapes is glitched
+            if (min1 < min2)
                 degrees += 180;
-
-            /*if (min1 > min2 && max1 < max2)
-                ;//1 inside 2
-
-            if (min2 > min1 && max2 < max1)
-                ;//2 inside 1*/
 
 
             if (fabs(overlap) < minTranslationVector.magnitude || minTranslationVector.magnitude == -1)
             {
                 minTranslationVector = (cDoubleVector) {overlap, degrees};
-                debugI = i;
+                //debugI = i;
             }
         }
         //check for intersections of the two projected lines
@@ -749,7 +741,7 @@ cDoubleVector checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast
  *
  * \return Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
  */
-int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, SDL_Color transparentColor)
+int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, SDL_Color transparentColor, Uint32 windowFlags)
 {
     int status = 0;
     mainWindow = NULL;
@@ -785,7 +777,7 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
         Mix_VolumeMusic(global.musicVolume);
         global.mainRenderer = NULL;
         global.mainFont = NULL;
-        mainWindow = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        mainWindow = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, windowFlags);
         if (!mainWindow)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
