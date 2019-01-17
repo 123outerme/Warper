@@ -63,15 +63,8 @@ int main(int argc, char* argv[])
                 tilemap[x][y] = 0;
         }
     }
-    int frame = 0, framerate = 0, targetTime = calcWaitTime(60), sleepFor = 0;
-    SDL_Texture* mouseTexture;
-    loadIMG("assets/cb.bmp", &mouseTexture);
-    cSprite mouseSprite, testSprite;
-    {
-        SDL_Texture* testTexture;
-        loadIMG("assets/cb.bmp", &testTexture);
-        initCSprite(&testSprite, testTexture, "assets/cb.bmp", 0, (cDoubleRect) {3 * TILE_SIZE, 3 * TILE_SIZE, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 5);
-    }
+    int frame = 0, framerate = 0, targetTime = calcWaitTime(0), sleepFor = 0;
+    cSprite mouseSprite;
     c2DModel playerModel, spFXModel;
     {
         SDL_Texture* playerTexture;
@@ -80,7 +73,7 @@ int main(int argc, char* argv[])
         spFX theseFX = initSPFX(1);
         cSprite playerSprites[14];
         cSprite spFXSprites[1];
-        initCSprite(&mouseSprite, mouseTexture, "assets/cb.bmp", 0, (cDoubleRect) {0, 0, 80, 80}, (cDoubleRect) {15, 0, 120, 120}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
+        initCSprite(&mouseSprite, playerTexture, "assets/tileset.bmp", 0, (cDoubleRect) {0, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
         initCSprite(&spFXSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
         initCSprite(&playerSprites[0], playerTexture, "assets/tilesheet.png", 1, (cDoubleRect) {0.5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, "assets/tilesheet.png", 2, (cDoubleRect) {0.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
@@ -122,7 +115,7 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&mouseSprite, &testSprite}, 2, (c2DModel*[3]) {&playerModel, &spFXModel, &mapModel}, 3, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[3]) {&playerModel, &spFXModel, &mapModel}, 3, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     spFX* specialFX = (spFX*) spFXModel.subclass;
     SDL_Event e;
@@ -142,19 +135,19 @@ int main(int argc, char* argv[])
             if (e.type == SDL_MOUSEBUTTONDOWN)
             {
                 //loadIMG("assets/cb1.bmp", &mouseSprite.texture); // you can load new images on the fly and they'll be automatically used next frame
-                mouseSprite.degrees = 180.0;  //or just change the rotation
+                //mouseSprite.degrees = 180.0;  //or just change the rotation
 
-                SDL_SetTextureColorMod(mouseSprite.texture, 0x80, 0x00, 0x00);
+                //SDL_SetTextureColorMod(mouseSprite.texture, 0x80, 0x00, 0x00);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0x80);
             }
             if (e.type == SDL_MOUSEBUTTONUP)
             {
                 //loadIMG("assets/cb.bmp", &mouseSprite.texture);
-                mouseSprite.degrees = 0.0;
+                //mouseSprite.degrees = 0.0;
                 walkBypass = true;
                 playerSubclass->walkFrame = 0;
 
-                SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
+                //SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
 
                 int newX = (e.button.x + (testCamera.rect.x * global.windowW / testCamera.rect.w)) / testCamera.scale - (playerModel.rect.w * playerModel.scale) / 2;
@@ -210,6 +203,13 @@ int main(int argc, char* argv[])
         else
             FPStext.drawPriority = 0;
 
+        /*cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
+        if (keyStates[SDL_SCANCODE_G])
+        {
+            mouseSprite.drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
+            mouseSprite.drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
+        }*/
+
         if (keyStates[SDL_SCANCODE_F2])  //testing
         {
             playerModel.degrees = 0;
@@ -217,12 +217,6 @@ int main(int argc, char* argv[])
             testCamera.rect.x = 0;
             testCamera.rect.y = 0;
             testCamera.scale = 1.0;
-        }
-        cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
-        if (keyStates[SDL_SCANCODE_G])
-        {
-            mouseSprite.drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
-            mouseSprite.drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
         }
 
         if (keyStates[SDL_SCANCODE_W] || keyStates[SDL_SCANCODE_A] ||
@@ -382,13 +376,13 @@ int main(int argc, char* argv[])
 
         if (keyStates[SDL_SCANCODE_Q])
         {  //punch
-            mouseSprite.degrees -= 5;
+            //mouseSprite.degrees -= 5;
         }
 
 
         if (keyStates[SDL_SCANCODE_E])
         {  //kick
-            mouseSprite.degrees += 5;
+            //mouseSprite.degrees += 5;
         }
 
         if (keyStates[SDL_SCANCODE_X])  //camera rotation won't be controllable in final game obviously
@@ -419,9 +413,6 @@ int main(int argc, char* argv[])
             SDL_Delay(sleepFor);  //FPS limiter; rests for (16 - time spent) ms per frame, effectively making each frame run for ~16 ms, or 60 FPS
         lastFrame = SDL_GetTicks();
 
-
-        //mouseSprite.drawRect.x += (testCamera.rect.x * global.windowW / testCamera.rect.w);  //add back camera offset
-        //mouseSprite.drawRect.y += (testCamera.rect.y * global.windowH / testCamera.rect.h);
         for(int i = 0; i < specialFX->numFX; i++)
         {
             if (specialFX->fxTimerOn[i])
