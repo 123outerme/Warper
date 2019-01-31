@@ -10,8 +10,10 @@ typedef struct _player {
     int maxHP;
     int xVeloc;
     int yVeloc;
+    int energy;  //energy reserves for attacks / teleporting
     int skills[MAX_SKILLS];
-    bool grounded;
+    bool grounded;  //true if on ground
+    int charging;  //num of frames until you can teleport/move
 } player;
 
 typedef struct _spFX {
@@ -66,7 +68,7 @@ int main(int argc, char* argv[])
     }
     int frame = 0, framerate = 0, targetTime = calcWaitTime(0), sleepFor = 0;
     cSprite mouseSprite;
-    c2DModel playerModel, spFXModel;
+    c2DModel playerModel, spFXModel, HUDModel;
     {
         SDL_Texture* playerTexture;
         loadIMG("assets/tilesheet.png", &playerTexture);
@@ -74,8 +76,14 @@ int main(int argc, char* argv[])
         spFX theseFX = initSPFX(1);
         cSprite playerSprites[14];
         cSprite spFXSprites[1];
+        cSprite HUDSprites[2];
         initCSprite(&mouseSprite, playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
+
         initCSprite(&spFXSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
+
+        initCSprite(&HUDSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, 0, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //energy bar housing
+        initCSprite(&HUDSprites[1], playerTexture, "assets/tileset.png", 1, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, TILE_SIZE, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //energy bar filling
+
         initCSprite(&playerSprites[0], playerTexture, "assets/tilesheet.png", 1, (cDoubleRect) {0.5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, "assets/tilesheet.png", 2, (cDoubleRect) {0.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
         initCSprite(&playerSprites[2], playerTexture, "assets/tilesheet.png", 3, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE / 2, 1.25 * TILE_SIZE}, (cDoubleRect) {3 * TILE_SIZE, 0, TILE_SIZE / 2, 1.25 * TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / 2}), 1.0, SDL_FLIP_HORIZONTAL, 0.0, false, NULL, 1);  //upper left arm
@@ -93,6 +101,7 @@ int main(int argc, char* argv[])
 
         initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 2);
         initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
+        initC2DModel(&HUDModel, HUDSprites, 2, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
     }
     c2DModel mapModel;
     {
@@ -116,8 +125,10 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[3]) {&playerModel, &spFXModel, &mapModel}, 3, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[4]) {&playerModel, &HUDModel, &spFXModel, &mapModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
+    playerSubclass->energy = 100;
+    playerSubclass->charging = 0;
     spFX* specialFX = (spFX*) spFXModel.subclass;
     SDL_Event e;
     bool quit = false;
@@ -133,7 +144,7 @@ int main(int argc, char* argv[])
             if (e.type == SDL_QUIT)
                 quit = true;
 
-            if (e.type == SDL_MOUSEBUTTONDOWN)
+            if (e.type == SDL_MOUSEBUTTONDOWN && playerSubclass->charging <= 0)
             {
                 //loadIMG("assets/cb1.bmp", &mouseSprite.texture); // you can load new images on the fly and they'll be automatically used next frame
                 //mouseSprite.degrees = 180.0;  //or just change the rotation
@@ -141,7 +152,7 @@ int main(int argc, char* argv[])
                 //SDL_SetTextureColorMod(mouseSprite.texture, 0x80, 0x00, 0x00);
                 SDL_SetTextureAlphaMod(mouseSprite.texture, 0x80);
             }
-            if (e.type == SDL_MOUSEBUTTONUP)
+            if (e.type == SDL_MOUSEBUTTONUP && playerSubclass->charging <= 0)
             {
                 //loadIMG("assets/cb.bmp", &mouseSprite.texture);
                 //mouseSprite.degrees = 0.0;
@@ -176,6 +187,9 @@ int main(int argc, char* argv[])
                     spFXModel.sprites[0].drawRect.x = previousX;
                     spFXModel.sprites[0].drawRect.y = previousY + TILE_SIZE;
                     startSPFXTimer(specialFX, 0, 12); //turn on a timer and display for 12 frames
+                    playerSubclass->energy -= 10;
+                    HUDModel.sprites[1].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+                    HUDModel.sprites[1].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
                 }
                 if (playerModel.rect.x > previousX)
                     playerFlip = SDL_FLIP_NONE;
@@ -220,14 +234,8 @@ int main(int argc, char* argv[])
             testCamera.scale = 1.0;
         }
 
-        if (keyStates[SDL_SCANCODE_W] || keyStates[SDL_SCANCODE_A] ||
-            keyStates[SDL_SCANCODE_S] || keyStates[SDL_SCANCODE_D])
+        if ((keyStates[SDL_SCANCODE_A] || keyStates[SDL_SCANCODE_D]) && playerSubclass->charging <= 0)
         {
-
-            if (keyStates[SDL_SCANCODE_W])  //jumping will not be in the final game
-            {
-                playerSubclass->yVeloc = -14;
-            }
 
             if (keyStates[SDL_SCANCODE_A])
             {
@@ -261,9 +269,6 @@ int main(int argc, char* argv[])
                 playerModel.sprites[8].drawPriority = 4;
                 playerModel.sprites[9].drawPriority = 2;  //foot priority
             }
-
-            if (keyStates[SDL_SCANCODE_S])
-                playerSubclass->yVeloc += 6;
 
             if (keyStates[SDL_SCANCODE_D])
             {
@@ -380,10 +385,26 @@ int main(int argc, char* argv[])
             //mouseSprite.degrees -= 5;
         }
 
+        if (keyStates[SDL_SCANCODE_W] && playerSubclass->energy < 100)
+        {  //charge
+            playerSubclass->energy++;
+            playerSubclass->charging = 20;
+            HUDModel.sprites[1].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+            HUDModel.sprites[1].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+        }
+        else
+            if (playerSubclass->charging > 0)
+                playerSubclass->charging--;
+
 
         if (keyStates[SDL_SCANCODE_E])
         {  //kick
             //mouseSprite.degrees += 5;
+        }
+
+        if (keyStates[SDL_SCANCODE_S])
+        {  //block
+            //
         }
 
         if (keyStates[SDL_SCANCODE_X])  //camera rotation won't be controllable in final game obviously

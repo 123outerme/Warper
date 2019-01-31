@@ -79,3 +79,63 @@ bool setKey(SDL_Scancode key, int keyslot)
 
     return !conflict;
 }
+
+void handleTextInput(char* text, SDL_Keycode key, int maxChar)
+{
+    static bool shift = false;
+    static int namePos = 0;
+    if (key >= SDLK_SPACE && key <= SDLK_z && namePos < maxChar)
+    {
+        if (shift && (key < SDLK_a || key > SDLK_z) && key != SDLK_SPACE)  //top row, hardcoded
+        {
+            SDL_Keycode temp = '_';
+            if (key == SDLK_BACKQUOTE)
+                temp = '~';
+            if (key == SDLK_1)
+                temp = '!';
+            if (key == SDLK_2)
+                temp = '@';
+            if (key == SDLK_3)
+                temp = '#';
+            if (key == SDLK_4)
+                temp = '$';
+            if (key == SDLK_5)
+                temp = '%';
+            if (key == SDLK_6)
+                temp = '^';
+            if (key == SDLK_7)
+                temp = '&';
+            if (key == SDLK_8)
+                temp = '*';
+            if (key == SDLK_9)
+                temp = '(';
+            if (key == SDLK_0)
+                temp = ')';
+            if (key == SDLK_MINUS)
+                temp = '_';
+            if (key == SDLK_EQUALS)
+                temp = '+';
+
+            if (key == SDLK_BACKSLASH)
+                temp = '|';
+            if (key == SDLK_SEMICOLON)
+                temp = ':';
+            if (key == SDLK_QUOTE)
+                temp = '\"';
+            if (key == SDLK_SLASH)
+                temp = '?';
+            if (key == SDLK_COMMA)
+                temp = '<';
+            if (key == SDLK_PERIOD)
+                temp = '>';
+            text[namePos++] = temp;
+        }
+        else
+        text[namePos++] = (shift ? toupper(key) : key);
+    }
+    if (key == SDLK_LSHIFT || key == SDLK_RSHIFT)
+        shift = !shift;
+
+    if (key == SDLK_BACKSPACE && namePos > 0)
+        text[--namePos] = ' ';
+}

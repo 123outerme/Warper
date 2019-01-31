@@ -29,6 +29,7 @@
 SDL_Keycode getKey(bool useMouse);
 SDL_Keycode waitForKey(bool useMouse);
 bool setKey(SDL_Scancode key, int keyslot);
+void handleTextInput(char* text, SDL_Keycode key, int maxChar);
 
 //global variable declarations:
 SDL_Scancode keymaps[MAX_KEYMAPS];
@@ -38,5 +39,6 @@ SDL_Scancode keymaps[MAX_KEYMAPS];
 #define KEY_RIGHT keymaps[3]
 #define KEY_CONFIRM keymaps[4]
 #define KEY_BACK keymaps[5]
+#define KEY_CUSTOM(x) keymaps[(x < 15) ? (x > 0 ? 5 + x : 1) : (19)]
 
 #endif // CSIO_H_INCLUDED
