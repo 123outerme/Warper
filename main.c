@@ -67,22 +67,23 @@ int main(int argc, char* argv[])
         }
     }
     int frame = 0, framerate = 0, targetTime = calcWaitTime(0), sleepFor = 0;
-    cSprite mouseSprite;
+    cSprite* mouseSprite;
     c2DModel playerModel, spFXModel, HUDModel;
     {
-        SDL_Texture* playerTexture;
+        SDL_Texture* playerTexture, * mouseTexture;
+        loadIMG("assets/tilesheet.png", &mouseTexture);
         loadIMG("assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
         spFX theseFX = initSPFX(1);
         cSprite playerSprites[14];
         cSprite spFXSprites[1];
-        cSprite HUDSprites[2];
-        initCSprite(&mouseSprite, playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
+        cSprite HUDSprites[3];
 
         initCSprite(&spFXSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
 
-        initCSprite(&HUDSprites[0], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, 0, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //energy bar housing
-        initCSprite(&HUDSprites[1], playerTexture, "assets/tileset.png", 1, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, TILE_SIZE, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 1);  //energy bar filling
+        initCSprite(&HUDSprites[0], mouseTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);  //mouse
+        initCSprite(&HUDSprites[1], playerTexture, "assets/tileset.png", 0, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, 0, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 3);  //energy bar housing
+        initCSprite(&HUDSprites[2], playerTexture, "assets/tileset.png", 1, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, TILE_SIZE, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 2);  //energy bar filling
 
         initCSprite(&playerSprites[0], playerTexture, "assets/tilesheet.png", 1, (cDoubleRect) {0.5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, 0, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2); //head
         initCSprite(&playerSprites[1], playerTexture, "assets/tilesheet.png", 2, (cDoubleRect) {0.5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {2 * TILE_SIZE, 0, TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3); //torso
@@ -101,8 +102,10 @@ int main(int argc, char* argv[])
 
         initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 2);
         initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
-        initC2DModel(&HUDModel, HUDSprites, 2, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
+        initC2DModel(&HUDModel, HUDSprites, 3, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
     }
+    mouseSprite = &HUDModel.sprites[0];
+
     c2DModel mapModel;
     {
         SDL_Texture* tilesetTexture;
@@ -125,7 +128,7 @@ int main(int argc, char* argv[])
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&mouseSprite}, 1, (c2DModel*[4]) {&playerModel, &HUDModel, &spFXModel, &mapModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, NULL, 0, (c2DModel*[4]) {&playerModel, &HUDModel, &spFXModel, &mapModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     playerSubclass->energy = 100;
     playerSubclass->charging = 0;
@@ -144,23 +147,23 @@ int main(int argc, char* argv[])
             if (e.type == SDL_QUIT)
                 quit = true;
 
-            if (e.type == SDL_MOUSEBUTTONDOWN && playerSubclass->charging <= 0)
+            if (e.type == SDL_MOUSEBUTTONDOWN && playerSubclass->charging <= 0 && playerSubclass->energy > 9)
             {
-                //loadIMG("assets/cb1.bmp", &mouseSprite.texture); // you can load new images on the fly and they'll be automatically used next frame
-                //mouseSprite.degrees = 180.0;  //or just change the rotation
+                //loadIMG("assets/cb1.bmp", &mouseSprite->texture); // you can load new images on the fly and they'll be automatically used next frame
+                //mouseSprite->degrees = 180.0;  //or just change the rotation
 
-                //SDL_SetTextureColorMod(mouseSprite.texture, 0x80, 0x00, 0x00);
-                SDL_SetTextureAlphaMod(mouseSprite.texture, 0x80);
+                SDL_SetTextureColorMod(mouseSprite->texture, 0x20, 0x20, 0x80);
+                SDL_SetTextureAlphaMod(mouseSprite->texture, 0x80);
             }
-            if (e.type == SDL_MOUSEBUTTONUP && playerSubclass->charging <= 0)
+            if (e.type == SDL_MOUSEBUTTONUP && playerSubclass->charging <= 0 && playerSubclass->energy > 9)
             {
-                //loadIMG("assets/cb.bmp", &mouseSprite.texture);
-                //mouseSprite.degrees = 0.0;
+                //loadIMG("assets/cb.bmp", &mouseSprite->texture);
+                //mouseSprite->degrees = 0.0;
                 walkBypass = true;
                 playerSubclass->walkFrame = 0;
 
-                //SDL_SetTextureColorMod(mouseSprite.texture, 0xFF, 0xFF, 0xFF);
-                SDL_SetTextureAlphaMod(mouseSprite.texture, 0xFF);
+                SDL_SetTextureColorMod(mouseSprite->texture, 0xFF, 0xFF, 0xFF);
+                SDL_SetTextureAlphaMod(mouseSprite->texture, 0xFF);
 
                 int newX = (e.button.x + (testCamera.rect.x * global.windowW / testCamera.rect.w)) / testCamera.scale - (playerModel.rect.w * playerModel.scale) / 2;
                 int newY = (e.button.y + (testCamera.rect.y * global.windowH / testCamera.rect.h)) / testCamera.scale - (playerModel.rect.h * playerModel.scale) / 2;
@@ -188,8 +191,8 @@ int main(int argc, char* argv[])
                     spFXModel.sprites[0].drawRect.y = previousY + TILE_SIZE;
                     startSPFXTimer(specialFX, 0, 12); //turn on a timer and display for 12 frames
                     playerSubclass->energy -= 10;
-                    HUDModel.sprites[1].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
-                    HUDModel.sprites[1].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+                    HUDModel.sprites[2].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+                    HUDModel.sprites[2].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
                 }
                 if (playerModel.rect.x > previousX)
                     playerFlip = SDL_FLIP_NONE;
@@ -198,8 +201,8 @@ int main(int argc, char* argv[])
             }
             if (e.type == SDL_MOUSEMOTION)
             {
-                mouseSprite.drawRect.x = e.motion.x - (mouseSprite.drawRect.w / 2)/* + (testCamera.rect.x * global.windowW / testCamera.rect.w)*/;
-                mouseSprite.drawRect.y = e.motion.y - (mouseSprite.drawRect.h / 2)/* + (testCamera.rect.y * global.windowH / testCamera.rect.h)*/;
+                mouseSprite->drawRect.x = e.motion.x - (mouseSprite->drawRect.w / 2)/* + (testCamera.rect.x * global.windowW / testCamera.rect.w)*/;
+                mouseSprite->drawRect.y = e.motion.y - (mouseSprite->drawRect.h / 2)/* + (testCamera.rect.y * global.windowH / testCamera.rect.h)*/;
             }
         }
 
@@ -389,8 +392,8 @@ int main(int argc, char* argv[])
         {  //charge
             playerSubclass->energy++;
             playerSubclass->charging = 20;
-            HUDModel.sprites[1].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
-            HUDModel.sprites[1].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+            HUDModel.sprites[2].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
+            HUDModel.sprites[2].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
         }
         else
             if (playerSubclass->charging > 0)
