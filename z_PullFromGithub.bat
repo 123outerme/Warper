@@ -1,23 +1,10 @@
-@set folder=C:\Program Files\Git\tmp\pulls
 @set project=Warper
-@cd %folder%\%project%
-@IF EXIST "%folder%\%project%\.git" (
-	cd /d "%folder%\%project%\.git"
+@IF EXIST "%cd%\%project%\.git" (
+	cd /d "%cd%\%project%\.git"
 	for /F "delims=" %%i in ('dir /b') do (rmdir "%%i" /s/q || del "%%i" /s/q)
 	cd ..
 )
 
-@git init
 @git remote add origin https://github.com/123outerme/%project%.git
 git pull origin master --allow-unrelated-histories
-@ROBOCOPY "%folder%\%project%" "C:\Program Files\Git\code\%project%" /MIR
-@IF EXIST "%folder%\%project%" (
-	@cd /d "%folder%\%project%"
-	@for /F "delims=" %%i in ('dir /b') do (rmdir "%%i" /s/q || del "%%i" /s/q)
-)
-@ROBOCOPY "C:\Program Files\Git\code\%project%" %~dp0 *.c *.h *.txt *.ico *.rc *.png *.bat *.html *.css *.json *.md *.am *.ac /MIR /XD dirs .git warper warper-bin media
-@cd "C:\Program Files\Git\code\%project%"
-@git init
-@git add -A
-@cd %~dp0
 @rem @pause Done! Press anything to continue.
