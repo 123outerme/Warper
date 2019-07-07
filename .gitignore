@@ -1,0 +1,14 @@
+#ignore the media folder
+/media/
+/obj/
+/bin/
+/saves/
+/builds/
+/warper/
+/warper-bin/
+/oldMakefile/
+/output/
+*.cbp
+*.depend
+*.layout
+*.cfg

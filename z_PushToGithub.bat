@@ -1,6 +1,4 @@
 @set project=Warper
-@ROBOCOPY %cd% "C:\Program Files\Git\code\%project%" *.c *.h *.txt *.ico *.bin *.rc *.bat *.png *.ttf *.ogg *.mp3 *.mp4 *.html *.css *.md *.am *.ac /MIR /XD dirs .git media SDL warper warper-bin
-@cd "C:\Program Files\Git\code\%project%"
 @set commitMessage=""
 @IF [%1]==[] (
 	set commitMessage=Updated
@@ -13,9 +11,8 @@
 ) ELSE (
 	set branch=%2
 )
-@git init
 @git add .
-@git commit -m %commitMessage%
+@git commit -m%commitMessage%
 @git remote add origin https://github.com/123outerme/%project%
 @git push origin %branch%
 @cd %~dp0

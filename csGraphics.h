@@ -24,10 +24,10 @@
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
-#include "SDL/SDL.h"       //This is included because it's an SDL2 program... duh
-#include "SDL/SDL_image.h" //This is included so we can use PNGs.
-#include "SDL/SDL_ttf.h"   //This is included for text stuff
-#include "SDL/SDL_mixer.h" //This is included for audio
+#include "SDL2/SDL.h"       //This is included because it's an SDL2 program... duh
+#include "SDL2/SDL_image.h" //This is included so we can use PNGs.
+#include "SDL2/SDL_ttf.h"   //This is included for text stuff
+#include "SDL2/SDL_mixer.h" //This is included for audio
 
 
 //#defines:
