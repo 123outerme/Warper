@@ -15,5 +15,4 @@
 @git commit -m%commitMessage%
 @git remote add origin https://github.com/123outerme/%project%
 @git push origin %branch%
-@cd %~dp0
 @pause Done! Press anything to continue.

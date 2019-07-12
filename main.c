@@ -13,7 +13,7 @@ typedef struct _player {
     int energy;  //energy reserves for attacks / teleporting
     int skills[MAX_SKILLS];
     bool grounded;  //true if on ground
-    int charging;  //num of frames until you can teleport/move
+    int lag;  //num of frames until you can teleport/move
 } player;
 
 typedef struct _spFX {
@@ -30,8 +30,8 @@ typedef struct _collisionResult {
 
 #define calcWaitTime(x) x == 0 ? 0 : 1000 / x
 
-#define TILEMAP_X 60  //(global.windowW / TILE_SIZE)
-#define TILEMAP_Y 30  //(global.windowH / TILE_SIZE)
+#define TILEMAP_X 40  //(global.windowW / TILE_SIZE)
+#define TILEMAP_Y 20  //(global.windowH / TILE_SIZE)
 
 player initPlayer(int maxHealth);
 spFX initSPFX(int numFX);
@@ -51,8 +51,8 @@ int main(int argc, char* argv[])
     if (argc > 1)
         argv = argv;
     const int TILE_SIZE = 32;
-    int range = 7 * TILE_SIZE;  //10 * TILE_SIZE was a good range
-    int error = initCoSprite("./assets/cb.bmp", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    int range = 10 * TILE_SIZE;  //10 * TILE_SIZE was a good range
+    int error = initCoSprite("./assets/cb.bmp", "Warper", 1280, 640, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     SDL_ShowCursor(SDL_DISABLE);
     int tilemap[TILEMAP_X][TILEMAP_Y];
 
@@ -60,13 +60,13 @@ int main(int argc, char* argv[])
     {
         for(int y = 0; y < TILEMAP_Y; y++)
         {
-            if (x == 0 || y == 0 || x + 1 == TILEMAP_X || y + 1 == TILEMAP_Y || y == 7)
+            if (x == 0 || y == 0 || x + 1 == TILEMAP_X || y + 1 == TILEMAP_Y || y == 6 || (y == 13 && x < TILEMAP_X / 2) || (y == 13 && x > TILEMAP_X / 2 && x % 4 < 3))
                 tilemap[x][y] = 1;
             else
                 tilemap[x][y] = 0;
         }
     }
-    int frame = 0, framerate = 0, targetTime = calcWaitTime(0), sleepFor = 0;
+    int frame = 0, framerate = 60, targetTime = calcWaitTime(framerate), sleepFor = 0;
     cSprite* mouseSprite;
     c2DModel playerModel, spFXModel, HUDModel;
     {
@@ -74,12 +74,13 @@ int main(int argc, char* argv[])
         loadIMG("./assets/tilesheet.png", &mouseTexture);
         loadIMG("./assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
-        spFX theseFX = initSPFX(1);
+        spFX theseFX = initSPFX(2);
         cSprite playerSprites[14];
-        cSprite spFXSprites[1];
+        cSprite spFXSprites[2];
         cSprite HUDSprites[3];
 
         initCSprite(&spFXSprites[0], playerTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
+        initCSprite(&spFXSprites[1], playerTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion for re-entry
 
         initCSprite(&HUDSprites[0], mouseTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);  //mouse
         initCSprite(&HUDSprites[1], playerTexture, "./assets/tileset.png", 0, (cDoubleRect) {TILE_SIZE / 2, global.windowH - 3 * TILE_SIZE / 2, TILE_SIZE * 10, TILE_SIZE}, (cDoubleRect) {7 * TILE_SIZE, 0, 10 * TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 3);  //energy bar housing
@@ -97,11 +98,11 @@ int main(int argc, char* argv[])
         initCSprite(&playerSprites[9], playerTexture, "./assets/tilesheet.png", 10, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {4 * TILE_SIZE, TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, &((cDoublePt) {TILE_SIZE / 4, TILE_SIZE / -2}), 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 4);  //right foot
         initCSprite(&playerSprites[10], playerTexture, "./assets/tilesheet.png", 11, (cDoubleRect) {TILE_SIZE / 2, 0, TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //floor hurtbox
         initCSprite(&playerSprites[11], playerTexture, "./assets/tilesheet.png", 12, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 4 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //wall/ceiling hurtbox
-        initCSprite(&playerSprites[12], playerTexture, "./assets/tilesheet.png", 13, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //dmg hurtbox
+        initCSprite(&playerSprites[12], playerTexture, "./assets/tilesheet.png", 13, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 5 * TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //dmg hurtboxw
         initCSprite(&playerSprites[13], playerTexture, "./assets/tilesheet.png", 14, (cDoubleRect) {TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE / 2, TILE_SIZE}, (cDoubleRect) {0, TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //hitbox
 
         initC2DModel(&playerModel, playerSprites, 14, (cDoublePt) {4 * TILE_SIZE, 4 * TILE_SIZE}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &thisPlayer, 2);
-        initC2DModel(&spFXModel, spFXSprites, 1, (cDoublePt) {0, 0}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
+        initC2DModel(&spFXModel, spFXSprites, 2, (cDoublePt) {0, 0}, NULL, 0.75, SDL_FLIP_NONE, 0.0, false, &theseFX, 1);
         initC2DModel(&HUDModel, HUDSprites, 3, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);
     }
     mouseSprite = &HUDModel.sprites[0];
@@ -115,7 +116,7 @@ int main(int argc, char* argv[])
         {
             for(int y = 0; y < TILEMAP_Y; y++)
             {
-                initCSprite(&tileSprites[x * TILEMAP_Y + y], tilesetTexture, "assets/tilesheet.png", tilemap[x][y], (cDoubleRect) {TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE}, (cDoubleRect) {(tilemap[x][y] / 32) * TILE_SIZE, (tilemap[x][y] % 32) * TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+                initCSprite(&tileSprites[x * TILEMAP_Y + y], tilesetTexture, "assets/tilesheet.png", tilemap[x][y], (cDoubleRect) {TILE_SIZE * x * 2, TILE_SIZE * y * 2, TILE_SIZE * 2, TILE_SIZE * 2}, (cDoubleRect) {(tilemap[x][y] / 32) * TILE_SIZE, (tilemap[x][y] % 32) * TILE_SIZE, TILE_SIZE, TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
             }
         }
         initC2DModel(&mapModel, tileSprites, TILEMAP_X * TILEMAP_Y, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
@@ -123,15 +124,15 @@ int main(int argc, char* argv[])
     cText FPStext;
     cText versionText;
     char FPSstring[3] = "   ";
-    initCText(&FPStext, "0", (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
+    initCText(&FPStext, FPSstring, (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
     initCText(&versionText, COSPRITE_VERSION, (cDoubleRect) {0, 0, 200, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
-    initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+    initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 0.75, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, NULL, 0, (c2DModel*[4]) {&playerModel, &HUDModel, &spFXModel, &mapModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, NULL, 0, (c2DModel*[4]) {&mapModel, &spFXModel, &playerModel, &HUDModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     playerSubclass->energy = 100;
-    playerSubclass->charging = 0;
+    playerSubclass->lag = 0;
     spFX* specialFX = (spFX*) spFXModel.subclass;
     SDL_Event e;
     bool quit = false;
@@ -147,7 +148,7 @@ int main(int argc, char* argv[])
             if (e.type == SDL_QUIT)
                 quit = true;
 
-            if (e.type == SDL_MOUSEBUTTONDOWN && playerSubclass->charging <= 0 && playerSubclass->energy > 9)
+            if (e.type == SDL_MOUSEBUTTONDOWN && playerSubclass->lag <= 0 && playerSubclass->energy > 9)
             {
                 //loadIMG("assets/cb1.bmp", &mouseSprite->texture); // you can load new images on the fly and they'll be automatically used next frame
                 //mouseSprite->degrees = 180.0;  //or just change the rotation
@@ -155,7 +156,7 @@ int main(int argc, char* argv[])
                 SDL_SetTextureColorMod(mouseSprite->texture, 0x20, 0x20, 0x80);
                 SDL_SetTextureAlphaMod(mouseSprite->texture, 0x80);
             }
-            if (e.type == SDL_MOUSEBUTTONUP && playerSubclass->charging <= 0 && playerSubclass->energy > 9)
+            if (e.type == SDL_MOUSEBUTTONUP && playerSubclass->lag <= 0 && playerSubclass->energy > 9)
             {
                 //loadIMG("assets/cb.bmp", &mouseSprite->texture);
                 //mouseSprite->degrees = 0.0;
@@ -186,18 +187,26 @@ int main(int argc, char* argv[])
                 }
                 else
                 {
-                    spFXModel.sprites[0].drawPriority = 1;
+                    spFXModel.sprites[0].renderLayer = 1;
                     spFXModel.sprites[0].drawRect.x = previousX;
                     spFXModel.sprites[0].drawRect.y = previousY + TILE_SIZE;
+
+                    spFXModel.sprites[1].renderLayer = 4;
+                    spFXModel.sprites[1].drawRect.x = playerModel.rect.x;
+                    spFXModel.sprites[1].drawRect.y = playerModel.rect.y + 2 * TILE_SIZE;
+
                     startSPFXTimer(specialFX, 0, 12); //turn on a timer and display for 12 frames
+                    startSPFXTimer(specialFX, 1, 12); //turn on a timer and display for 12 frames
                     playerSubclass->energy -= 10;
                     HUDModel.sprites[2].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
                     HUDModel.sprites[2].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
-                }
-                if (playerModel.rect.x > previousX)
-                    playerFlip = SDL_FLIP_NONE;
-                if (playerModel.rect.x < previousX)
-                    playerFlip = SDL_FLIP_HORIZONTAL;
+                    playerSubclass->lag = 20;
+
+                    if (playerModel.rect.x > previousX)
+                        playerFlip = SDL_FLIP_NONE;
+                    if (playerModel.rect.x < previousX)
+                        playerFlip = SDL_FLIP_HORIZONTAL;
+                    }
             }
             if (e.type == SDL_MOUSEMOTION)
             {
@@ -217,9 +226,9 @@ int main(int argc, char* argv[])
             printf("%.0f, %.0f x %.0f/%.0f [%d, %d]\n", playerModel.rect.x, playerModel.rect.y, playerModel.rect.w, playerModel.rect.h, global.windowW, global.windowH);
 
         if (keyStates[SDL_SCANCODE_F12])
-            FPStext.drawPriority = 5;
+            FPStext.renderLayer = 5;
         else
-            FPStext.drawPriority = 0;
+            FPStext.renderLayer = 0;
 
         /*cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
         if (keyStates[SDL_SCANCODE_G])
@@ -237,7 +246,7 @@ int main(int argc, char* argv[])
             testCamera.scale = 1.0;
         }
 
-        if ((keyStates[SDL_SCANCODE_A] || keyStates[SDL_SCANCODE_D]) && playerSubclass->charging <= 0)
+        if ((keyStates[SDL_SCANCODE_A] || keyStates[SDL_SCANCODE_D]) && playerSubclass->lag <= 0)
         {
 
             if (keyStates[SDL_SCANCODE_A])
@@ -250,27 +259,27 @@ int main(int argc, char* argv[])
             if (playerModel.flip == SDL_FLIP_NONE)
             {
 
-                playerModel.sprites[2].drawPriority = 1;
-                playerModel.sprites[3].drawPriority = 4;  //upper arm priority
-                playerModel.sprites[4].drawPriority = 1;
-                playerModel.sprites[5].drawPriority = 4;  //lower arm priority
+                playerModel.sprites[2].renderLayer = 1;
+                playerModel.sprites[3].renderLayer = 4;  //upper arm priority
+                playerModel.sprites[4].renderLayer = 1;
+                playerModel.sprites[5].renderLayer = 4;  //lower arm priority
 
-                playerModel.sprites[6].drawPriority = 2;
-                playerModel.sprites[7].drawPriority = 4;  //leg priority
-                playerModel.sprites[8].drawPriority = 2;
-                playerModel.sprites[9].drawPriority = 4;  //foot priority
+                playerModel.sprites[6].renderLayer = 2;
+                playerModel.sprites[7].renderLayer = 4;  //leg priority
+                playerModel.sprites[8].renderLayer = 2;
+                playerModel.sprites[9].renderLayer = 4;  //foot priority
             }
             else
             {
-                playerModel.sprites[2].drawPriority = 4;
-                playerModel.sprites[3].drawPriority = 1;  //upper arm priority
-                playerModel.sprites[4].drawPriority = 4;
-                playerModel.sprites[5].drawPriority = 1;  //lower arm priority
+                playerModel.sprites[2].renderLayer = 4;
+                playerModel.sprites[3].renderLayer = 1;  //upper arm priority
+                playerModel.sprites[4].renderLayer = 4;
+                playerModel.sprites[5].renderLayer = 1;  //lower arm priority
 
-                playerModel.sprites[6].drawPriority = 4;
-                playerModel.sprites[7].drawPriority = 2;  //leg priority
-                playerModel.sprites[8].drawPriority = 4;
-                playerModel.sprites[9].drawPriority = 2;  //foot priority
+                playerModel.sprites[6].renderLayer = 4;
+                playerModel.sprites[7].renderLayer = 2;  //leg priority
+                playerModel.sprites[8].renderLayer = 4;
+                playerModel.sprites[9].renderLayer = 2;  //foot priority
             }
 
             if (keyStates[SDL_SCANCODE_D])
@@ -300,8 +309,6 @@ int main(int argc, char* argv[])
                 playerModel.rect.y += result.mtvs[i].magnitude * sin(degToRad(result.mtvs[i].degrees));
             }
             playerSubclass->grounded = true;
-            free(result.mtvs);
-            free(result.tilesCollided);
         }
         else
             walkBypass = false;
@@ -330,9 +337,9 @@ int main(int argc, char* argv[])
             {
                 playerSubclass->xVeloc = 0;
             }
-            free(result.mtvs);
-            free(result.tilesCollided);
         }
+        free(result.mtvs);
+        free(result.tilesCollided);
 
         if (playerSubclass->xVeloc)
         {
@@ -361,14 +368,14 @@ int main(int argc, char* argv[])
         playerModel.sprites[2].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
         playerModel.sprites[3].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * upperArmRotations[(playerSubclass->walkFrame / 2) % 10];
 
-        playerModel.sprites[4].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * lowerArmRotations[((10 * (playerModel.sprites[4].drawPriority == 4)) + playerSubclass->walkFrame / 2) % 20];
-        playerModel.sprites[5].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * lowerArmRotations[((10 * (playerModel.sprites[5].drawPriority == 4)) + playerSubclass->walkFrame / 2) % 20];
+        playerModel.sprites[4].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * lowerArmRotations[((10 * (playerModel.sprites[4].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
+        playerModel.sprites[5].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * lowerArmRotations[((10 * (playerModel.sprites[5].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
 
         playerModel.sprites[6].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 < 11)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
         playerModel.sprites[7].degrees = (1 - 2 * (playerSubclass->walkFrame / 2 > 10)) * legRotations[(playerSubclass->walkFrame / 2) % 10];
 
-        playerModel.sprites[8].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[8].drawPriority == 4)) + playerSubclass->walkFrame / 2) % 20];
-        playerModel.sprites[9].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[9].drawPriority == 4)) + playerSubclass->walkFrame / 2) % 20];
+        playerModel.sprites[8].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[8].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
+        playerModel.sprites[9].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[9].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
 
         if (playerModel.rect.y * playerModel.scale - (playerModel.rect.h * playerModel.scale) / 8 * playerModel.scale < testCamera.rect.y * global.windowH / testCamera.rect.h / testCamera.scale)
             testCamera.rect.y -= testCamera.rect.h / 4;
@@ -391,13 +398,13 @@ int main(int argc, char* argv[])
         if (keyStates[SDL_SCANCODE_W] && playerSubclass->energy < 100)
         {  //charge
             playerSubclass->energy++;
-            playerSubclass->charging = 20;
+            playerSubclass->lag = 15;
             HUDModel.sprites[2].srcClipRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
             HUDModel.sprites[2].drawRect.w = TILE_SIZE * playerSubclass->energy / 10.0;
         }
         else
-            if (playerSubclass->charging > 0)
-                playerSubclass->charging--;
+            if (playerSubclass->lag > 0)
+                playerSubclass->lag--;
 
 
         if (keyStates[SDL_SCANCODE_E])
@@ -428,11 +435,23 @@ int main(int argc, char* argv[])
         if (keyStates[SDL_SCANCODE_EQUALS])
             testCamera.scale += .05;
 
+        if (keyStates[SDL_SCANCODE_I])
+            testCamera.rect.y -= 4;
+
+        if (keyStates[SDL_SCANCODE_K])
+            testCamera.rect.y += 4;
+
+        if (keyStates[SDL_SCANCODE_J])
+            testCamera.rect.x -= 4;
+
+        if (keyStates[SDL_SCANCODE_L])
+            testCamera.rect.x += 4;
+
         frame++;
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
         framerate = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));  //multiplied by 1000 on both sides since 1000f / ms == 1f / s
-                snprintf(FPSstring, 3, "%d", framerate);
-        initCText(&FPStext, FPSstring, (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, FPStext.drawPriority);
+        snprintf(FPSstring, 4, "%d", framerate);
+        strcpy((&FPStext)->string, FPSstring);  //putting in the value to display
 
         if ((sleepFor = targetTime - (SDL_GetTicks() - lastFrame)) > 0)
             SDL_Delay(sleepFor);  //FPS limiter; rests for (16 - time spent) ms per frame, effectively making each frame run for ~16 ms, or 60 FPS
@@ -445,7 +464,7 @@ int main(int argc, char* argv[])
                 specialFX->fxTimers[i]--;
                 if (specialFX->fxTimers[i] == 0)
                 {
-                    spFXModel.sprites[i].drawPriority = 0;
+                    spFXModel.sprites[i].renderLayer = 0;
                     stopSPFXTimer(specialFX, 0);
                 }
             }

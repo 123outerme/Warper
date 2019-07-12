@@ -14,9 +14,9 @@
  * \param degrees - rotation angle in degrees
  * \param subclass - void*. Do with it what you will, isn't used internally
  * \param fixed - if true, won't be affected by a scene's camera
- * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
+ * \param renderLayer - 0 - not drawn. 1-`renderLayers` - drawn. Lower number = drawn later
  */
-void initCSprite(cSprite* sprite, SDL_Texture* texture, char* textureFilepath, int id, cDoubleRect drawRect, cDoubleRect srcClipRect, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
+void initCSprite(cSprite* sprite, SDL_Texture* texture, char* textureFilepath, int id, cDoubleRect drawRect, cDoubleRect srcClipRect, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int renderLayer)
 {
     sprite->texture = texture;
     strncpy(sprite->textureFilepath, textureFilepath, MAX_PATH);
@@ -34,7 +34,7 @@ void initCSprite(cSprite* sprite, SDL_Texture* texture, char* textureFilepath, i
     sprite->flip = flip;
     sprite->fixed = fixed;
     sprite->subclass = subclass;
-    sprite->drawPriority = drawPriority;
+    sprite->renderLayer = renderLayer;
 }
 
 /** \brief clears out a cSprite and its memory
@@ -53,7 +53,7 @@ void destroyCSprite(cSprite* sprite)
     sprite->fixed = false;
     free(sprite->subclass);
     sprite->subclass = NULL;
-    sprite->drawPriority = 0;
+    sprite->renderLayer = 0;
 
 }
 
@@ -91,22 +91,15 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
  * \param degrees - rotation angle in degrees
  * \param fixed - if true, won't be affected by a scene's camera
  * \param subclass - void*. Do with it what you will, isn't used internally
- * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
+ * \param renderLayer - 0 - not drawn. 1-`renderLayers` - drawn. Lower number = drawn later
  */
-void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, cDoublePt position, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int drawPriority)
+void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, cDoublePt position, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int renderLayer)
 {
     model->sprites = calloc(numSprites, sizeof(cSprite));
     memcpy((void*) model->sprites, (void*) sprites, numSprites * sizeof(cSprite));
     //model->sprites = (numSprites) ? sprites : NULL;
     model->numSprites = numSprites;
     model->rect = (cDoubleRect) {position.x, position.y, 0, 0};
-    for(int i = 0; i < numSprites; i++)
-    {
-        if (model->rect.w < sprites[i].drawRect.x + sprites[i].drawRect.w)
-            model->rect.w = sprites[i].drawRect.x + sprites[i].drawRect.w;
-        if (model->rect.h < sprites[i].drawRect.y + sprites[i].drawRect.h)
-            model->rect.h = sprites[i].drawRect.y + sprites[i].drawRect.h;
-    }
     if (center != NULL)
         model->center = *center;
     else
@@ -116,7 +109,7 @@ void initC2DModel(c2DModel* model, cSprite* sprites, int numSprites, cDoublePt p
     model->degrees = degrees;
     model->fixed = fixed;
     model->subclass = subclass;
-    model->drawPriority = drawPriority;
+    model->renderLayer = renderLayer;
 }
 
 /** \brief clears out a c2DModel and its memory
@@ -135,7 +128,7 @@ void destroyC2DModel(c2DModel* model)
     model->fixed = false;
     free(model->subclass);
     model->subclass = NULL;
-    model->drawPriority = 0;
+    model->renderLayer = 0;
 }
 
 /** \brief loads a C2DModel from a file
@@ -157,7 +150,7 @@ void importC2DModel(c2DModel* model, char* filepath)
     model->scale = strtod(strtok(NULL, "{,}"), NULL);
     model->flip = strtol(strtok(NULL, "{,}"), NULL, 10);
     model->degrees = strtod(strtok(NULL, "{,}"), NULL);
-    model->drawPriority = strtol(strtok(NULL, "{,}"), NULL, 10);
+    model->renderLayer = strtol(strtok(NULL, "{,}"), NULL, 10);
     model->fixed = strtol(strtok(NULL, "{,}"), NULL, 10);
     model->sprites = calloc(model->numSprites, sizeof(cSprite));
     for(int i = 0; i < model->numSprites; i++)
@@ -194,7 +187,7 @@ void importC2DModel(c2DModel* model, char* filepath)
         model->sprites[i].scale = strtod(strtok(NULL, "{,}"), NULL);
         model->sprites[i].flip = strtol(strtok(NULL, "{,}"), NULL, 10);
         model->sprites[i].degrees = strtod(strtok(NULL, "{,}"), NULL);
-        model->sprites[i].drawPriority = strtol(strtok(NULL, "{,}"), NULL, 10);
+        model->sprites[i].renderLayer = strtol(strtok(NULL, "{,}"), NULL, 10);
         model->sprites[i].fixed = strtol(strtok(NULL, "{,}"), NULL, 10);
         model->sprites[i].subclass = NULL;
     }
@@ -213,7 +206,7 @@ void exportC2DModel(c2DModel* model, char* filepath)
     char* data = calloc(2048, sizeof(char));
     snprintf(data, 2048, "{%d,%f,%f,%f,%f,%f,%f,%f,%d,%f,%d,%d}", model->numSprites, model->rect.x, model->rect.y, model->rect.w,
              model->rect.h, model->center.x, model->center.y, model->scale, model->flip, model->degrees,
-             model->drawPriority, model->fixed);
+             model->renderLayer, model->fixed);
     appendLine(filepath, data, true);
     for(int i = 0; i < model->numSprites; i++)
     {
@@ -221,7 +214,7 @@ void exportC2DModel(c2DModel* model, char* filepath)
                  model->sprites[i].drawRect.x, model->sprites[i].drawRect.y, model->sprites[i].drawRect.w, model->sprites[i].drawRect.h,
                  model->sprites[i].srcClipRect.x, model->sprites[i].srcClipRect.y, model->sprites[i].srcClipRect.w,
                  model->sprites[i].srcClipRect.h, model->sprites[i].center.x, model->sprites[i].center.y, model->sprites[i].scale,
-                 model->sprites[i].flip, model->sprites[i].degrees, model->sprites[i].drawPriority, model->sprites[i].fixed);
+                 model->sprites[i].flip, model->sprites[i].degrees, model->sprites[i].renderLayer, model->sprites[i].fixed);
         appendLine(filepath, data, true);
     }
     free(data);
@@ -239,14 +232,15 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
     {
         for(int i = 0; i < model.numSprites; i++)
         {
-            if (model.sprites[i].drawPriority == priority)
+            if (model.sprites[i].renderLayer == priority)
             {
                 {
                     double scale = model.scale * model.sprites[i].scale * (model.fixed | model.sprites[i].fixed ? 1.0 : camera.scale);
                     cDoublePt point = {(model.sprites[i].drawRect.x + model.rect.x) * scale, (model.sprites[i].drawRect.y + model.rect.y) * scale};
 
-                    point = rotatePoint(point, (cDoublePt) {point.x + model.sprites[i].center.x * scale, point.y + model.sprites[i].center.y * scale}, model.sprites[i].degrees);
-                    point = rotatePoint(point, (cDoublePt) {(model.rect.x + model.center.x) * scale, (model.rect.y + model.center.y) * scale}, model.degrees);
+                    point = rotatePoint(
+                                rotatePoint(point, (cDoublePt) {point.x + model.sprites[i].center.x * scale, point.y + model.sprites[i].center.y * scale}, model.sprites[i].degrees),
+                            (cDoublePt) {(model.rect.x + model.center.x) * scale, (model.rect.y + model.center.y) * scale}, model.degrees);
 
                     if (!(model.sprites[i].fixed | model.fixed))
                     {
@@ -281,9 +275,9 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
  * \param degrees - rotation angle in degrees
  * \param flip - SDL_RenderFlip value
  * \param fixed - if true, won't be affected by a scene's camera
- * \param drawPriority - 0 - not drawn. 1-5 - drawn. Lower number = drawn later
+ * \param renderLayer - 0 - not drawn. 1-`renderLayers` - drawn. Lower number = drawn later
  */
-void initCText(cText* text, char* string, cDoubleRect rect, SDL_Color textColor, SDL_Color bgColor, SDL_RendererFlip flip, double degrees, bool fixed, int drawPriority)
+void initCText(cText* text, char* string, cDoubleRect rect, SDL_Color textColor, SDL_Color bgColor, SDL_RendererFlip flip, double degrees, bool fixed, int renderLayer)
 {
     text->string = calloc(strlen(string), sizeof(char));
     if (text->string)
@@ -294,7 +288,29 @@ void initCText(cText* text, char* string, cDoubleRect rect, SDL_Color textColor,
     text->flip = flip;
     text->degrees = degrees;
     text->fixed = fixed;
-    text->drawPriority = drawPriority;
+    text->renderLayer = renderLayer;
+
+    //init text texture
+    int* wh = loadTextTexture(text->string, &text->texture, text->rect.w, text->textColor, true);
+    text->rect.w = wh[0];
+    text->rect.h = wh[1];
+}
+
+/** \brief updates string in a cText obj
+ *
+ * \param text - cText to modify
+ * \param string - new string for the cText to display
+ */
+void updateCText(cText* text, char* string)
+{
+    text->string = calloc(strlen(string), sizeof(char));
+    if (text->string)
+        strcpy(text->string, string);
+
+    //init text texture
+    int* wh = loadTextTexture(text->string, &text->texture, text->rect.w, text->textColor, true);
+    text->rect.w = wh[0];
+    text->rect.h = wh[1];
 }
 
 /** \brief clears out a cText and its memory
@@ -309,7 +325,8 @@ void destroyCText(cText* text)
     text->textColor = (SDL_Color) {0, 0, 0, 0};
     text->bgColor = (SDL_Color) {0, 0, 0, 0};
     text->fixed = false;
-    text->drawPriority = 0;
+    text->renderLayer = 0;
+    SDL_DestroyTexture(text->texture);
 }
 
 /** \brief draws a cText to the screen
@@ -323,22 +340,17 @@ void drawCText(cText text, cCamera camera, bool update)
     Uint8 r, g, b, a;
     SDL_GetRenderDrawColor(global.mainRenderer, &r, &g, &b, &a);
     SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
-    int* wh = loadTextTexture(text.string, &text.texture, text.rect.w, text.textColor, true);
-    text.rect.w = wh[0];
-    text.rect.h = wh[1];
 
     if (!text.fixed)
     {
-        cDoublePt point = {text.rect.x, text.rect.y};
-        point = rotatePoint(point, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
+        cDoublePt point = rotatePoint((cDoublePt) {text.rect.x, text.rect.y}, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
 
         text.rect.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
         text.rect.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
     }
-    SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
+
     SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w, text.rect.h}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
     SDL_SetRenderDrawColor(global.mainRenderer, r, g, b, a);
-    SDL_DestroyTexture(text.texture);
     if (update)
         SDL_RenderPresent(global.mainRenderer);
 }
@@ -349,11 +361,11 @@ void drawCText(cText text, cCamera camera, bool update)
  * \param subclass - struct containing your data
  * \param drawingMethod - function pointer to your drawing method. Must have only one argument, which is your subclass
  */
-void initCResource(cResource* res, void* subclass, void (*drawingRoutine)(void*), int drawPriority)
+void initCResource(cResource* res, void* subclass, void (*drawingRoutine)(void*), int renderLayer)
 {
     res->subclass = subclass;
     res->drawingRoutine = drawingRoutine;
-    res->drawPriority = drawPriority;
+    res->renderLayer = renderLayer;
 }
 
 /** \brief draws a CResource
@@ -373,7 +385,7 @@ void destroyCResource(cResource* res)
 {
     res->subclass = NULL;
     res->drawingRoutine = NULL;
-    res->drawPriority = 0;
+    res->renderLayer = 0;
 }
 
 /** \brief initializes a cCamera and its memory
@@ -511,29 +523,29 @@ void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
     SDL_SetRenderDrawColor(global.mainRenderer, scenePtr->bgColor.r, scenePtr->bgColor.g, scenePtr->bgColor.b, scenePtr->bgColor.a);
     if (clearScreen)
         SDL_RenderClear(global.mainRenderer);
-    for(int priority = 5; priority >= 1; priority--)
+    for(int priority = global.renderLayers; priority >= 1; priority--)
     {
         for(int i = 0; i < scenePtr->spriteCount; i++)
         {
-            if (scenePtr->sprites[i]->drawPriority == priority)
+            if (scenePtr->sprites[i]->renderLayer == priority)
                 drawCSprite(*(scenePtr->sprites[i]), *(scenePtr->camera), false, false);
         }
 
         for(int i = 0; i < scenePtr->modelCount; i++)
         {
-            if (scenePtr->models[i]->drawPriority == priority)
+            if (scenePtr->models[i]->renderLayer == priority)
                 drawC2DModel(*(scenePtr->models[i]), *(scenePtr->camera), false);
         }
 
         for(int i = 0; i < scenePtr->resCount; i++)
         {
-            if (scenePtr->resources[i]->drawPriority == priority)
+            if (scenePtr->resources[i]->renderLayer == priority)
                 drawCResource(scenePtr->resources[i]);
         }
 
         for(int i = 0; i < scenePtr->stringCount; i++)
         {
-            if (scenePtr->strings[i]->drawPriority == priority)
+            if (scenePtr->strings[i]->renderLayer == priority)
                 drawCText(*(scenePtr->strings[i]), *(scenePtr->camera), false);
         }
     }
@@ -740,7 +752,7 @@ cDoubleVector checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast
  *
  * \return Code 0: No error. Code 1: SDL systems failed to initialize. Code 2: Window could not be created Code 3: Renderer failed to initialize
  */
-int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, SDL_Color transparentColor, Uint32 windowFlags)
+int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, int renderLayers, SDL_Color transparentColor, Uint32 windowFlags)
 {
     int status = 0;
     mainWindow = NULL;
@@ -789,6 +801,7 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
             global.windowsOpen = 1;
             global.windowW = windowWidth;
             global.windowH = windowHeight;
+            global.renderLayers = (renderLayers < 1) ? 6 : renderLayers;
             global.mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
             if(!global.mainRenderer)
             {
