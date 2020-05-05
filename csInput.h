@@ -23,9 +23,18 @@
 #ifndef NULL
     #define NULL ((void*) 0)
 #endif //NULL
-#define MAX_KEYMAPS 20
+#define MAX_KEYMAPS 21
+
+typedef struct _cInputState
+{
+    const Uint8* keyStates;
+    SDL_MouseButtonEvent click;
+    bool isClick;  /**< If true, then no mouse input */
+    bool quitInput;  /**< True if given any sort of quit-like input */
+} cInputState;
 
 //function prototypes:
+cInputState cGetInputState(bool useMouse);
 SDL_Keycode getKey(bool useMouse);
 SDL_Keycode waitForKey(bool useMouse);
 bool setKey(SDL_Scancode key, int keyslot);
@@ -39,6 +48,6 @@ SDL_Scancode keymaps[MAX_KEYMAPS];
 #define KEY_RIGHT keymaps[3]
 #define KEY_CONFIRM keymaps[4]
 #define KEY_BACK keymaps[5]
-#define KEY_CUSTOM(x) keymaps[(x < 15) ? (x > 0 ? 5 + x : 1) : (19)]
+#define KEY_CUSTOM(x) keymaps[(x < 16) ? (x > 0 ? 5 + x : 6) : (20)]
 
 #endif // CSIO_H_INCLUDED

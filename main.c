@@ -1,6 +1,6 @@
 //#include "csMain.h"
 #include "csGraphics.h"
-#include "csIO.h"
+#include "csInput.h"
 #include "csUtility.h"
 
 #define MAX_SKILLS 10
@@ -66,11 +66,13 @@ int main(int argc, char* argv[])
                 tilemap[x][y] = 0;
         }
     }
-    int frame = 0, framerate = 60, targetTime = calcWaitTime(framerate), sleepFor = 0;
+    int frame = 0, framerate = 0, targetTime = calcWaitTime(framerate), sleepFor = 0;
+    cSprite testSprite;
     cSprite* mouseSprite;
     c2DModel playerModel, spFXModel, HUDModel;
     {
-        SDL_Texture* playerTexture, * mouseTexture;
+        SDL_Texture* playerTexture, * mouseTexture, * testTexture;
+        loadIMG("./assets/cb.bmp", &testTexture);
         loadIMG("./assets/tilesheet.png", &mouseTexture);
         loadIMG("./assets/tilesheet.png", &playerTexture);
         player thisPlayer = initPlayer(10);
@@ -78,6 +80,8 @@ int main(int argc, char* argv[])
         cSprite playerSprites[14];
         cSprite spFXSprites[2];
         cSprite HUDSprites[3];
+
+        initCSprite(&testSprite, testTexture, "./assets/cb.bmp", 0, (cDoubleRect) {2 * TILE_SIZE, 2 * TILE_SIZE, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, NULL, 1);  //test
 
         initCSprite(&spFXSprites[0], playerTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion
         initCSprite(&spFXSprites[1], playerTexture, "./assets/tileset.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {5 * TILE_SIZE, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);  //teleport explosion for re-entry
@@ -123,13 +127,13 @@ int main(int argc, char* argv[])
     }
     cText FPStext;
     cText versionText;
-    char FPSstring[3] = "   ";
-    initCText(&FPStext, FPSstring, (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 0);
-    initCText(&versionText, COSPRITE_VERSION, (cDoubleRect) {0, 0, 200, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, SDL_FLIP_NONE, 0.0, true, 5);
+    char FPSstring[4] = "   \0";
+    initCText(&FPStext, FPSstring, (cDoubleRect) {global.windowW - 3 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, 1.0, SDL_FLIP_NONE, 0.0, true, 0);
+    initCText(&versionText, COSPRITE_VERSION, (cDoubleRect) {0, 0, 200, 50}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, 1.0, SDL_FLIP_NONE, 0.0, true, 5);
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 0.75, 0.0);
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, NULL, 0, (c2DModel*[4]) {&mapModel, &spFXModel, &playerModel, &HUDModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[1]) {&testSprite}, 1, (c2DModel*[4]) {&mapModel, &spFXModel, &playerModel, &HUDModel}, 4, NULL, 0, (cText*[2]) {&versionText, &FPStext}, 2);
     player* playerSubclass = (player*) playerModel.subclass;
     playerSubclass->energy = 100;
     playerSubclass->lag = 0;
@@ -166,18 +170,19 @@ int main(int argc, char* argv[])
                 SDL_SetTextureColorMod(mouseSprite->texture, 0xFF, 0xFF, 0xFF);
                 SDL_SetTextureAlphaMod(mouseSprite->texture, 0xFF);
 
-                int newX = (e.button.x + (testCamera.rect.x * global.windowW / testCamera.rect.w)) / testCamera.scale - (playerModel.rect.w * playerModel.scale) / 2;
-                int newY = (e.button.y + (testCamera.rect.y * global.windowH / testCamera.rect.h)) / testCamera.scale - (playerModel.rect.h * playerModel.scale) / 2;
-                if (getDistance(playerModel.rect.x * playerModel.scale, playerModel.rect.y * playerModel.scale, newX, newY) > range)
+                int newX = (e.button.x + (testCamera.rect.x * global.windowW / testCamera.rect.w)) / testCamera.zoom - (playerModel.rect.w * playerModel.scale) / 2;
+                int newY = (e.button.y + (testCamera.rect.y * global.windowH / testCamera.rect.h)) / testCamera.zoom - (playerModel.rect.h * playerModel.scale) / 2;
+
+                if (getDistance(playerModel.rect.x, playerModel.rect.y, newX, newY) > range)
                 {
-                    double angle = atan2((double) (newY - playerModel.rect.y * playerModel.scale), (newX - playerModel.rect.x * playerModel.scale));
+                    double angle = atan2((double) (newY - playerModel.rect.y), (newX - playerModel.rect.x));
                     playerModel.rect.x += range * cos(angle)/* * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0))*/;
                     playerModel.rect.y += range * sin(angle)/* * (1 - 2 * (newX - playerModel.rect.x * playerModel.scale < 0))*/;  //remember, bounds of atan() require this
                 }
                 else
                 {
-                    playerModel.rect.x = ((newX * 6) / 6) / playerModel.scale;
-                    playerModel.rect.y = ((newY * 6) / 6) / playerModel.scale;
+                    playerModel.rect.x = ((newX * 6) / 6);  //why did I do this?
+                    playerModel.rect.y = ((newY * 6) / 6);
                 }
                 collisionResult result;
                 if (checkTilemapCollision(&result, playerModel, mapModel, 12, 0))
@@ -226,16 +231,22 @@ int main(int argc, char* argv[])
             printf("%.0f, %.0f x %.0f/%.0f [%d, %d]\n", playerModel.rect.x, playerModel.rect.y, playerModel.rect.w, playerModel.rect.h, global.windowW, global.windowH);
 
         if (keyStates[SDL_SCANCODE_F12])
+        {
+            snprintf(FPSstring, 4, "%d", framerate);
+            updateCText(&FPStext, FPSstring); //putting in the value to display
             FPStext.renderLayer = 5;
+        }
         else
             FPStext.renderLayer = 0;
 
-        /*cDoubleVector translation = checkCSpriteCollision(mouseSprite, testSprite);  //debugging checkCSpriteCollision()
+        //*
+        cDoubleVector translation = checkCSpriteCollision(*mouseSprite, testSprite);  //debugging checkCSpriteCollision()
         if (keyStates[SDL_SCANCODE_G])
         {
-            mouseSprite.drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
-            mouseSprite.drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
-        }*/
+            mouseSprite->drawRect.x += translation.magnitude * cos(degToRad(translation.degrees));
+            mouseSprite->drawRect.y += translation.magnitude * sin(degToRad(translation.degrees));
+        }
+        //*/
 
         if (keyStates[SDL_SCANCODE_F2])  //testing
         {
@@ -243,7 +254,7 @@ int main(int argc, char* argv[])
             testCamera.degrees = 0;
             testCamera.rect.x = 0;
             testCamera.rect.y = 0;
-            testCamera.scale = 1.0;
+            testCamera.zoom = 1.0;
         }
 
         if ((keyStates[SDL_SCANCODE_A] || keyStates[SDL_SCANCODE_D]) && playerSubclass->lag <= 0)
@@ -301,6 +312,7 @@ int main(int argc, char* argv[])
                 playerSubclass->yVeloc = 48;
             playerSubclass->grounded = false;
         }
+
         if (!playerSubclass->grounded)
         {
             for(int i = 0; i < result.collisions; i++)
@@ -338,8 +350,9 @@ int main(int argc, char* argv[])
                 playerSubclass->xVeloc = 0;
             }
         }
-        free(result.mtvs);
-        free(result.tilesCollided);
+
+        {free(result.mtvs);
+        free(result.tilesCollided);}
 
         if (playerSubclass->xVeloc)
         {
@@ -377,16 +390,16 @@ int main(int argc, char* argv[])
         playerModel.sprites[8].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[8].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
         playerModel.sprites[9].degrees = (1 - 2 * (playerModel.flip == SDL_FLIP_NONE)) * footRotations[((10 * (playerModel.sprites[9].renderLayer == 4)) + playerSubclass->walkFrame / 2) % 20];
 
-        if (playerModel.rect.y * playerModel.scale - (playerModel.rect.h * playerModel.scale) / 8 * playerModel.scale < testCamera.rect.y * global.windowH / testCamera.rect.h / testCamera.scale)
+        if (playerModel.rect.y * playerModel.scale - (playerModel.rect.h * playerModel.scale) / 8 * playerModel.scale < testCamera.rect.y * global.windowH / testCamera.rect.h / testCamera.zoom)
             testCamera.rect.y -= testCamera.rect.h / 4;
 
-        if (playerModel.rect.x * playerModel.scale - (playerModel.rect.w * playerModel.scale) / 2  < testCamera.rect.x * global.windowW / testCamera.rect.w / testCamera.scale)
+        if (playerModel.rect.x * playerModel.scale - (playerModel.rect.w * playerModel.scale) / 2  < testCamera.rect.x * global.windowW / testCamera.rect.w / testCamera.zoom)
             testCamera.rect.x -= testCamera.rect.w / 4;
 
-        if ((playerModel.rect.y + playerModel.rect.h) * playerModel.scale > (testCamera.rect.y + testCamera.rect.h) * global.windowH / testCamera.rect.h / testCamera.scale)
+        if ((playerModel.rect.y + playerModel.rect.h) * playerModel.scale > (testCamera.rect.y + testCamera.rect.h) * global.windowH / testCamera.rect.h / testCamera.zoom)
             testCamera.rect.y += testCamera.rect.h / 4;
 
-        if ((playerModel.rect.x + playerModel.rect.w * 1.5) * playerModel.scale > (testCamera.rect.x + testCamera.rect.w) * global.windowW / testCamera.rect.w / testCamera.scale)
+        if ((playerModel.rect.x + playerModel.rect.w * 1.5) * playerModel.scale > (testCamera.rect.x + testCamera.rect.w) * global.windowW / testCamera.rect.w / testCamera.zoom)
             testCamera.rect.x += testCamera.rect.w / 4;  //later, introduce a screen scrolling var that gets set here instead
 
 
@@ -430,10 +443,10 @@ int main(int argc, char* argv[])
             playerModel.degrees += 5;
 
         if (keyStates[SDL_SCANCODE_MINUS])
-            testCamera.scale -= .05;
+            testCamera.zoom -= .05;
 
         if (keyStates[SDL_SCANCODE_EQUALS])
-            testCamera.scale += .05;
+            testCamera.zoom += .05;
 
         if (keyStates[SDL_SCANCODE_I])
             testCamera.rect.y -= 4;
@@ -450,8 +463,6 @@ int main(int argc, char* argv[])
         frame++;
         //if ((SDL_GetTicks() - startTime) % 250 == 0)
         framerate = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));  //multiplied by 1000 on both sides since 1000f / ms == 1f / s
-        snprintf(FPSstring, 4, "%d", framerate);
-        strcpy((&FPStext)->string, FPSstring);  //putting in the value to display
 
         if ((sleepFor = targetTime - (SDL_GetTicks() - lastFrame)) > 0)
             SDL_Delay(sleepFor);  //FPS limiter; rests for (16 - time spent) ms per frame, effectively making each frame run for ~16 ms, or 60 FPS
@@ -469,7 +480,9 @@ int main(int argc, char* argv[])
                 }
             }
         }
+
         drawCScene(&testScene, true, true);
+
         if (keyStates[SDL_SCANCODE_P])
             waitForKey(false);
         if (playerFlip != -1)
@@ -542,8 +555,8 @@ void freeSPFX(spFX* FX)
 int checkTilemapCollision(collisionResult* result, c2DModel playerModel, c2DModel tilemapModel, int playerSprite, int airID)
 {
     cSprite sprite1 = playerModel.sprites[playerSprite];
-    sprite1.drawRect.x = ((sprite1.drawRect.x * sprite1.scale) + (playerModel.rect.x * playerModel.scale)) / sprite1.scale;  //divide by scale?
-    sprite1.drawRect.y = ((sprite1.drawRect.y * sprite1.scale) + (playerModel.rect.y * playerModel.scale)) / sprite1.scale;  //because it's just multiplied right back in, right?
+    sprite1.drawRect.x = sprite1.drawRect.x + playerModel.rect.x;
+    sprite1.drawRect.y = sprite1.drawRect.y + playerModel.rect.y;
     sprite1.drawRect.w *= sprite1.scale * playerModel.scale;
     sprite1.drawRect.h *= sprite1.scale * playerModel.scale;
     sprite1.degrees += playerModel.degrees;

@@ -1,4 +1,35 @@
-#include "csIO.h"
+#include "csInput.h"
+
+
+
+/** \brief gets a keystate
+ *
+ * \param useMouse - whether or not to count a click as a key
+ * \return filled cInputState with the state of key and mouse inputs
+ */
+cInputState cGetInputState(bool useMouse)
+{
+    SDL_Event e;
+
+    cInputState state = {SDL_GetKeyboardState(NULL), (SDL_MouseButtonEvent) {0, 0, 0, 0, 0, 0, 0, 0, 0}, false, false};
+
+    while(SDL_PollEvent(&e) != 0)
+    {
+        //state.key = e.key; //saved out here so no matter what state.key will be populated
+
+        if(e.type == SDL_QUIT)
+            state.quitInput = true;
+        else
+        {
+            if (e.type == SDL_MOUSEBUTTONDOWN && useMouse)
+            {
+                state.isClick = true;
+                state.click = e.button;
+            }
+        }
+    }
+    return state;
+}
 
 /** \brief gets a keypress
  *
@@ -39,7 +70,10 @@ SDL_Keycode waitForKey(bool useMouse)
         while(SDL_PollEvent(&e) != 0)
         {
             if(e.type == SDL_QUIT)
+            {
+                keycode = -1;
                 quit = true;
+            }
             else
             {
                 if(e.type == SDL_KEYDOWN)

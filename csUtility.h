@@ -22,6 +22,6 @@ int randInt(int low, int high, bool inclusive);
 int digits(int num);
 void* freeThisMem(void* x);
 char* removeNewline(char* stuff, char replacement, int maxLength);
-int getDistance(int x1, int y1, int x2, int y2);
+double getDistance(double x1, double y1, double x2, double y2);
 
 #endif // CSUTILITY_H_INCLUDED
