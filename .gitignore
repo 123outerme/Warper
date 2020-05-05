@@ -13,3 +13,6 @@
 *.layout
 *.cfg
 *.exe
+*.dll
+*.crt
+*.pem
