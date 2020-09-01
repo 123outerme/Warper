@@ -11,12 +11,11 @@ cInputState cGetInputState(bool useMouse)
 {
     SDL_Event e;
 
-    cInputState state = {SDL_GetKeyboardState(NULL), (SDL_MouseButtonEvent) {0, 0, 0, 0, 0, 0, 0, 0, 0}, false, false};
+    cInputState state = {SDL_GetKeyboardState(NULL), (SDL_MouseButtonEvent) {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, false, false};
 
     while(SDL_PollEvent(&e) != 0)
     {
         //state.key = e.key; //saved out here so no matter what state.key will be populated
-
         if(e.type == SDL_QUIT)
             state.quitInput = true;
         else

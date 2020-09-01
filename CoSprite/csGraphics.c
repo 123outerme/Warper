@@ -3,12 +3,11 @@
 /** \brief Initializes a cSprite object. You may want to create a wrapper method.
  *
  * \param sprite - a pointer to your sprite.
- * \param texture - an SDL_Texture with your sprite's image
+ * \param texture - an SDL_Texture with your sprite's image. Pass NULL to have your texture auto-initialized
  * \param textureFilepath - a char* that holds your texture's filepath
- * \param x - x position onscreen
- * \param y - y position onscreen
- * \param w - width of your sprite
- * \param h - height of your sprite
+ * \param drawRect - draw position (in camera coordinates)
+ * \param srcClipRect - tilesheet/img position (in px)
+ * \param center - center of your sprite (in camera coordinates). NULL to be (w/2, h/2)
  * \param scale - size * this == drawn size
  * \param flip - SDL_RenderFlip value
  * \param degrees - rotation angle in degrees
@@ -18,7 +17,11 @@
  */
 void initCSprite(cSprite* sprite, SDL_Texture* texture, char* textureFilepath, int id, cDoubleRect drawRect, cDoubleRect srcClipRect, cDoublePt* center, double scale, SDL_RendererFlip flip, double degrees, bool fixed, void* subclass, int renderLayer)
 {
-    sprite->texture = texture;
+    if (texture)
+        sprite->texture = texture;
+    else
+        loadIMG(textureFilepath, &(sprite->texture));
+
     strncpy(sprite->textureFilepath, textureFilepath, MAX_PATH);
     sprite->id = id;
     sprite->drawRect = drawRect;
@@ -72,8 +75,8 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
 
     //uncomment the last half to have model scaling center around the center pt rather than the x/y coords
     //it takes the rect point and offsets it by the delta width / 2 (so that the sprite can scale around its visual center rather than its x/y coords
-    cDoublePt point = (cDoublePt) {sprite.drawRect.x /*- ((sprite.drawRect.w * (sprite.scale - 1)) / 2)*/,
-                                   sprite.drawRect.y /*- ((sprite.drawRect.h * (sprite.scale - 1)) / 2)*/};
+    cDoublePt point = (cDoublePt) {sprite.drawRect.x / camera.rect.w * global.windowW /*- ((sprite.drawRect.w * (sprite.scale - 1)) / 2)*/,
+                                   sprite.drawRect.y / camera.rect.h * global.windowH /*- ((sprite.drawRect.h * (sprite.scale - 1)) / 2)*/};
 
     if (!(sprite.fixed || fixedOverride))
     {  //if we are able to relate it to the camera
@@ -94,7 +97,7 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
         point.y -= (camera.rect.y * global.windowH / camera.rect.h);
     }
     SDL_RenderCopyEx(global.mainRenderer, sprite.texture, &((SDL_Rect) {sprite.srcClipRect.x, sprite.srcClipRect.y, sprite.srcClipRect.w, sprite.srcClipRect.h}),
-                     &((SDL_Rect) {.x = point.x /*- ((sprite.drawRect.w / 2) * sprite.scale * camera.zoom)*/, .y = point.y /*- ((sprite.drawRect.h / 2) * sprite.scale * camera.zoom)*/, .w = sprite.drawRect.w * scale, .h = sprite.drawRect.h * scale}),
+                     &((SDL_Rect) {.x = point.x /*- ((sprite.drawRect.w / 2) * sprite.scale * camera.zoom)*/, .y = point.y /*- ((sprite.drawRect.h / 2) * sprite.scale * camera.zoom)*/, .w = sprite.drawRect.w * scale * global.windowW / camera.rect.w, .h = sprite.drawRect.h * scale * global.windowH / camera.rect.h}),
                      sprite.degrees + (!sprite.fixed * camera.degrees), &((SDL_Point) {0, 0}), sprite.flip);
     if (update)
         SDL_RenderPresent(global.mainRenderer);
@@ -104,7 +107,7 @@ void drawCSprite(cSprite sprite, cCamera camera, bool update, bool fixedOverride
  *
  * \param model - a pointer to your model.
  * \param sprites - a pointer that holds your sprites.
- * \param position - x/y of your model. Width and height will be filled in automatically.
+ * \param position - x/y of your model (in camera coordinates). Width and height will be filled in automatically.
  * \param center - a pointer to a cDoublePt that is the relative center. NULL to be (w/2, h/2).
  * \param scale - size * this == drawn size
  * \param flip - SDL_RenderFlip value
@@ -287,11 +290,11 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                 //cDoublePt point = {(model.sprites[i].drawRect.x + model.rect.x) * scale, (model.sprites[i].drawRect.y + model.rect.y) * scale};
 
                 //uncomment the last half to have model scaling center around the center pt rather than the x/y coords
-                cDoublePt point = {model.rect.x + (model.sprites[i].drawRect.x * model.scale * model.sprites[i].scale) /*- (model.sprites[i].drawRect.w * (model.scale * model.sprites[i].scale - 1)) / 2*/,
-                                   model.rect.y + (model.sprites[i].drawRect.y * model.scale * model.sprites[i].scale) /*- (model.sprites[i].drawRect.h * (model.scale * model.sprites[i].scale - 1)) / 2*/};
+                cDoublePt point = {model.rect.x / camera.rect.w * global.windowW + (model.sprites[i].drawRect.x / camera.rect.w * global.windowW * model.scale * model.sprites[i].scale) /*- (model.sprites[i].drawRect.w * (model.scale * model.sprites[i].scale - 1)) / 2*/,
+                                   model.rect.y / camera.rect.h * global.windowH + (model.sprites[i].drawRect.y / camera.rect.h * global.windowH * model.scale * model.sprites[i].scale) /*- (model.sprites[i].drawRect.h * (model.scale * model.sprites[i].scale - 1)) / 2*/};
 
-                cDoublePt modelCtrPt = {model.rect.x + model.center.x/* - (model.sprites[i].drawRect.w * (model.scale * model.sprites[i].scale - 1)) / 2*/,
-                                     model.rect.y + model.center.y/* - (model.sprites[i].drawRect.h * (model.scale * model.sprites[i].scale - 1)) / 2*/};
+                cDoublePt modelCtrPt = {(model.rect.x + model.center.x) / camera.rect.w * global.windowW/* - (model.sprites[i].drawRect.w * (model.scale * model.sprites[i].scale - 1)) / 2*/,
+                                     (model.rect.y + model.center.y) / camera.rect.h * global.windowH/* - (model.sprites[i].drawRect.h * (model.scale * model.sprites[i].scale - 1)) / 2*/};
 
                 //*
                 if (!(model.sprites[i].fixed || model.fixed))
@@ -320,7 +323,7 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
                 }
 
                 SDL_RenderCopyEx(global.mainRenderer, model.sprites[i].texture, &((SDL_Rect) {model.sprites[i].srcClipRect.x, model.sprites[i].srcClipRect.y, model.sprites[i].srcClipRect.w, model.sprites[i].srcClipRect.h}),
-                                 &((SDL_Rect) {.x = point.x /*- ((model.sprites[i].drawRect.w / 2) * model.scale * model.sprites[i].scale * camera.zoom)*/, .y = point.y /*- ((model.sprites[i].drawRect.h / 2) * model.scale * model.sprites[i].scale * camera.zoom)*/, .w = model.sprites[i].drawRect.w * scale, .h = model.sprites[i].drawRect.h * scale}),
+                                 &((SDL_Rect) {.x = point.x /*- ((model.sprites[i].drawRect.w / 2) * model.scale * model.sprites[i].scale * camera.zoom)*/, .y = point.y /*- ((model.sprites[i].drawRect.h / 2) * model.scale * model.sprites[i].scale * camera.zoom)*/, .w = (model.sprites[i].drawRect.w / camera.rect.w * global.windowW) * scale, .h = (model.sprites[i].drawRect.h / camera.rect.h * global.windowH) * scale}),
                                  model.sprites[i].degrees + model.degrees + (!model.sprites[i].fixed * camera.degrees),
                                  &((SDL_Point) {0, 0}), model.flip == model.sprites[i].flip ? SDL_FLIP_NONE : (model.sprites[i].flip + model.flip) % 4);
                 if (update)
@@ -341,15 +344,16 @@ void drawC2DModel(c2DModel model, cCamera camera, bool update)
  *
  * \param text - a pointer to your cText
  * \param string - the string you want
- * \param rect - cDoubleRect containing bounding box of text
+ * \param rect - cDoubleRect containing bounding box of text (x/y in camera coordinates, w and h in px)
  * \param textColor - color of text
  * \param bgColor - color of background box
+ * \param font - ptr to the cFont you wish to use. Pass NULL for default (global.mainFont)
  * \param degrees - rotation angle in degrees
  * \param flip - SDL_RenderFlip value
  * \param fixed - if true, won't be affected by a scene's camera
  * \param renderLayer - 0 - not drawn. 1-`renderLayers` - drawn. Lower number = drawn later
  */
-void initCText(cText* text, char* str, cDoubleRect rect, SDL_Color textColor, SDL_Color bgColor, double scale, SDL_RendererFlip flip, double degrees, bool fixed, int renderLayer)
+void initCText(cText* text, char* str, cDoubleRect rect, SDL_Color textColor, SDL_Color bgColor, cFont* font, double scale, SDL_RendererFlip flip, double degrees, bool fixed, int renderLayer)
 {
     text->str = calloc(strlen(str), sizeof(char));
     if (text->str)
@@ -357,6 +361,12 @@ void initCText(cText* text, char* str, cDoubleRect rect, SDL_Color textColor, SD
     text->rect = rect;
     text->textColor = textColor;
     text->bgColor = bgColor;
+
+    if (font != NULL)
+        text->font = font;
+    else
+        text->font = &(global.mainFont);
+
     text->scale = scale;
     text->flip = flip;
     text->degrees = degrees;
@@ -364,7 +374,7 @@ void initCText(cText* text, char* str, cDoubleRect rect, SDL_Color textColor, SD
     text->renderLayer = renderLayer;
 
     //init text texture
-    int* wh = loadTextTexture(text->str, &text->texture, text->rect.w, text->textColor, true);
+    int* wh = loadTextTexture(text->str, &text->texture, text->rect.w, text->textColor, text->font->font, true);
     text->rect.w = wh[0];
     text->rect.h = wh[1];
 }
@@ -381,7 +391,7 @@ void updateCText(cText* text, char* str)
         strcpy(text->str, str);
 
     //init text texture
-    int* wh = loadTextTexture(text->str, &text->texture, text->rect.w, text->textColor, true);
+    int* wh = loadTextTexture(text->str, &text->texture, text->rect.w, text->textColor, text->font->font, true);
     text->rect.w = wh[0];
     text->rect.h = wh[1];
 }
@@ -415,15 +425,17 @@ void drawCText(cText text, cCamera camera, bool update)
     SDL_GetRenderDrawColor(global.mainRenderer, &r, &g, &b, &a);
     SDL_SetRenderDrawColor(global.mainRenderer, text.bgColor.r, text.bgColor.g, text.bgColor.b, text.bgColor.a);
 
+    cDoublePt point = (cDoublePt) {text.rect.x / camera.rect.w * global.windowW, text.rect.y / camera.rect.h * global.windowH};
+
     if (!text.fixed)
     {
-        cDoublePt point = rotatePoint((cDoublePt) {text.rect.x, text.rect.y}, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
+        point = rotatePoint(point, (cDoublePt) {global.windowW / 2 - text.rect.w / 2, global.windowH / 2 - text.rect.h / 2}, camera.degrees);
 
-        text.rect.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
-        text.rect.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
+        point.x = point.x - (camera.rect.x * global.windowW / camera.rect.w);
+        point.y = point.y - (camera.rect.y * global.windowH / camera.rect.h);
     }
 
-    SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {text.rect.x, text.rect.y, text.rect.w * text.scale, text.rect.h * text.scale}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
+    SDL_RenderCopyEx(global.mainRenderer, text.texture, NULL, &((SDL_Rect) {point.x, point.y, text.rect.w * text.scale, text.rect.h * text.scale}), text.degrees + !text.fixed * camera.degrees, NULL, text.flip);
     SDL_SetRenderDrawColor(global.mainRenderer, r, g, b, a);
     if (update)
         SDL_RenderPresent(global.mainRenderer);
@@ -480,6 +492,46 @@ void initCCamera(cCamera* camera, cDoubleRect rect, double zoom, double degrees)
     camera->rect = rect;
     camera->zoom = zoom;
     camera->degrees = degrees;
+}
+
+cDoublePt cWindowCoordToCameraCoord(cDoublePt pt, cCamera camera)
+{
+    //add back the offsets
+    pt.x += (camera.rect.x * global.windowW / camera.rect.w);
+    pt.y += (camera.rect.y * global.windowH / camera.rect.h);
+
+    //rotate the point back around
+    pt = rotatePoint(pt, (cDoublePt) {global.windowW / 2, global.windowH / 2}, -1.0 * camera.degrees);
+
+    //un-zoom the points relative to the center of the window
+    pt.x = (pt.x - global.windowW / 2.0) / camera.zoom + global.windowW / 2.0;
+    pt.y = (pt.y - global.windowH / 2.0) / camera.zoom + global.windowH / 2.0;
+
+    //convert from px to camera scaling units
+    pt.x *= camera.rect.w / global.windowW;
+    pt.y *= camera.rect.h / global.windowH;
+
+    return pt;
+}
+
+cDoublePt cCameraCoordToWindowCoord(cDoublePt pt, cCamera camera)
+{
+    //convert from camera scaling units to px
+    pt.x /= camera.rect.w / global.windowW;
+    pt.y /= camera.rect.h / global.windowH;
+
+    //zoom the points relative to the center of the window
+    pt.x = (pt.x - global.windowW / 2.0) * camera.zoom + global.windowW / 2.0;
+    pt.y = (pt.y - global.windowH / 2.0) * camera.zoom + global.windowH / 2.0;
+
+    //rotate the point around
+    pt = rotatePoint(pt, (cDoublePt) {global.windowW / 2, global.windowH / 2}, camera.degrees);
+
+    //subtract out the offsets
+    pt.x -= (camera.rect.x * global.windowW / camera.rect.w);
+    pt.y -= (camera.rect.y * global.windowH / camera.rect.h);
+
+    return pt;
 }
 
 /** \brief clears out a cCamera and its memory
@@ -791,12 +843,12 @@ int addResourceToCScene(cScene* scenePtr, cResource* resource)
     if (scenePtr->resCount == 0)
         tempResources = calloc(scenePtr->resCount + 1, sizeof(cResource*));
     else
-        tempResources = realloc(scenePtr->resources, scenePtr->resCount * sizeof(cResource*));
+        tempResources = realloc(scenePtr->resources, (scenePtr->resCount + 1) * sizeof(cResource*));
     if (tempResources != NULL)
     {
         free(scenePtr->resources);
         scenePtr->resources = tempResources;
-        scenePtr->resCount++;
+        scenePtr->resources[scenePtr->resCount++] = resource;
     }
     else
     {
@@ -893,9 +945,14 @@ void destroyCScene(cScene* scenePtr)
  *
  * \param scenePtr - pointer to your cScene
  * \param redraw - if nonzero, will update the screen
+ * \param fps - if not NULL, will fill the int pointed to with the FPS count
+ * \param fpsCap - if not 0 and `fps` is not NULL, will limit the FPS to the amount set (approx.)
  */
-void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
+void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw, int* fps, int fpsCap)
 { //TODO: Speed this up
+    static int frame = 0;
+    static int lastFrame = 0;
+
     SDL_SetRenderDrawColor(global.mainRenderer, scenePtr->bgColor.r, scenePtr->bgColor.g, scenePtr->bgColor.b, scenePtr->bgColor.a);
     if (clearScreen)
         SDL_RenderClear(global.mainRenderer);
@@ -946,8 +1003,51 @@ void drawCScene(cScene* scenePtr, bool clearScreen, bool redraw)
     }
 
     if (redraw)
+    {
         SDL_RenderPresent(global.mainRenderer);
+        frame++;
+    }
+
+    if (fps != NULL)
+    {
+        *fps = (int) (frame * 1000.0 / (SDL_GetTicks() - startTime));
+
+        int sleepFor = 0;
+
+        if (fpsCap > 0 && (sleepFor = (1000 / fpsCap) - (SDL_GetTicks() - lastFrame)) > 0)
+            SDL_Delay(sleepFor);  //FPS limiter; rests for (X - time spent) ms per frame, effectively making each frame run for ~X ms, or (1000 / X) FPS
+
+        lastFrame = SDL_GetTicks();
+    }
 }
+
+bool initCFont(cFont* font, char* fontFilepath, int fontSize)
+{
+    loadTTFont(fontFilepath, &(font->font), fontSize);
+
+    if (font->font != NULL)
+        font->fontSize = fontSize;
+    else
+        font->fontSize = 0;
+
+    return font->font != NULL;
+}
+
+void destroyCFont(cFont* font)
+{
+    TTF_CloseFont(font->font);
+    font->fontSize = 0;
+}
+
+/** \brief Brings up a self-enclosed UI showing you what is in a cScene.
+ *
+ * \param scene cScene*
+ */
+void cSceneViewer(cScene* scene)
+{
+    //TODO
+}
+
 
 /** \brief Draws text to the screen using `global.mainFont`, wrapped and bounded
  *
@@ -965,7 +1065,7 @@ void drawText(char* input, int x, int y, int maxW, int maxH, SDL_Color color, bo
     {
         SDL_Texture* txtTexture = NULL;
         int* wh;
-        wh = loadTextTexture(input, &txtTexture, maxW, color, true);
+        wh = loadTextTexture(input, &txtTexture, maxW, color, global.mainFont.font, true);
         SDL_RenderCopy(global.mainRenderer, txtTexture, &((SDL_Rect){.w = *wh > maxW ? maxW : *wh, .h = *(wh + 1) > maxH ? maxH : *(wh + 1)}),
                             &((SDL_Rect){.x =  x, .y = y, .w = *wh > maxW ? maxW : *wh, .h = *(wh + 1) > maxH ? maxH : *(wh + 1)}));
 
@@ -1084,12 +1184,12 @@ cDoubleVector checkCSpriteCollision(cSprite sprite1, cSprite sprite2)  //using t
             break;
         }
         else
-        {  //finding the overlap is glitched with rotated stuff when s1 pos closer to origin than s2, but almost fixed
+        {
             double overlap = max1 - min2, o2 = max2 - min1, degrees = normals[i];
             if (o2 < overlap)
                 overlap = o2;
             if (min1 < min2)
-                degrees += 180;  //somewhere around here is probably where MVT with rotated shapes is glitched
+                degrees += 180;
 
             if (fabs(overlap) < minTranslationVector.magnitude || minTranslationVector.magnitude == 0)
             {
@@ -1155,7 +1255,7 @@ cDoubleVector checkC2DModelCollision(c2DModel model1, c2DModel model2, bool fast
 int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHeight, char* fontPath, int fontSize, int renderLayers, SDL_Color transparentColor, Uint32 windowFlags)
 {
     int status = 0;
-    mainWindow = NULL;
+    global.window = NULL;
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0)
     {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
@@ -1189,22 +1289,18 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
             Mix_VolumeMusic(global.musicVolume);
         }
         global.mainRenderer = NULL;
-        global.mainFont = NULL;
-        mainWindow = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, windowFlags);
-        if (!mainWindow)
+        global.window = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, windowFlags);
+        if (!global.window)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
             return 2;
         }
         else
         {
-            global.windows = calloc(1, sizeof(SDL_Window*));
-            global.windows[0] = mainWindow;
-            global.windowsOpen = 1;
             global.windowW = windowWidth;
             global.windowH = windowHeight;
             global.renderLayers = (renderLayers < 1) ? 6 : renderLayers;
-            global.mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
+            global.mainRenderer = SDL_CreateRenderer(global.window, -1, SDL_RENDERER_ACCELERATED);
             if(!global.mainRenderer)
             {
                 printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
@@ -1217,7 +1313,7 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
                 if (iconPath != NULL)
                 {
                     SDL_Surface* iconSurface = IMG_Load(iconPath);
-                    SDL_SetWindowIcon(mainWindow, iconSurface);
+                    SDL_SetWindowIcon(global.window, iconSurface);
                     SDL_FreeSurface(iconSurface);
                 }
 
@@ -1225,15 +1321,17 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
                 SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
                 SDL_RenderSetLogicalSize(global.mainRenderer, windowWidth, windowHeight);
                 SDL_RenderClear(global.mainRenderer);
-                loadTTFont(fontPath, &global.mainFont, fontSize);
-                //loadTTFont(FONT_FILE_NAME, &smallFont, 20);
-                if (!global.mainFont)
+
+                if (!initCFont(&(global.mainFont), fontPath, fontSize))
                 {
                     global.canDrawText = false;
                     status = 4;
                 }
-                global.canDrawText = true;
+                else
+                    global.canDrawText = true;
+
                 srand((unsigned int) time(NULL));
+
                 /*if (checkFile(CONFIG_FILE_NAME, SIZE_OF_SCANCODE_ARRAY))
                 {
                     loadConfig(CONFIG_FILE_NAME);
@@ -1250,67 +1348,33 @@ int initCoSprite(char* iconPath, char* windowName, int windowWidth, int windowHe
 */
 void closeCoSprite()
 {
-    TTF_CloseFont(global.mainFont);
-    //TTF_CloseFont(smallFont);
-    if (mainWindow)
-        SDL_DestroyWindow(mainWindow);
+    destroyCFont(&(global.mainFont));
+
+    SDL_DestroyWindow(global.window);
+
     if (global.mainRenderer)
         SDL_DestroyRenderer(global.mainRenderer);
-    /*for(int i = 0; i < MAX_SOUNDS; i++)
+
+    /*
+    for(int i = 0; i < MAX_SOUNDS; i++)
     {
         if (audioArray[i])
             Mix_FreeChunk(audioArray[i]);
-    }*/
+    }
+    */
 
-    /*for(int i = 0; i < MAX_MUSIC; i++)
+    /*
+    for(int i = 0; i < MAX_MUSIC; i++)
     {
         if (musicArray[i])
             Mix_FreeMusic(musicArray[i]);
-    }*/
+    }
+    */
 
     TTF_Quit();
     IMG_Quit();
     Mix_CloseAudio();
     SDL_Quit();
-}
-
-/** \brief Opens another SDL2 Window and saves its information to the coSprite object `global`.
- *
- * \param windowPtr - the SDL_Window object you define for this window.
- * \param windowName - a string containing the name you want the window to have.
- * \param windowWidth - how wide the window should be, in pixels
- * \param window Height - how tall the window should be, in pixels
- * \return the position of the window in `global.windows[]`
-*/
-int openCWindow(SDL_Window* windowPtr, char* windowName, int windowWidth, int windowHeight)
-{
-    windowPtr = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-    global.windows = realloc((void*) global.windows, global.windowsOpen + 1);
-    global.windows[global.windowsOpen] = windowPtr;
-    return global.windowsOpen++;
-}
-
-/** \brief closes a SDL2 window you opened with CoSprite.
- *
- * \param windowPos - the position of the window you want closed in `global.windows[]`. 0 is always the main window
-*/
-void closeCWindow(int windowPos)
-{
-    SDL_DestroyWindow(global.windows[windowPos]);
-    global.windows[windowPos] = NULL;
-    SDL_Window* theseWindows[global.windowsOpen];
-    if (windowPos < global.windowsOpen - 1)
-    {
-        int k = 0;
-        for(int i = 0; i < global.windowsOpen; i++)
-        {
-            if (global.windows[i] != NULL)
-                theseWindows[k++] = global.windows[i];
-        }
-        memcpy(global.windows, theseWindows, k * sizeof(SDL_Window*));
-    }
-    global.windows = realloc((void*) global.windows, global.windowsOpen - 1);
-    global.windowsOpen--;
 }
 
 /** \brief Loads an image into a SDL_Texture*
@@ -1362,16 +1426,17 @@ bool loadTTFont(char* filePath, TTF_Font** dest, int sizeInPts)
  * \param dest - pointer to your SDL_Texture*
  * \param maxW - How wide the text can be before wrapping
  * \param color - SDL_Color struct of color to be used
+ * \param font - TTF_Font* you want used
  * \param isBlended - true always
  * \return int[2] holding {width, height}
  *
  */
-int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, bool isBlended)
+int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, TTF_Font* font, bool isBlended)
 {
     static int wh[] = {0, 0};
     SDL_Surface* txtSurface = NULL;
     if (isBlended)
-        txtSurface = TTF_RenderText_Blended_Wrapped(global.mainFont, text, color, maxW);
+        txtSurface = TTF_RenderText_Blended_Wrapped(font, text, color, maxW);
 //    else
 //        txtSurface = TTF_RenderText(smallFont, text, color, ((SDL_Color) {181, 182, 173}));
     *dest = SDL_CreateTextureFromSurface(global.mainRenderer, txtSurface);
@@ -1387,7 +1452,7 @@ int* loadTextTexture(char* text, SDL_Texture** dest, int maxW, SDL_Color color, 
     SDL_FreeSurface(txtSurface);
     return wh;
 }
-//
+
 /** \brief rotates one point around another.
 * \param pt - your point you want rotated
 * \param center - the center point to rotate <pt> around
@@ -1442,9 +1507,9 @@ int checkFile(char* filePath)
 {
     FILE* filePtr = fopen(filePath, "r");
 	if (!filePtr)
-		return false;
+		return 0;
     char ch;
-    int lines = 0;
+    int lines = 1;
     while(!feof(filePtr))
     {
       ch = fgetc(filePtr);
@@ -1482,10 +1547,11 @@ int appendLine(char* filePath, char* stuff, bool addNewline)
 
 /** \brief inserts a line at a certain position, if the file isn't too big
  *
- * \param
- * \param
- * \param
- * \param
+ * \param filePath - valid string filepath (rel or absolute)
+ * \param lineNum - the line you wish to insert at (starting from 0)
+ * \param stuff - the data you wish to insert
+ * \param maxLength - the size in characters of how long any line in the file should be maximum.
+ * \param addNewline - if true, appends '\n' to your string inputted
  * \return -1 if failed to open or supply a valid line num, 0 if succeeded
  */
 int replaceLine(char* filePath, int lineNum, char* stuff, int maxLength, bool addNewline)
@@ -1515,9 +1581,10 @@ int replaceLine(char* filePath, int lineNum, char* stuff, int maxLength, bool ad
     {
         if (appendLine(filePath, allLines[i], false) == -1)
             return -1;
+        free(allLines[i]);
         //printf("%s\n", allLines[i]);
     }
-
+    free(allLines);
     return 0;
 }
 
@@ -1526,7 +1593,7 @@ int replaceLine(char* filePath, int lineNum, char* stuff, int maxLength, bool ad
  * \param filePath - valid string filepath (relative or absolute)
  * \param lineNum - the line number (starting from 0)
  * \param maxLength - how long the string should be, max.
- * \param output - valid pointer to your char* (should not be read-only)
+ * \param output - pointer to an uninitialized char* you want to save the line to
  * \return NULL if it fails, otherwise your string
  */
 char* readLine(char* filePath, int lineNum, int maxLength, char** output)
@@ -1536,15 +1603,72 @@ char* readLine(char* filePath, int lineNum, int maxLength, char** output)
 		return NULL;
 	else
 	{
-        char* thisLine = calloc(maxLength, sizeof(char));
+        char thisLine[maxLength];
         fseek(filePtr, 0, SEEK_SET);
+
         for(int p = 0; p <= lineNum; p++)
             fgets(thisLine, maxLength, filePtr);
+
         //printf("%s @ %d\n", thisLine, thisLine);
         strncpy(*output, thisLine, maxLength);
-        //printf("%s @ %d\n", output, output);
+        //printf("%s @ %x\n", output, output);
+
         fclose(filePtr);
-        free(thisLine);
+        //free(thisLine);
         return *output;
 	}
+}
+
+/** \brief Constructs a cLogger
+ *
+ * \param logger cLogger*
+ * \param outFilepath char* the filepath where the logs will go
+ * \param dateTimeFormat char* strftime() compatible time format, NULL for a default format
+ */
+void initCLogger(cLogger* logger, char* outFilepath, char* dateTimeFormat)
+{
+    logger->filepath = calloc(strlen(outFilepath) + 1, sizeof(char));
+    strncpy(logger->filepath, outFilepath, strlen(outFilepath));
+
+    if (!dateTimeFormat)
+    {
+        logger->dateTimeFormat = calloc(16, sizeof(char));
+        strncpy(logger->dateTimeFormat, "%b %d %Y %X %Z", 15); //mm dd yy HH:MM:SS TMZ
+    }
+    else
+    {
+        logger->dateTimeFormat = calloc(strlen(dateTimeFormat) + 1, sizeof(char));
+        strncpy(logger->dateTimeFormat, dateTimeFormat, strlen(dateTimeFormat));
+    }
+}
+
+/** \brief Logs an event of any type.
+ *
+ * \param logger cLogger
+ * \param entryType char* string that represents type of entry (info, warn, error, etc.)
+ * \param brief char* short information about log entry
+ * \param explanation char* detailed information about log entry
+ */
+void cLogEvent(cLogger logger, char* entryType, char* brief, char* explanation)
+{
+    char* dateString = calloc(101, sizeof(char));
+    const time_t curTime = time(NULL);
+    const struct tm* curLocalTime = localtime(&curTime);
+    int dateStringLen = strftime(dateString, 100, logger.dateTimeFormat, curLocalTime);
+    char* logLine = calloc(dateStringLen + strlen(entryType) + strlen(brief) + strlen(explanation) + 14, sizeof(char));
+    snprintf(logLine, dateStringLen + strlen(entryType) + strlen(brief) + strlen(explanation) + 13, "%s - %s: %s (%s)", dateString, entryType, brief, explanation);
+    appendLine(logger.filepath, logLine, true);
+
+    free(logLine);
+    free(dateString);
+}
+
+/** \brief Destroys a cLogger
+ *
+ * \param logger cLogger*
+ */
+void destroyCLogger(cLogger* logger)
+{
+    free(logger->filepath);
+    free(logger->dateTimeFormat);
 }

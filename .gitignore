@@ -6,8 +6,9 @@
 /builds/
 /warper/
 /warper-bin/
-/oldMakefile/
+/old/
 /output/
+/logs/
 *.cbp
 *.depend
 *.layout

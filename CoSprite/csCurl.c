@@ -3,8 +3,9 @@
 /** \brief Initializes curl globally, and opens a handle in the globalCurl object.
  *
  * \param flags - curl_global_init flags (typically CURL_GLOBAL_ALL)
+ * \param certPath - the full path (including filename) to your cert *.pem file
  */
-void initCoSpriteCurl(long flags)
+void initCoSpriteCurl(long flags, char* certPath)
 {
     globalCurl.retCode = curl_global_init(flags);
     if(globalCurl.retCode != CURLE_OK)
@@ -15,15 +16,14 @@ void initCoSpriteCurl(long flags)
     else
         globalCurl.online = true;
 
-    initCSCurl(&globalCurl, CURLOPT_HTTPGET);
+    initCSCurl(&globalCurl, certPath);
 }
 
 /** \brief Initializes a curl handle. initCoSpriteCurl() must be called prior to this.
  *
- * \param handle - your csCurl pointer to be filled in
- * \param requestOption - what you want your curl request to do
+ * \param handle - your csCurl pointer to be filled in (defaults to a GET)
  */
-void initCSCurl(csCurl* handle, CURLoption requestOption)
+void initCSCurl(csCurl* handle, char* certPath)
 {
     handle->retCode = CURLE_OK;
     handle->handle = curl_easy_init();
@@ -37,9 +37,9 @@ void initCSCurl(csCurl* handle, CURLoption requestOption)
 
     curl_easy_setopt(handle->handle, CURLOPT_FOLLOWLOCATION, 1L);  //follow redirects
     curl_easy_setopt(handle->handle, CURLOPT_VERBOSE, 1L);  //show verbose
-    curl_easy_setopt(handle->handle, CURLOPT_CAINFO, "./cacert.pem");  //give curl a list of good certs
+    curl_easy_setopt(handle->handle, CURLOPT_CAINFO, certPath);  //give curl a list of good certs
     curl_easy_setopt(handle->handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");     // some servers don't like requests that are made without a user-agent field, so we provide one
-    curl_easy_setopt(handle->handle, requestOption, 1L);  //set the user's request option to true
+    curl_easy_setopt(handle->handle, CURLOPT_HTTPGET, 1L);  //set the user's request option to true (in this case, a GET)
     curl_easy_setopt(handle->handle, CURLOPT_SSL_SESSIONID_CACHE, 0L);  //i think we need to remove this
 }
 
@@ -77,6 +77,8 @@ void csCurlPerformEasyGet(csCurl* handle, char* url, char* outputString)
  */
 void csCurlPerformEasyPost(csCurl* handle, char* url, char* data)
 {
+    curl_easy_setopt(handle->handle, CURLOPT_POST, 1L);
+
     curl_easy_setopt(handle->handle, CURLOPT_POSTFIELDS, data);
 
     curl_easy_setopt(handle->handle, CURLOPT_URL, url);

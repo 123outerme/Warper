@@ -26,8 +26,8 @@ typedef struct _csCurl {
 } csCurl;
 
 //functions:
-void initCoSpriteCurl(long flags);
-void initCSCurl(csCurl* handle, CURLoption requestOption);
+void initCoSpriteCurl(long flags, char* certPath);
+void initCSCurl(csCurl* handle, char* certPath);
 void csCurlPerformEasyGet(csCurl* handle, char* url, char* outputString);
 void csCurlPerformEasyPost(csCurl* handle, char* url, char* data);
 size_t performEasyGetCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
