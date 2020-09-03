@@ -1,2 +1,2 @@
 # Warper
-2D Action Platformer based on teleporting abilities.
+2D Action RPG based on teleporting abilities.
