@@ -43,16 +43,46 @@ int main(int argc, char** argv)
 
             for(int y = 0; y < tilemap.height; y++)
             {
+                tilemap.spritemap[x][y] = 4;  //normal sprite
+
+                if (x == 1)  //left row sprite
+                    tilemap.spritemap[x][y] = 1;
+
+                if (y == 1)  //top row sprite
+                    tilemap.spritemap[x][y] = 3;
+
+                if (x == tilemap.width - 2)  //right row sprite
+                    tilemap.spritemap[x][y] = 7;
+
+                if (y == tilemap.height - 2)  //bottom row sprite
+                    tilemap.spritemap[x][y] = 5;
+
                 if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height || (y == 20 && x > tilemap.width / 2) || (y == 40 && x < tilemap.height / 2))
                 {
-                    tilemap.spritemap[x][y] = 1;
+                    if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height)
+                        tilemap.spritemap[x][y] = 36;  //skyscraper sprite
+                    else
+                        tilemap.spritemap[x][y] = 13; //collision sprite
+
                     tilemap.collisionmap[x][y] = 1;
                 }
                 else
-                {
-                    tilemap.spritemap[x][y] = 0;
                     tilemap.collisionmap[x][y] = 0;
-                }
+
+                if (x == 1 && y == 1)  //top-left corner sprite
+                    tilemap.spritemap[x][y] = 0;
+
+
+
+                if (x == tilemap.width - 2 && y == tilemap.height - 2)  //bottom-right corner sprite
+                    tilemap.spritemap[x][y] = 8;
+
+                if (x == 1 && y == tilemap.height - 2)  //bottom-left corner sprite
+                    tilemap.spritemap[x][y] = 2;
+
+                if (x == tilemap.width - 2 && y == 1)  //top-right corner sprite
+                    tilemap.spritemap[x][y] = 6;
+
                 tilemap.eventmap[x][y] = 0;
             }
         }
@@ -62,18 +92,21 @@ int main(int argc, char** argv)
     cSprite testPlayerSprite;
     {
         SDL_Texture* tilesetTexture;
-        loadIMG("assets/tilesheet.png", &tilesetTexture);
+        loadIMG("assets/worldTilesheet.png", &tilesetTexture);
         cSprite* tileSprites = calloc(tilemap.width * tilemap.height, sizeof(cSprite));
         for(int x = 0; x < tilemap.width; x++)
         {
             for(int y = 0; y < tilemap.height; y++)
             {
-                initCSprite(&tileSprites[x * tilemap.height + y], tilesetTexture, "assets/tilesheet.png", tilemap.spritemap[x][y], (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize}, (cDoubleRect) {(tilemap.spritemap[x][y] / 32) * tilemap.tileSize, (tilemap.spritemap[x][y] % 32) * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+                initCSprite(&tileSprites[x * tilemap.height + y], tilesetTexture, "assets/worldTilesheet.png", tilemap.spritemap[x][y],
+                            (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize},
+                            (cDoubleRect) {(tilemap.spritemap[x][y] / 20) * tilemap.tileSize / 2, (tilemap.spritemap[x][y] % 20) * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
             }
         }
         initC2DModel(&mapModel, tileSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
-        initCSprite(&testPlayerSprite, tilesetTexture, "assets/tileset.png", 0, (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, (cDoubleRect) {tilemap.tileSize, 0, tilemap.tileSize, tilemap.tileSize}, NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+        initCSprite(&testPlayerSprite, NULL, "assets/playerTilesheet.png", 0, (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2}, NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
    }
 
     cCamera testCamera;

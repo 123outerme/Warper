@@ -77,7 +77,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     }
 
     tilemap->width = strtol(dimensionInput, NULL, 10);
-
+    printf("%d\n", tilemap->width);
     quit = false;
     free(dimensionInput);
 
@@ -116,7 +116,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
         tilemap->eventmap[x] = calloc(height, sizeof(int));
         for(int y = 0; y < height; y++)
         {
-            tilemap->spritemap[x][y] = 1;
+            tilemap->spritemap[x][y] = 4;
             tilemap->collisionmap[x][y] = 0;
             tilemap->eventmap[x][y] = -1;
         }
@@ -130,21 +130,31 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     cSprite tileSprite;
     {
         SDL_Texture* tilesetTexture;
-        loadIMG("./assets/tilesheet.png", &tilesetTexture);
+        loadIMG("./assets/worldTilesheet.png", &tilesetTexture);
         cSprite* tileSprites = calloc(tilemap->width * tilemap->height, sizeof(cSprite));
         cSprite* collisionSprites = calloc(tilemap->width * tilemap->height, sizeof(cSprite));
         for(int x = 0; x < tilemap->width; x++)
         {
             for(int y = 0; y < tilemap->height; y++)
             {
-                initCSprite(&tileSprites[x * tilemap->height + y], tilesetTexture, "./assets/tilesheet.png", tilemap->spritemap[x][y], (cDoubleRect) {tilemap->tileSize * x, tilemap->tileSize * y, tilemap->tileSize, tilemap->tileSize}, (cDoubleRect) {(tilemap->spritemap[x][y] / 32) * tilemap->tileSize, (tilemap->spritemap[x][y] % 32) * tilemap->tileSize, tilemap->tileSize, tilemap->tileSize}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
-                initCSprite(&collisionSprites[x * tilemap->height + y], tilesetTexture, "./assets/tilesheet.png", tilemap->collisionmap[x][y], (cDoubleRect) {tilemap->tileSize * x, tilemap->tileSize * y, tilemap->tileSize, tilemap->tileSize}, (cDoubleRect) {40 * tilemap->tileSize, (tilemap->collisionmap[x][y] + 19) * tilemap->tileSize, tilemap->tileSize, tilemap->tileSize}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+                initCSprite(&tileSprites[x * tilemap->height + y], tilesetTexture, "./assets/worldTilesheet.png", tilemap->spritemap[x][y],
+                            (cDoubleRect) {tilemap->tileSize * x, tilemap->tileSize * y, tilemap->tileSize, tilemap->tileSize},
+                            (cDoubleRect) {(tilemap->spritemap[x][y] / 20) * tilemap->tileSize / 2, (tilemap->spritemap[x][y] % 20) * tilemap->tileSize / 2, tilemap->tileSize / 2, tilemap->tileSize / 2},
+                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+
+                initCSprite(&collisionSprites[x * tilemap->height + y], tilesetTexture, "./assets/worldTilesheet.png", tilemap->collisionmap[x][y],
+                            (cDoubleRect) {tilemap->tileSize * x, tilemap->tileSize * y, tilemap->tileSize, tilemap->tileSize},
+                            (cDoubleRect) {39 * tilemap->tileSize / 2, (tilemap->collisionmap[x][y] + 18) * tilemap->tileSize / 2, tilemap->tileSize / 2, tilemap->tileSize / 2},
+                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
             }
         }
         initC2DModel(&mapModel, tileSprites, tilemap->width * tilemap->height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
         initC2DModel(&collisionModel, collisionSprites, tilemap->width * tilemap->height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
-        initCSprite(&tileSprite, tilesetTexture, "./assets/tilesheet.png", 1, (cDoubleRect) {tilemap->tileSize, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize}, (cDoubleRect) {0, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize}, NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+        initCSprite(&tileSprite, tilesetTexture, "./assets/worldTilesheet.png", 0,
+                    (cDoubleRect) {tilemap->tileSize, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize},
+                    (cDoubleRect) {0, 0, tilemap->tileSize / 2, tilemap->tileSize / 2},
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
     }
 
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
@@ -152,55 +162,75 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
 
     while(!quit)
     {
-        cInputState input = cGetInputState(true);
+        SDL_Event e;
 
-        if (input.quitInput || input.keysym.sym == SDLK_SPACE)
-            quit = true;
-
-        if (input.isClick)
+        while(SDL_PollEvent(&e) != 0)
         {
-            int tileX = input.click.x / tilemap->tileSize, tileY = input.click.y / tilemap->tileSize;
-
-            if (spriteMode)
+            if(e.type == SDL_QUIT)
             {
-                tilemap->spritemap[tileX][tileY] = (input.click.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
-                mapModel.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap[tileX][tileY];
-                mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap[tileX][tileY] / 32) * tilemap->tileSize;
-                mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap[tileX][tileY] % 32) * tilemap->tileSize;
+                quit = true;
             }
             else
             {
-                tilemap->collisionmap[tileX][tileY] = (input.click.button == SDL_BUTTON_LEFT) ? 1 : 0;
-                collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
-                collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 40;
-                collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = 19 + (input.click.button == SDL_BUTTON_LEFT);
+                if(e.type == SDL_KEYDOWN)
+                {
+                    if (e.key.keysym.sym == SDLK_q && tileSprite.id > 0)
+                        tileSprite.id--;
+
+                    if (e.key.keysym.sym == SDLK_e)
+                        tileSprite.id++;
+
+                    if (e.key.keysym.sym == SDLK_w)
+                        inputCamera.rect.y -= 6;
+
+                    if (e.key.keysym.sym == SDLK_s)
+                        inputCamera.rect.y += 6;
+
+                    if (e.key.keysym.sym == SDLK_a)
+                        inputCamera.rect.x -= 6;
+
+                    if (e.key.keysym.sym == SDLK_d)
+                        inputCamera.rect.x += 6;
+
+                    if (e.key.keysym.sym == SDLK_LSHIFT)
+                    {
+                        spriteMode = !spriteMode;
+                        collisionModel.renderLayer = spriteMode ? 0 : 4;
+                    }
+
+                    if (e.key.keysym.sym == SDLK_SPACE || e.key.keysym.sym == SDLK_RETURN)
+                        quit = true;
+
+                    tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
+                    tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
+                }
+                if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT))
+                {
+                    int tileX = (e.button.x + inputCamera.rect.x) / tilemap->tileSize, tileY = (e.button.y + inputCamera.rect.y) / tilemap->tileSize;
+
+                    if (spriteMode)
+                    {
+                        tilemap->spritemap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
+                        mapModel.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap[tileX][tileY];
+                        mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap[tileX][tileY] / 20) * tilemap->tileSize / 2;
+                        mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap[tileX][tileY] % 20) * tilemap->tileSize / 2;
+                    }
+                    else
+                    {
+                        tilemap->collisionmap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? 1 : 0;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 39 * tilemap->tileSize / 2;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (18 + (e.button.button == SDL_BUTTON_LEFT)) * tilemap->tileSize / 2;
+                    }
+                }
+                if (e.type == SDL_MOUSEMOTION)
+                {
+                    tileSprite.drawRect.x = e.motion.x + inputCamera.rect.x - tilemap->tileSize / 2;
+                    tileSprite.drawRect.y = e.motion.y + inputCamera.rect.y - tilemap->tileSize / 2;
+                }
             }
+            drawCScene(&inputScene, true, true, NULL, 60);
         }
-        else
-        {
-            if (input.keyStates[SDL_SCANCODE_Q] && tileSprite.id > 0)
-                tileSprite.id--;
-
-            if (input.keyStates[SDL_SCANCODE_E])
-                tileSprite.id++;
-
-            if (input.keyStates[SDL_SCANCODE_LSHIFT])
-            {
-                spriteMode = !spriteMode;
-                collisionModel.renderLayer = spriteMode ? 0 : 4;
-            }
-
-            tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 32) : 40) * tilemap->tileSize;
-            tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 32) : 20) * tilemap->tileSize;
-        }
-
-        if (input.motion.x >= 0)
-        {
-            tileSprite.drawRect.x = input.motion.x - tilemap->tileSize / 2;
-            tileSprite.drawRect.y = input.motion.y - tilemap->tileSize / 2;
-        }
-
-        drawCScene(&inputScene, true, true, NULL, 60);
     }
 
     destroyCScene(&inputScene);
