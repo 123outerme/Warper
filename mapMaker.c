@@ -22,6 +22,72 @@ void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionm
     }
 }
 
+/** \brief Imports a tilemap from text (hex) data
+ *
+ * \param tilemap warperTilemap* expects tilemap->width and ->height to be filled in
+ * \param importedData char* your map data
+ */
+void importTilemap(warperTilemap* tilemap, char* importedData)
+{
+    char* tileData = calloc(4, sizeof(char));
+
+    tilemap->spritemap = calloc(tilemap->width, sizeof(int*));
+    tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
+    tilemap->eventmap = calloc(tilemap->width, sizeof(int*));
+
+    int x = -1, y = tilemap->height + 1; //triggers if statement
+
+    bool quit = false;
+
+    while(!quit)
+    {
+        if (y > tilemap->height)
+        {
+            y = 0;
+            x++;
+            tilemap->spritemap[x] = calloc(tilemap->height, sizeof(int));
+            tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
+            tilemap->eventmap[x] = calloc(tilemap->height, sizeof(int));
+        }
+
+        strncpy(tileData, (importedData + 6 + (x * tilemap->height + y) * 3 * 3), 3);  //starts at importedData + 6 + (pos * 3 digits * 3 different maps)
+        tilemap->spritemap[x][y] = strtol(tileData, NULL, 16);
+        strncpy(tileData, (importedData + 9 + (x * tilemap->height + y) * 3 * 3), 3);
+        tilemap->collisionmap[x][y] = strtol(tileData, NULL, 16);
+        strncpy(tileData, (importedData + 12 + (x * tilemap->height + y) * 3 * 3), 3);
+        tilemap->eventmap[x][y] = strtol(tileData, NULL, 16);
+        y++;
+
+        if (x > tilemap->width)
+            quit = true;
+    }
+    free(tileData);
+}
+
+void exportTilemap(warperTilemap tilemap, char* exportedData)
+{
+    char* tileString = calloc(4, sizeof(char));
+
+    snprintf(tileString, 4, "%.3X", tilemap.width);
+    strcat(exportedData, tileString);
+    snprintf(tileString, 4, "%.3X", tilemap.height);
+    strcat(exportedData, tileString);
+
+    for(int x = 0; x < tilemap.width; x++)
+    {
+        for(int y = 0; y < tilemap.height; y++)
+        {
+            snprintf(tileString, 4, "%.3X", tilemap.spritemap[x][y]);
+            strcat(exportedData, tileString);
+            snprintf(tileString, 4, "%.3X", tilemap.collisionmap[x][y]);
+            strcat(exportedData, tileString);
+            snprintf(tileString, 4, "%.3X", tilemap.eventmap[x][y]);
+            strcat(exportedData, tileString);
+        }
+    }
+    free(tileString);
+}
+
 void destroyWarperTilemap(warperTilemap* tilemap)
 {
     for(int x = 0; x < tilemap->width; x++)
@@ -118,7 +184,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
         {
             tilemap->spritemap[x][y] = 4;
             tilemap->collisionmap[x][y] = 0;
-            tilemap->eventmap[x][y] = -1;
+            tilemap->eventmap[x][y] = 0;
         }
     }
 
@@ -162,7 +228,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
 
     while(!quit)
     {
-        SDL_Event e;
+        SDL_Event e;  //this type of thing is needed because clicking & dragging doesn't work otherwise
 
         while(SDL_PollEvent(&e) != 0)
         {
@@ -204,23 +270,25 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
                     tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
                     tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
                 }
-                if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT))
+                if ((SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) && e.button.button != 0)
                 {
                     int tileX = (e.button.x + inputCamera.rect.x) / tilemap->tileSize, tileY = (e.button.y + inputCamera.rect.y) / tilemap->tileSize;
-
-                    if (spriteMode)
+                    if (tileX >= 0 && tileY >= 0)
                     {
-                        tilemap->spritemap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
-                        mapModel.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap[tileX][tileY];
-                        mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap[tileX][tileY] / 20) * tilemap->tileSize / 2;
-                        mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap[tileX][tileY] % 20) * tilemap->tileSize / 2;
-                    }
-                    else
-                    {
-                        tilemap->collisionmap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? 1 : 0;
-                        collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
-                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 39 * tilemap->tileSize / 2;
-                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (18 + (e.button.button == SDL_BUTTON_LEFT)) * tilemap->tileSize / 2;
+                        if (spriteMode)
+                        {
+                            tilemap->spritemap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
+                            mapModel.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap[tileX][tileY];
+                            mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap[tileX][tileY] / 20) * tilemap->tileSize / 2;
+                            mapModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap[tileX][tileY] % 20) * tilemap->tileSize / 2;
+                        }
+                        else
+                        {
+                            tilemap->collisionmap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? 1 : 0;
+                            collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
+                            collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 39 * tilemap->tileSize / 2;
+                            collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (18 + (e.button.button == SDL_BUTTON_LEFT)) * tilemap->tileSize / 2;
+                        }
                     }
                 }
                 if (e.type == SDL_MOUSEMOTION)
@@ -229,9 +297,15 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
                     tileSprite.drawRect.y = e.motion.y + inputCamera.rect.y - tilemap->tileSize / 2;
                 }
             }
-            drawCScene(&inputScene, true, true, NULL, 60);
         }
+        drawCScene(&inputScene, true, true, NULL, 60);
     }
+
+    char* tileMapData = calloc(3 * 3 * tilemap->width * tilemap->height + 3 + 3 + 1, sizeof(char));  //3 arrays * 3 digits * width * height + width data + height data + 1 to be safe
+    exportTilemap(*tilemap, tileMapData);
+
+    printf("%s\n", tileMapData);
+    free(tileMapData);
 
     destroyCScene(&inputScene);
 }

@@ -9,6 +9,7 @@
 /old/
 /output/
 /logs/
+/maps/
 /CoSprite/
 *.cbp
 *.depend

@@ -17,9 +17,11 @@ typedef struct _warperTilemap
 } warperTilemap;
 
 void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int** eventmap, int width, int height);
-
+void importTilemap(warperTilemap* tilemap, char* importedData);
+void exportTilemap(warperTilemap tilemap, char* exportedData);
 void destroyWarperTilemap(warperTilemap* tilemap);
 
 void createNewMap(warperTilemap* tilemap, int tileSize);
+
 
 #endif // MAPMAKER_H_INCLUDED
