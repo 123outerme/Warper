@@ -7,14 +7,15 @@
 typedef struct _warperTextBox
 {
     cDoubleRect rect;
-    SDL_Color color;
+    SDL_Color bgColor;
+    SDL_Color highlightColor;
     cText* texts;
     int textsSize;
     bool isMenu;
     int selection;
 } warperTextBox;
 
-void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color textBoxColor, cText* texts, int textsSize, bool isMenu);
+void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, int textsSize, bool isMenu);
 void drawWarperTextBox(void* textBoxSubclass, cCamera camera);
 void destroyWarperTextBox(void* textBoxSubclass);
 int gameLoop(warperTilemap tilemap);
@@ -181,25 +182,30 @@ int gameLoop(warperTilemap tilemap)
     }
 
     //note: convert warperTextBox from cTexts to char*s
-    /*cResource textBoxResource;
+    //*
+    cResource textBoxResource;
     warperTextBox textBox;
+    int lastSelection = -1;
     {
         int textCount = 2;
         char* strings[2] = {"Test", "Text box"};
         cText* texts = calloc(textCount, sizeof(cText));
         for(int i = 0; i < textCount; i++)
         {
-            initCText(&(texts[i]), strings[i], (cDoubleRect) {0, (10 + i) * tilemap.tileSize, 40 * tilemap.tileSize, (10 - i) * tilemap.tileSize}, 40 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+            initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
         }
-        initWarperTextBox(&textBox, (cDoubleRect) {0, 10 * tilemap.tileSize, 40 * tilemap.tileSize, 10 * tilemap.tileSize}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, texts, textCount, false);
+        initWarperTextBox(&textBox, (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize},
+                          (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0xC0},
+                          texts, textCount, true);
     }
-    initCResource(&textBoxResource, (void*) &textBox, &drawWarperTextBox, &destroyWarperTextBox, 1);*/
+    initCResource(&textBoxResource, (void*) &textBox, &drawWarperTextBox, &destroyWarperTextBox, 0);
+    //*/
 
     cCamera testCamera;
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1, 0.0);
 
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[1]) {&mapModel}, 1, /*(cResource*[1]) {&textBoxResource}, 1,*/ NULL, 0, NULL, 0);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[1]) {&mapModel}, 1, (cResource*[1]) {&textBoxResource}, 1, /*NULL, 0,*/ NULL, 0);
 
     bool quit = false;
 
@@ -318,13 +324,37 @@ int gameLoop(warperTilemap tilemap)
             }
         }
 
-        //if we're in battle mode
-        if (gameplayMode == WARPER_MODE_BATTLE)
+        //if we're in walk mode
+        if (gameplayMode == WARPER_MODE_WALK)
         {
             if (getDistance(testPlayerSprite.drawRect.x, testPlayerSprite.drawRect.y, testEnemySprite.drawRect.x, testEnemySprite.drawRect.y) < 6 * tilemap.tileSize)
             {
                 gameplayMode = WARPER_MODE_BATTLE;
+                textBoxResource.renderLayer = 1;
                 printf("Initiate battle\n");
+            }
+        }
+        else
+        {
+            //we're in battle mode (?)
+        }
+
+        if (input.isClick)
+        {
+            //if we clicked
+            //if we clicked the text box
+            if (input.click.x > textBox.rect.x && input.click.x < textBox.rect.x + textBox.rect.w && input.click.y > textBox.rect.y && input.click.y < textBox.rect.y + textBox.rect.h)
+            {
+                for(int i = 0; i < textBox.textsSize; i++)
+                {
+                    if (input.click.x > textBox.texts[i].rect.x && input.click.x < textBox.texts[i].rect.x + textBox.texts[i].rect.w &&
+                        input.click.y > textBox.texts[i].rect.y && input.click.y < textBox.texts[i].rect.y + textBox.texts[i].rect.h)
+                    {
+                        //we clicked on an element
+                        lastSelection = textBox.selection;
+                        textBox.selection = i;
+                    }
+                }
             }
         }
 
@@ -376,10 +406,11 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
     return mtv;
 }
 
-void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color textBoxColor, cText* texts, int textsSize, bool isMenu)
+void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, int textsSize, bool isMenu)
 {
     textBox->rect = rect;
-    textBox->color = textBoxColor;
+    textBox->bgColor = bgColor;
+    textBox->highlightColor = highlightColor;
     textBox->textsSize = textsSize;
     textBox->texts = calloc(textsSize, sizeof(cText));
     if (textBox->texts != NULL)
@@ -407,7 +438,7 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     SDL_GetRenderDrawColor(global.mainRenderer, &prevR, &prevG, &prevB, &prevA);
 
     //draw text box
-    SDL_SetRenderDrawColor(global.mainRenderer, textBox->color.r, textBox->color.g, textBox->color.b, textBox->color.a);
+    SDL_SetRenderDrawColor(global.mainRenderer, textBox->bgColor.r, textBox->bgColor.g, textBox->bgColor.b, textBox->bgColor.a);
     SDL_RenderFillRect(global.mainRenderer, &boxRect);
 
     //draw cTexts
@@ -418,9 +449,9 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     }
 
     //draw selection highlight
-    if (textBox->isMenu)
+    if (textBox->isMenu && textBox->selection != -1)
     {
-        //change color to selection color
+        SDL_SetRenderDrawColor(global.mainRenderer, textBox->highlightColor.r, textBox->highlightColor.g, textBox->highlightColor.b, textBox->highlightColor.a);
         SDL_Rect selectionRect = (SDL_Rect) {textBox->rect.x, boxRect.y + textBox->selection * textBox->texts[textBox->selection].font->fontSize, textBox->texts[textBox->selection].rect.w, textBox->texts[textBox->selection].rect.h};
         SDL_RenderDrawRect(global.mainRenderer, &selectionRect);
     }
@@ -433,7 +464,8 @@ void destroyWarperTextBox(void* textBoxSubclass)
     warperTextBox* textBox = (warperTextBox*) textBoxSubclass;
 
     textBox->rect = (cDoubleRect) {0,0,0,0};
-    textBox->color = (SDL_Color) {0,0,0,0};
+    textBox->bgColor = (SDL_Color) {0,0,0,0};
+    textBox->highlightColor = (SDL_Color) {0,0,0,0};
 
     for(int i = 0; i < textBox->textsSize; i++)
     {
