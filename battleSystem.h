@@ -1,17 +1,7 @@
 #ifndef PLAYER_H_INCLUDED
 #define PLAYER_H_INCLUDED
 
-
-//#defines
-#ifndef bool
-    #define bool char
-    #define false 0
-    #define true 1
-    #define boolToString(bool) (bool ? "true" : "false")
-#endif // bool
-#ifndef NULL
-    #define NULL ((void*) 0)
-#endif //NULL
+#include "warper.h"
 
 
 //enum definitions
@@ -33,6 +23,14 @@ enum warperObjective
 
 
 //struct definitions
+typedef struct _node {
+    int x;
+    int y;
+    void* lastNode;
+    bool visited;
+    double distance;
+} node;
+
 typedef struct _warperStats
 {
     int hp;
@@ -52,6 +50,7 @@ typedef struct _warperBattleData
 
 typedef struct _warperUnit
 {
+    cSprite* sprite;
     int level;
     int exp;
     int maxHp;
@@ -68,7 +67,7 @@ typedef struct _warperItem
 
 typedef struct _warperTeam
 {
-    warperUnit* units;
+    warperUnit** units;
     int unitsSize;
     warperItem* inventory;
     int inventorySize;
@@ -82,6 +81,10 @@ typedef struct _warperBattle
 } warperBattle;
 
 //function prototypes
+void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money);
+void destroyWarperTeam(warperTeam* team);
+void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
+node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
 
