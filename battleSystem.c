@@ -19,13 +19,13 @@ void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperI
  * \param visited bool
  * \param distance double
  */
-void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance)
+void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distanceToNext)
 {
     nodePtr->x = x;
     nodePtr->y = y;
     nodePtr->lastNode = lastNode;
     nodePtr->visited = visited;
-    nodePtr->distance = distance;
+    nodePtr->distanceToNext = distanceToNext;
 }
 
 /** \brief Searches for a path between two points on a map with a breadth first search
@@ -38,7 +38,6 @@ void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double 
  * \param lengthOfPath double* - pointer to a double you want to hold the path length (in number of nodes)
  * \param drawDebug const bool debug use only, set to false
  * \return node* The fastest path you can travel through (must be manually free()'d after use)
- *
  */
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera)
 {
@@ -65,28 +64,32 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
     while(!quit)
     {
         //curNode->visited = true;
-        for(int i = 0; i < 4; i++)
+        for(int i = 0; i < 8; i++)  //8 directions: 0 = right, 1 = left, 2 = down, 3 = up, 4 = down-right, 5 = down-left, 6 = up-right, 7 = up-left
         {
-            int x = (curNode->x / tilemap.tileSize) + (i == 0) - (i == 1);
-            int y = (curNode->y / tilemap.tileSize) + (i == 2) - (i == 3);
+            int x = (curNode->x / tilemap.tileSize) + (i == 0 || i == 4 || i == 6) - (i == 1 || i == 5 || i == 7);
+            int y = (curNode->y / tilemap.tileSize) + (i == 2 || i == 4 || i == 5) - (i == 3 || i == 6 || i == 7);
             //printf("%s\n", boolToString(curNode->visited));
             if (!(searchList[y][x].visited) && (x >= 0 && y >= 0 && x < tilemap.width && y < tilemap.height) && tilemap.collisionmap[x][y] == 0)
             {
-                queue[queueCount++] = &(searchList[y][x]);
-                searchList[y][x].visited = true;
-                searchList[y][x].lastNode = (void*) curNode;
-                if (((int) x == (int) startX / tilemap.tileSize) && ((int) y == (int) startY / tilemap.tileSize))
-                {  //check if node is at startX, startY. Stop if is, continue if not
-                    quit = true;
-                    break;
-                }
-                if (drawDebug)
+                if (i < 4 || (i >= 4 && tilemap.collisionmap[x - (i == 4 || i == 6) + (i == 5 || i == 7)][y] == 0 && tilemap.collisionmap[x][y - (i == 4 || i == 5) + (i == 6 || i == 7)] == 0))
                 {
-                    SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xF0);
-                    SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = x * tilemap.tileSize - camera->rect.x, .y = y * tilemap.tileSize - camera->rect.y, .w = tilemap.tileSize, .h = tilemap.tileSize}));
-                    SDL_RenderPresent(global.mainRenderer);
-                    //printf("%p\n", searchList[y][x].lastNode);
-                    //waitForKey(true);
+                    //if we aren't in a diagonal, or if we are, and the two adjacent non-diagonal tiles are free of collision
+                    queue[queueCount++] = &(searchList[y][x]);
+                    searchList[y][x].visited = true;
+                    searchList[y][x].lastNode = (void*) curNode;
+                    if (((int) x == (int) startX / tilemap.tileSize) && ((int) y == (int) startY / tilemap.tileSize))
+                    {  //check if node is at startX, startY. Stop if is, continue if not
+                        quit = true;
+                        break;
+                    }
+                    if (drawDebug)
+                    {
+                        SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xF0);
+                        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = x * tilemap.tileSize - camera->rect.x, .y = y * tilemap.tileSize - camera->rect.y, .w = tilemap.tileSize, .h = tilemap.tileSize}));
+                        SDL_RenderPresent(global.mainRenderer);
+                        //printf("%p\n", searchList[y][x].lastNode);
+                        //waitForKey(true);
+                    }
                 }
             }
         }

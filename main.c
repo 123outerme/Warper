@@ -335,7 +335,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     int chosenUnit = 0;
     node* movePath = NULL;
     int lengthOfPath = 0;
-    cDoublePt finalMovePoint = (cDoublePt) {-1, -1};
     int pathIndex = -1;
 
     while(!quit)
@@ -357,12 +356,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             if (movePath == NULL)
             {
                 printf("move\n");
-                double moveClickX = input.click.x + scene->camera->rect.x - playerTeam->units[chosenUnit]->sprite->drawRect.w / 2, moveClickY = input.click.y + scene->camera->rect.x - playerTeam->units[chosenUnit]->sprite->drawRect.h / 2;  //where we would move to
+                double moveClickX = input.click.x + scene->camera->rect.x - playerTeam->units[chosenUnit]->sprite->drawRect.w / 2, moveClickY = input.click.y + scene->camera->rect.y - playerTeam->units[chosenUnit]->sprite->drawRect.h / 2;  //where we would move to
+
                 cDoubleRect oldRect = playerTeam->units[chosenUnit]->sprite->drawRect;  //save our current location rect
                 playerTeam->units[chosenUnit]->sprite->drawRect.x = moveClickX;  //move the unit there pre-maturely
                 playerTeam->units[chosenUnit]->sprite->drawRect.y = moveClickY;
-
-                finalMovePoint = (cDoublePt) {moveClickX, moveClickY};
 
                 cDoubleVector mtv = getTilemapCollision(*(playerTeam->units[chosenUnit]->sprite), tilemap);  //check if we can move there
 
@@ -378,37 +376,32 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     //we can move there
                     lengthOfPath = 0;
                     pathIndex = 0;
+                    //maybe change pathing algorithm to checking in the exact direction we want to go, then navigating around walls?
                     movePath = BreadthFirst(tilemap, oldRect.x, oldRect.y, playerTeam->units[chosenUnit]->sprite->drawRect.x, playerTeam->units[chosenUnit]->sprite->drawRect.y, &lengthOfPath, false, NULL);
-                    //show the movement path and ask for confirmation
+                    movePath[lengthOfPath - 1].x = moveClickX;
+                    movePath[lengthOfPath - 1].y = moveClickY;
+                    //TODO: show the movement path and ask for confirmation
                     playerTeam->units[chosenUnit]->sprite->drawRect = oldRect;
-                    //Testing: for now just move there */
+                    //Testing: for now just move there without checking to see if we have enough stamina */
                 }
             }
         }
 
         if (movePath != NULL)
         {
+            //move our unit until there are no more nodes
+            playerTeam->units[chosenUnit]->sprite->drawRect.x = movePath[pathIndex].x;
+            playerTeam->units[chosenUnit]->sprite->drawRect.y = movePath[pathIndex].y;
+            //for testing, no movement limits
+            //playerTeam->units[chosenUnit]->battleData.remainingDistance -= sqrt(pow(movePath[pathIndex].x, 2.0) + pow(movePath[pathIndex].x, 2.0));  //subtract out the magnitude of our movements
+            pathIndex++;
             if (pathIndex >= lengthOfPath)
             {
-                //do final movement
-                playerTeam->units[chosenUnit]->sprite->drawRect.x = finalMovePoint.x;
-                playerTeam->units[chosenUnit]->sprite->drawRect.y = finalMovePoint.y;
                 //set flag to false, reset variables, free movePath
                 free(movePath);
                 movePath = NULL;
                 pathIndex = -1;
                 lengthOfPath = 0;
-                finalMovePoint = (cDoublePt) {-1, -1};
-            }
-            else
-            {
-                //move our unit until there are no more nodes
-                playerTeam->units[chosenUnit]->sprite->drawRect.x = movePath[pathIndex].x;
-                playerTeam->units[chosenUnit]->sprite->drawRect.y = movePath[pathIndex].y;
-                //for testing, no movement limits
-                //playerTeam->units[chosenUnit]->battleData.remainingDistance -= sqrt(pow(movePath[pathIndex].x, 2.0) + pow(movePath[pathIndex].x, 2.0));  //subtract out the magnitude of our movements
-                pathIndex++;
-
             }
         }
 

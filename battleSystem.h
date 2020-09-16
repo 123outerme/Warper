@@ -28,7 +28,7 @@ typedef struct _node {
     int y;
     void* lastNode;
     bool visited;
-    double distance;
+    double distanceToNext;
 } node;
 
 typedef struct _warperStats
@@ -83,7 +83,7 @@ typedef struct _warperBattle
 //function prototypes
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money);
 void destroyWarperTeam(warperTeam* team);
-void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
+void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distanceToNext);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
