@@ -37,9 +37,7 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
 
     int x = -1, y = tilemap->height + 1; //triggers if statement
 
-    bool quit = false;
-
-    while(!quit)
+    while(x <= tilemap->width)
     {
         if (y > tilemap->height)
         {
@@ -57,9 +55,6 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
         strncpy(tileData, (importedData + 12 + (x * tilemap->height + y) * 3 * 3), 3);
         tilemap->eventmap[x][y] = strtol(tileData, NULL, 16);
         y++;
-
-        if (x > tilemap->width)
-            quit = true;
     }
     free(tileData);
 }

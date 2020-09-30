@@ -11,6 +11,7 @@ typedef struct _warperTextBox
     int textsSize;
     bool isMenu;
     int selection;
+    int storedSelection;
 } warperTextBox;
 
 void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, int textsSize, bool isMenu);
@@ -203,7 +204,7 @@ int gameLoop(warperTilemap tilemap)
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1, 0.0);
 
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[1]) {&mapModel}, 1, (cResource*[1]) {&textBoxResource}, 1, /*NULL, 0,*/ NULL, 0);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[1]) {&mapModel}, 1, /*(cResource*[1]) {&textBoxResource}, 1,*/ NULL, 0, NULL, 0);
 
     bool quit = false;
 
@@ -329,10 +330,33 @@ int gameLoop(warperTilemap tilemap)
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
 {
     bool quit = false, quitEverything = false;
+    int confirmMode = 0;  //used for confirming selections
+
+    cResource battleTextBoxRes;
+    warperTextBox battleTextBox;
+    {
+        int textCount = 4 + 2;  //3 options + the +/- buttons
+        char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack"};
+        cText* texts = calloc(textCount, sizeof(cText));
+        for(int i = 0; i < textCount - 2; i++)
+        {
+            initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        }
+        initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tilemap.tileSize, 14 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tilemap.tileSize, 19 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
+
+        initWarperTextBox(&battleTextBox, (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize},
+                          (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0xC0},
+                          texts, textCount, true);
+    }
+    initCResource(&battleTextBoxRes, (void*) &battleTextBox, &drawWarperTextBox, &destroyWarperTextBox, 3);
+    battleTextBox.selection = 0;
+
+    addResourceToCScene(scene, &battleTextBoxRes);
 
     cInputState input;
     int framerate = 0;
-    int chosenUnit = 0;
+    int selectedUnit = 0;
     node* movePath = NULL;
     int lengthOfPath = 0;
     int pathIndex = -1;
@@ -350,39 +374,139 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         if (input.isClick)
         {
             //if we clicked
-            printf("click\n");
-
-            //if we want to move
-            if (movePath == NULL)
+            if (confirmMode)
             {
-                printf("move\n");
-                double moveClickX = input.click.x + scene->camera->rect.x - playerTeam->units[chosenUnit]->sprite->drawRect.w / 2, moveClickY = input.click.y + scene->camera->rect.y - playerTeam->units[chosenUnit]->sprite->drawRect.h / 2;  //where we would move to
+                //
+            }
+            else
+            {
+                if (battleTextBoxRes.renderLayer != 0 && (input.click.x > battleTextBox.rect.x && input.click.x < battleTextBox.rect.x + battleTextBox.rect.w &&
+                                                          input.click.y > battleTextBox.rect.y && input.click.y < battleTextBox.rect.y + battleTextBox.rect.h))
+                {  // if we clicked the text box
+                    battleTextBox.storedSelection = battleTextBox.selection;
 
-                cDoubleRect oldRect = playerTeam->units[chosenUnit]->sprite->drawRect;  //save our current location rect
-                playerTeam->units[chosenUnit]->sprite->drawRect.x = moveClickX;  //move the unit there pre-maturely
-                playerTeam->units[chosenUnit]->sprite->drawRect.y = moveClickY;
-
-                cDoubleVector mtv = getTilemapCollision(*(playerTeam->units[chosenUnit]->sprite), tilemap);  //check if we can move there
-
-                if (mtv.magnitude)
-                {  //if there was a collision
-                    //reset movement
-                    //printf("no\n");
-                    playerTeam->units[chosenUnit]->sprite->drawRect = oldRect;
+                    for(int i = 0; i < battleTextBox.textsSize; i++)
+                    {
+                        if (input.click.x > battleTextBox.texts[i].rect.x && input.click.x < battleTextBox.texts[i].rect.x + battleTextBox.texts[i].rect.w &&
+                            input.click.y > battleTextBox.texts[i].rect.y && input.click.y < battleTextBox.texts[i].rect.y + battleTextBox.texts[i].rect.h)
+                        {
+                            //we clicked on an element
+                            battleTextBox.selection = i;
+                        }
+                    }
+                    if (battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2)
+                    {
+                        //we clicked on the minimize/maximize button
+                        if (battleTextBox.selection == battleTextBox.textsSize - 2 && battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer == 0)
+                        {
+                            //minimize
+                            battleTextBox.rect.y = 19 * tilemap.tileSize;
+                            battleTextBox.rect.h = tilemap.tileSize;
+                            for(int i = 0; i < battleTextBox.textsSize - 1; i++)
+                            {
+                                //hide each regular text
+                                battleTextBox.texts[i].renderLayer = 0;
+                            }
+                            battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer = 5;
+                            battleTextBox.selection = battleTextBox.storedSelection; //reset selection
+                        }
+                        if (battleTextBox.selection == battleTextBox.textsSize - 1)
+                        {
+                            if (battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer == 5)
+                            {
+                                //maximize
+                                battleTextBox.rect.y = 14 * tilemap.tileSize;
+                                battleTextBox.rect.h = 14 * tilemap.tileSize;
+                                for(int i = 0; i < battleTextBox.textsSize - 1; i++)
+                                {
+                                    //hide each regular text
+                                    battleTextBox.texts[i].renderLayer = 5;
+                                }
+                                battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer = 0;
+                            }
+                            battleTextBox.selection = battleTextBox.storedSelection; //reset selection to what it was before we minimized either way
+                        }
+                    }
                 }
                 else
-                {
-                    //printf("start moving\n");
-                    //we can move there
-                    lengthOfPath = 0;
-                    pathIndex = 0;
-                    //maybe change pathing algorithm to checking in the exact direction we want to go, then navigating around walls?
-                    movePath = BreadthFirst(tilemap, oldRect.x, oldRect.y, playerTeam->units[chosenUnit]->sprite->drawRect.x, playerTeam->units[chosenUnit]->sprite->drawRect.y, &lengthOfPath, false, NULL);
-                    movePath[lengthOfPath - 1].x = moveClickX;
-                    movePath[lengthOfPath - 1].y = moveClickY;
-                    //TODO: show the movement path and ask for confirmation
-                    playerTeam->units[chosenUnit]->sprite->drawRect = oldRect;
-                    //Testing: for now just move there without checking to see if we have enough stamina */
+                {  //if we didn't click on the text box
+
+                    double worldClickX = input.click.x + scene->camera->rect.x - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2, worldClickY = input.click.y + scene->camera->rect.y - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;  //where we clicked on in the world
+                    //if we want to select our unit
+                    if (battleTextBox.selection == 0)
+                    {
+                        for(int i = 0; i < playerTeam->unitsSize; i++)
+                        {
+                            if (worldClickX > playerTeam->units[i]->sprite->drawRect.x && worldClickX < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w &&
+                                worldClickY > playerTeam->units[i]->sprite->drawRect.y && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
+                            {
+                                selectedUnit = i;
+                                //printf("found unit %d\n", i);
+                            }
+                        }
+                    }
+
+                    //if we want to move
+                    if (battleTextBox.selection == 1 || battleTextBox.selection == 2)
+                    {  //move or teleport
+                        if (movePath == NULL)
+                        {
+                            //printf("move\n");
+
+                            cDoubleRect oldRect = playerTeam->units[selectedUnit]->sprite->drawRect;  //save our current location rect
+                            playerTeam->units[selectedUnit]->sprite->drawRect.x = worldClickX;  //move the unit there pre-maturely
+                            playerTeam->units[selectedUnit]->sprite->drawRect.y = worldClickY;
+
+                            cDoubleVector mtv = getTilemapCollision(*(playerTeam->units[selectedUnit]->sprite), tilemap);  //check if we can move there
+                            //Check to see if we have enough stamina
+
+                            if (mtv.magnitude)
+                            {  //if there was a collision
+                                //reset movement
+                                //printf("no\n");
+                                playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
+                            }
+                            else
+                            {
+                                //printf("start moving\n");
+                                //we can move there
+                                lengthOfPath = 0;
+                                pathIndex = 0;
+                                //maybe change pathing algorithm to checking in the exact direction we want to go, then navigating around walls?
+
+                                if (battleTextBox.selection < 2)
+                                {
+                                    //if we're moving, do a search for the correct path
+                                    movePath = BreadthFirst(tilemap, oldRect.x, oldRect.y, playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y, &lengthOfPath, false, NULL);
+                                    if (movePath)
+                                    {
+                                        movePath[lengthOfPath - 1].x = worldClickX;
+                                        movePath[lengthOfPath - 1].y = worldClickY;
+                                    }
+                                    //TODO: show the movement path and cost, and ask for confirmation
+                                    playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
+                                }
+                            }
+                        }
+                    }
+                    if (battleTextBox.selection == 3)
+                    {  //battle
+                        //find which enemy we clicked on, if any
+                        int enemyIndex = -1;
+                        for(int i = 0; i < enemyTeam->unitsSize; i++)
+                        {
+                            if (worldClickX > enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
+                                worldClickY > enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
+                                enemyIndex = i;
+                        }
+                        if (enemyIndex != -1)
+                        {
+                            //printf("found enemy %d\n", enemyIndex);
+                            //calculate if we hit, calculate damage
+                            double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y, enemyTeam->units[enemyIndex]->sprite->drawRect.x, enemyTeam->units[enemyIndex]->sprite->drawRect.y);
+                            //...
+                        }
+                    }
                 }
             }
         }
@@ -390,8 +514,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         if (movePath != NULL)
         {
             //move our unit until there are no more nodes
-            playerTeam->units[chosenUnit]->sprite->drawRect.x = movePath[pathIndex].x;
-            playerTeam->units[chosenUnit]->sprite->drawRect.y = movePath[pathIndex].y;
+            playerTeam->units[selectedUnit]->sprite->drawRect.x = movePath[pathIndex].x;
+            playerTeam->units[selectedUnit]->sprite->drawRect.y = movePath[pathIndex].y;
             //for testing, no movement limits
             //playerTeam->units[chosenUnit]->battleData.remainingDistance -= sqrt(pow(movePath[pathIndex].x, 2.0) + pow(movePath[pathIndex].x, 2.0));  //subtract out the magnitude of our movements
             pathIndex++;
@@ -419,10 +543,14 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             scene->camera->rect.x += 10 * 60.0 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_F11])
-            printf("%f, %f\n", playerTeam->units[chosenUnit]->sprite->drawRect.x, playerTeam->units[chosenUnit]->sprite->drawRect.y);
+            printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);
 
         drawCScene(scene, true, true, &framerate, 60);
     }
+
+    //local resources must be removed before quitting
+    removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
+
     return quitEverything;
 }
 
@@ -465,7 +593,7 @@ void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgCol
     {
         for(int i = 0; i < textsSize; i++)
         {
-            initCText(&(textBox->texts[i]), texts[i].str, texts[i].rect, texts[i].maxW, texts[i].textColor, texts[i].bgColor, texts[i].font, texts[i].scale, texts[i].flip, texts[i].degrees, true, 1);
+            initCText(&(textBox->texts[i]), texts[i].str, texts[i].rect, texts[i].maxW, texts[i].textColor, texts[i].bgColor, texts[i].font, texts[i].scale, texts[i].flip, texts[i].degrees, true, texts[i].renderLayer);
         }
     }
     else
@@ -474,6 +602,7 @@ void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgCol
     }
     textBox->isMenu = isMenu;
     textBox->selection = -1;
+    textBox->storedSelection = -1;
 }
 
 void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
@@ -497,7 +626,7 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     }
 
     //draw selection highlight
-    if (textBox->isMenu && textBox->selection != -1)
+    if (textBox->isMenu && textBox->selection != -1 && textBox->texts[textBox->selection].renderLayer > 0)
     {
         SDL_SetRenderDrawColor(global.mainRenderer, textBox->highlightColor.r, textBox->highlightColor.g, textBox->highlightColor.b, textBox->highlightColor.a);
         SDL_Rect selectionRect = (SDL_Rect) {textBox->rect.x, boxRect.y + textBox->selection * textBox->texts[textBox->selection].font->fontSize, textBox->texts[textBox->selection].rect.w, textBox->texts[textBox->selection].rect.h};
