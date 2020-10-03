@@ -146,8 +146,8 @@ int gameLoop(warperTilemap tilemap)
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, noClass, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, 300, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, noClass, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, 300, false}};
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, classNone, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, 300, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, classNone, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, 300, false}};
     warperTeam playerTeam;
     initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
     warperTeam enemyTeam;
@@ -173,8 +173,8 @@ int gameLoop(warperTilemap tilemap)
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
         initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
-                    (cDoubleRect) {(tilemap.width - 2) * tilemap.tileSize, (tilemap.height - 2) * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize},
-                    (cDoubleRect) {0, tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                    (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
+                    (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyTeam, 4);
     }
 
@@ -279,6 +279,7 @@ int gameLoop(warperTilemap tilemap)
         {
             //have battle take place in a seperate loop
             quit = battleLoop(tilemap, &testScene, &playerTeam, &enemyTeam);
+            input.quitInput = quit;
             textBoxResource.renderLayer = 1;
             //printf("Initiate battle\n");
         }
@@ -499,6 +500,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             }
                             else
                             {
+                                double distance = 0;
+                                char* questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                 //printf("start moving\n");
                                 //we can move there
                                 lengthOfPath = 0;
@@ -514,21 +517,27 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     {
                                         movePath[lengthOfPath - 1].x = worldClickX;
                                         movePath[lengthOfPath - 1].y = worldClickY;
+                                        distance = movePath[0].distance;
                                     }
 
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
+                                    snprintf(questionStr, 60, "Do you want to move? It will use %d stamina.", (int) round(distance));
                                     confirmMode = CONFIRM_MOVEMENT;
                                 }
                                 else
                                 {
+                                    distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y,
+                                                           confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
+                                    snprintf(questionStr, 60, "Do you want to teleport? It will use %d energy.", (int) round(distance));
                                     confirmMode = CONFIRM_TELEPORT;
                                 }
 
                                 confirmPlayerSprite.renderLayer = 3;
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
-                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {"Are you sure you want to move here?", " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap);
+                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap);
+                                free(questionStr);
                             }
                         }
                     }

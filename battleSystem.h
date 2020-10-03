@@ -7,20 +7,26 @@
 //enum definitions
 enum warperClass
 {
-    noClass,
-    attacker,
-    shooter,
-    technomancer
+    classNone,
+    classAttacker,
+    classShooter,  //maybe rename this one
+    classTechnomancer
+};
+
+enum warperStatus
+{
+    statusNone,
+    statusHacked,  /**< unable to use attack with anything other than basic attacks, and movement is restricted to walking */
+    statusBleed  /**< damage over time (damage at the start of each turn) */
 };
 
 enum warperObjective
 {
-    noObjective,
-    defeat,
-    retreat,
-    rescue
+    objectiveNone,
+    objectiveDefeat,
+    objectiveRetreat,
+    objectiveRescue
 };
-
 
 //struct definitions
 typedef struct _node {
@@ -28,7 +34,7 @@ typedef struct _node {
     int y;
     void* lastNode;
     bool visited;
-    double distanceToNext;
+    double distance;
 } node;
 
 typedef struct _warperStats
@@ -44,6 +50,7 @@ typedef struct _warperStats
 typedef struct _warperBattleData
 {
     int curHp;
+    enum warperStatus status;
     int remainingDistance;
     bool teleportedOrAttacked;
 } warperBattleData;
@@ -85,6 +92,7 @@ void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperI
 void destroyWarperTeam(warperTeam* team);
 void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distanceToNext);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
+void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
 

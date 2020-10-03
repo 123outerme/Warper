@@ -25,7 +25,7 @@ void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double 
     nodePtr->y = y;
     nodePtr->lastNode = lastNode;
     nodePtr->visited = visited;
-    nodePtr->distanceToNext = distanceToNext;
+    nodePtr->distance = distanceToNext;
 }
 
 /** \brief Searches for a path between two points on a map with a breadth first search
@@ -59,6 +59,7 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
     }
     curNode = &(searchList[(int) endY / tilemap.tileSize][(int) endX / tilemap.tileSize]);
     curNode->lastNode = (void*) 1; //marked as the beginning
+    curNode->distance = 0;  //distance is obviously zero
     curNode->visited = true;
     bool quit = false;
     while(!quit)
@@ -77,6 +78,7 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
                     queue[queueCount++] = &(searchList[y][x]);
                     searchList[y][x].visited = true;
                     searchList[y][x].lastNode = (void*) curNode;
+                    searchList[y][x].distance = curNode->distance + ((i < 4) ? 1 : 2 * sqrt(2));  //0-3 are cardinal directions, 4-7 are diagonal movements
                     if (((int) x == (int) startX / tilemap.tileSize) && ((int) y == (int) startY / tilemap.tileSize))
                     {  //check if node is at startX, startY. Stop if is, continue if not
                         quit = true;
@@ -133,6 +135,53 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
     //backtrack through the path found, starting at the start node and following lastNode to the end
     *lengthOfPath = pathCount;
     return path;
+}
+
+void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
+{
+    //attack calculations
+    int damage = 0;
+    double hitChance = 0;
+    double statusChance = 0;
+    enum warperStatus inflictingStatus = statusNone;
+
+    if (attackingUnit->classType == classNone)
+    {
+        //no-class calculations
+        //pretty much just debug calculations, although maybe this is like the 1st act/tutorial case?
+        //status: none ever
+    }
+    if (attackingUnit->classType == classAttacker)
+    {
+        //attacker calculations
+        //hit chance: 0 tiles < x < 2 tiles: linearly decreasing from 100% to 85%
+        //            2 < x < infinity: inverse square law
+        //damage: calculated based on attack and speed maybe?
+        //status: based on equipment
+    }
+    if (attackingUnit->classType == classShooter)
+    {
+        //shooter calculations
+        //hit chance: bell curve centering around 3-ish tiles away
+        //damage: calculated based on attack and status chance maybe?
+        //status: based on equipment
+    }
+    if (attackingUnit->classType == classTechnomancer)
+    {
+        //technomancer calculations
+        //hit chance: bell curve centering around X tiles away, higher plateau on the end of 0 < X, and a lower plateau on the end of X < infinity
+        //damage: calculated based on attack and tech affinity
+        //status: based on equipment
+    }
+    //status chance: calculated based on opponent's status resist stat and your status chance
+    //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
+
+    double randChance = rand() / (double) RAND_MAX;
+    if (hitChance - randChance >= 0.001) //if hit chance is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
+        defendingUnit->battleData.curHp -= damage;
+
+    if (statusChance - randChance >= 0.001)
+        defendingUnit->battleData.status = inflictingStatus;
 }
 
 /** \brief Add money, exp, and all other win-related stuff

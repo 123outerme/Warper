@@ -1,5 +1,16 @@
 #include "warperInterface.h"
 
+/** \brief
+ *
+ * \param textBox warperTextBox*
+ * \param rect cDoubleRect
+ * \param bgColor SDL_Color
+ * \param highlightColor SDL_Color
+ * \param texts cText*
+ * \param isOption bool*
+ * \param textsSize int
+ * \param isMenu bool
+ */
 void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, bool* isOption, int textsSize, bool isMenu)
 {
     textBox->rect = rect;
@@ -33,6 +44,11 @@ void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgCol
     textBox->storedSelection = -1;
 }
 
+/** \brief CoSprite helper function
+ *
+ * \param textBoxSubclass void*
+ * \param camera cCamera
+ */
 void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
 {
     warperTextBox* textBox = (warperTextBox*) textBoxSubclass;
@@ -64,6 +80,10 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
 }
 
+/** \brief CoSprite helper function; if using, cast textBox to a warperTextBox*
+ *
+ * \param textBoxSubclass void*
+ */
 void destroyWarperTextBox(void* textBoxSubclass)
 {
     warperTextBox* textBox = (warperTextBox*) textBoxSubclass;
@@ -81,6 +101,15 @@ void destroyWarperTextBox(void* textBoxSubclass)
     textBox->selection = 0;
 }
 
+/** \brief Shorthand funct to create a battle textbox (menu)
+ *
+ * \param textBox warperTextBox*
+ * \param dimensions cDoubleRect
+ * \param strings char**
+ * \param isOptions bool*
+ * \param stringsLength int
+ * \param tilemap warperTilemap
+ */
 void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, warperTilemap tilemap)
 {
     {
