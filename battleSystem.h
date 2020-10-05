@@ -29,13 +29,24 @@ enum warperObjective
 };
 
 //struct definitions
-typedef struct _node {
+typedef struct _node
+{
     int x;
     int y;
     void* lastNode;
     bool visited;
     double distance;
 } node;
+
+typedef struct _flowNode
+{
+    int x;
+    int y;
+    bool visited;
+    double distance;
+    double magnitude;
+    double fieldLineDegrees;
+} flowNode;
 
 typedef struct _warperStats
 {
@@ -51,7 +62,9 @@ typedef struct _warperBattleData
 {
     int curHp;
     enum warperStatus status;
-    int remainingDistance;
+    int statusStrength;
+    int staminaLeft;
+    int energyLeft;
     bool teleportedOrAttacked;
 } warperBattleData;
 
@@ -61,6 +74,8 @@ typedef struct _warperUnit
     int level;
     int exp;
     int maxHp;
+    int maxStamina;
+    int maxEnergy;
     enum warperClass classType;
     warperStats stats;
     warperBattleData battleData;
@@ -90,8 +105,11 @@ typedef struct _warperBattle
 //function prototypes
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money);
 void destroyWarperTeam(warperTeam* team);
-void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distanceToNext);
+void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
+void initFlowNode(flowNode* nodePtr, int x, int y, bool visited, double distance, double fieldLineDegrees);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
+node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
+flowNode** PseudoFlowField(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
