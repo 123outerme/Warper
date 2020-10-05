@@ -169,7 +169,7 @@ int gameLoop(warperTilemap tilemap)
         initC2DModel(&mapModel, tileSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
         initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, tilemap.tileSize, tilemap.tileSize},
+                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
         initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
@@ -275,7 +275,7 @@ int gameLoop(warperTilemap tilemap)
                 testCamera.rect.x = (tilemap.width - testCamera.rect.w / tilemap.tileSize) * tilemap.tileSize;
         }
 
-        if (getDistance(testPlayerSprite.drawRect.x, testPlayerSprite.drawRect.y, testEnemySprite.drawRect.x, testEnemySprite.drawRect.y) < 6 * tilemap.tileSize)
+        if (input.keyStates[SDL_SCANCODE_B] || getDistance(testPlayerSprite.drawRect.x, testPlayerSprite.drawRect.y, testEnemySprite.drawRect.x, testEnemySprite.drawRect.y) < 6 * tilemap.tileSize)
         {
             //have battle take place in a seperate loop
             quit = battleLoop(tilemap, &testScene, &playerTeam, &enemyTeam);
@@ -343,7 +343,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     cSprite confirmPlayerSprite;
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {-1 * tilemap.tileSize, -1 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize},
+                    (cDoubleRect) {-1 * tilemap.tileSize, -1 * tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 2 * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 0);
 
@@ -545,6 +545,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             }
                             else
                             {
+                                //no collision; move is valid
                                 moveDistance = 0;
                                 char* questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                 char* templateStr = calloc(61, sizeof(char));
@@ -568,18 +569,20 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     //*/
                                     //*
                                     movePath = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
-                                                                  (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y, &lengthOfPath, true, scene->camera);
+                                                                  (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
+                                                                  (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
+                                                                   &lengthOfPath, true, scene->camera);
 
                                     if (movePath)
                                     {
                                         //movePath[lengthOfPath - 1].x = worldClickX;
-                                        //movePath[lengthOfPath - 1].y = worldClickY;
+                                        //movePath[lengthOfPath - 1].y = worldClickY;  //don't need these anymore most likely
                                         moveDistance = (int) round(movePath[0].distance);
                                     }
                                     //*/
 
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
-                                    if (moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft)
+                                    if (moveDistance > 0 /*&& moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft*/)
                                     {
                                         strncpy(templateStr, "Do you want to move? It will use %d stamina.", 60);
                                         confirmMode = CONFIRM_MOVEMENT;
@@ -599,7 +602,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
 
-                                    if (moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft)
+                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft)
                                     {
                                         strncpy(templateStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;

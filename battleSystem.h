@@ -38,16 +38,6 @@ typedef struct _node
     double distance;
 } node;
 
-typedef struct _flowNode
-{
-    int x;
-    int y;
-    bool visited;
-    double distance;
-    double magnitude;
-    double fieldLineDegrees;
-} flowNode;
-
 typedef struct _warperStats
 {
     int hp;
@@ -106,10 +96,8 @@ typedef struct _warperBattle
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money);
 void destroyWarperTeam(warperTeam* team);
 void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
-void initFlowNode(flowNode* nodePtr, int x, int y, bool visited, double distance, double fieldLineDegrees);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
-node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
-flowNode** PseudoFlowField(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
+node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);

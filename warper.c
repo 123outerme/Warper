@@ -39,7 +39,7 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
 
     while(x <= tilemap->width)
     {
-        if (y > tilemap->height)
+        if (y >= tilemap->height)
         {
             y = 0;
             x++;
