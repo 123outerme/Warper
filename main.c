@@ -330,16 +330,24 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     const cDoubleRect textBoxDims = (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize};
 
-    cResource battleTextBoxRes;
+    cResource battleTextBoxRes, movePathRes;
     warperTextBox battleTextBox, backupTextBox;
     char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "End Turn"};
     bool isOptions[] = {true, true, true, true, true};
     createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 5, tilemap);
 
+    warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
+    //flowNode** movePath = NULL;
+    double moveDistance = 0;
+    int pathIndex = -1;
+
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, &drawWarperTextBox, &destroyWarperTextBox, 2);
+    initCResource(&movePathRes, (void*) &movePath, &drawWarperPath, &destroyWarperPath, 0);
+
     battleTextBox.selection = 0;
 
     addResourceToCScene(scene, &battleTextBoxRes);
+    addResourceToCScene(scene, &movePathRes);
 
     cSprite confirmPlayerSprite;
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
@@ -352,12 +360,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     cInputState input;
     int framerate = 0;
     int selectedUnit = 0;
-
-    node* movePath = NULL;
-    //flowNode** movePath = NULL;
-    double moveDistance = 0;
-    int lengthOfPath = 0;
-    int pathIndex = -1;
 
     bool playerTurn = true;
 
@@ -454,10 +456,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     {
                         if (battleTextBox.selection == 2)
                         {
-                            //if we selected true
+                            //if we selected "yes"
                             if (confirmMode == CONFIRM_MOVEMENT)
                             {
                                 playerTeam->units[selectedUnit]->battleData.staminaLeft -= moveDistance;
+                                movePathRes.renderLayer = 0;
                             }
                             if (confirmMode == CONFIRM_TELEPORT)
                             {
@@ -470,14 +473,13 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         }
                         if (battleTextBox.selection == 3)
                         {
-                            //if we selected false
+                            //if we selected "no"
                             if (confirmMode == CONFIRM_MOVEMENT)
                             {
                                 //free movePath and reset all variables that go along with it
-                                free(movePath);
-                                movePath = NULL;
+                                destroyWarperPath((void*) &movePath);
+                                movePathRes.renderLayer = 0;
                                 pathIndex = -1;
-                                lengthOfPath = 0;
                             }
                         }
                         confirmMode = CONFIRM_NONE;
@@ -518,7 +520,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     //if we want to move
                     if ((battleTextBox.selection == 1 || battleTextBox.selection == 2) && playerTurn)
                     {  //move or teleport
-                        if (movePath == NULL)
+                        if (movePath.path == NULL)
                         {
                             //printf("move\n");
 
@@ -551,7 +553,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 char* templateStr = calloc(61, sizeof(char));
                                 //printf("start moving\n");
                                 //we can move there
-                                lengthOfPath = 0;
+                                movePath.pathLength = 0;
                                 pathIndex = 0;
                                 //maybe change pathing algorithm to checking in the exact direction we want to go, then navigating around walls?
 
@@ -568,16 +570,19 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     }
                                     //*/
                                     //*
-                                    movePath = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
+                                    movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
                                                                   (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
                                                                   (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
-                                                                   &lengthOfPath, true, scene->camera);
+                                                                   &(movePath.pathLength), false, scene->camera);
 
-                                    if (movePath)
+                                    if (movePath.path)
                                     {
                                         //movePath[lengthOfPath - 1].x = worldClickX;
                                         //movePath[lengthOfPath - 1].y = worldClickY;  //don't need these anymore most likely
-                                        moveDistance = (int) round(movePath[0].distance);
+                                        moveDistance = (int) round(movePath.path[0].distance);
+                                        movePathRes.renderLayer = 5;
+                                        movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;
+                                        movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
                                     }
                                     //*/
 
@@ -590,10 +595,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     else
                                     {
                                         //set flag to false, reset variables, free movePath
-                                        free(movePath);
-                                        movePath = NULL;
+                                        destroyWarperPath((void*) &movePath);
                                         pathIndex = -1;
-                                        lengthOfPath = 0;
                                     }
                                 }
                                 else
@@ -647,7 +650,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         }
 
 
-        if (movePath != NULL && !confirmMode)
+        if (movePath.path != NULL && !confirmMode)
         {
             /* pseudoFlowField():
             flowNode curNode = movePath[(int) playerTeam->units[selectedUnit]->sprite->drawRect.y / tilemap.tileSize][(int) playerTeam->units[selectedUnit]->sprite->drawRect.x / tilemap.tileSize];
@@ -673,18 +676,16 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
             //* BreadthFirst():
             //move our unit until there are no more nodes
-            playerTeam->units[selectedUnit]->sprite->drawRect.x = movePath[pathIndex].x;
-            playerTeam->units[selectedUnit]->sprite->drawRect.y = movePath[pathIndex].y;
+            playerTeam->units[selectedUnit]->sprite->drawRect.x = movePath.path[pathIndex].x;
+            playerTeam->units[selectedUnit]->sprite->drawRect.y = movePath.path[pathIndex].y;
 
             pathIndex++;
 
-            if (pathIndex >= lengthOfPath)
+            if (pathIndex >= movePath.pathLength)
             {
                 //set flag to false, reset variables, free movePath
-                free(movePath);
-                movePath = NULL;
+                destroyWarperPath((void*) &movePath);
                 pathIndex = -1;
-                lengthOfPath = 0;
             }
             //*/
         }
@@ -711,6 +712,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     //local resources must be removed before quitting
     removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
+    removeResourceFromCScene(scene, &movePathRes, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
 
     return quitEverything;

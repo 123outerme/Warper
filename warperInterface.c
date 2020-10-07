@@ -101,6 +101,34 @@ void destroyWarperTextBox(void* textBoxSubclass)
     textBox->selection = 0;
 }
 
+void drawWarperPath(void* path, cCamera camera)
+{
+    warperPath* nodePath = (warperPath*) path;
+
+    Uint8 prevR = 0, prevG = 0, prevB = 0, prevA = 0;
+    SDL_GetRenderDrawColor(global.mainRenderer, &prevR, &prevG, &prevB, &prevA);
+
+    SDL_SetRenderDrawColor(global.mainRenderer, nodePath->pathColor.r, nodePath->pathColor.g, nodePath->pathColor.b, nodePath->pathColor.a);
+
+    for(int i = 1; i < nodePath->pathLength; i++)
+    {
+        SDL_RenderDrawLine(global.mainRenderer, nodePath->path[i - 1].x - camera.rect.x + nodePath->pathfinderWidth / 2, nodePath->path[i - 1].y - camera.rect.y + nodePath->pathfinderHeight / 2,
+                           nodePath->path[i].x - camera.rect.x + nodePath->pathfinderWidth / 2, nodePath->path[i].y - camera.rect.y + nodePath->pathfinderHeight / 2);
+    }
+
+    SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
+}
+
+void destroyWarperPath(void* path)
+{
+    warperPath* nodePath = (warperPath*) path;
+    if (nodePath->path)
+        free(nodePath->path);
+
+    nodePath->path = NULL;
+    nodePath->pathLength = 0;
+}
+
 /** \brief Shorthand funct to create a battle textbox (menu)
  *
  * \param textBox warperTextBox*
