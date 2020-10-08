@@ -43,9 +43,14 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
         {
             y = 0;
             x++;
-            tilemap->spritemap[x] = calloc(tilemap->height, sizeof(int));
-            tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
-            tilemap->eventmap[x] = calloc(tilemap->height, sizeof(int));
+            if (x < tilemap->width)
+            {
+                tilemap->spritemap[x] = calloc(tilemap->height, sizeof(int));
+                tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
+                tilemap->eventmap[x] = calloc(tilemap->height, sizeof(int));
+            }
+            else
+                break;
         }
 
         strncpy(tileData, (importedData + 6 + (x * tilemap->height + y) * 3 * 3), 3);  //starts at importedData + 6 + (pos * 3 digits * 3 different maps)

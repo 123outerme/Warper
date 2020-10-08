@@ -128,9 +128,11 @@ int main(int argc, char** argv)
         }
     }
 
-    while (!gameLoop(tilemap))
+    bool quit = false;
+    while (!quit)
     {
-        //
+        quit = gameLoop(tilemap);
+        //pause menu, etc
     }
 
     destroyWarperTilemap(&tilemap);
@@ -169,7 +171,7 @@ int gameLoop(warperTilemap tilemap)
         initC2DModel(&mapModel, tileSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
         initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 1 * tilemap.tileSize, 1 * tilemap.tileSize},
+                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 4 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
         initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
@@ -215,6 +217,7 @@ int gameLoop(warperTilemap tilemap)
         //character movement
         if (input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_S] || input.keyStates[SDL_SCANCODE_D])
         {
+            //double lastX = testPlayerSprite.drawRect.x, lastY = testPlayerSprite.drawRect.y;
             double speed = 6.0;  //just a good speed value, nothing special. Pixels/frame at 60 FPS
             if ((input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_S]) && (input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_D]))
                 speed *= sin(degToRad(45));  //diagonal speed component
@@ -229,9 +232,12 @@ int gameLoop(warperTilemap tilemap)
 
             if (mtv.magnitude)
             {  //apply collision after doing y movements
+                //*
                 testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
                 testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
+                //*/
+                //testPlayerSprite.drawRect.y = lastY;
             }
 
             if (input.keyStates[SDL_SCANCODE_A])
@@ -250,9 +256,12 @@ int gameLoop(warperTilemap tilemap)
 
             if (mtv.magnitude)
             {  //apply collision again after doing x movements (allows smooth collision sliding. The only way I could figure out how to fix it without 100% hard-coding)
+                //*
                 testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
                 testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
+                //*/
+                //testPlayerSprite.drawRect.x = lastX;
             }
 
             testCamera.rect.x = testPlayerSprite.drawRect.x - testCamera.rect.w / 2;  //set the camera to center on the player
@@ -446,7 +455,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 {  //end turn
                     playerTurn = false;
 
-                    //restore each enemy unit's battle stats (stamina, etcg)
+                    //restore each enemy unit's battle stats (stamina, etc)
                     for(int i = 0; i < enemyTeam->unitsSize; i++)
                     {
                         enemyTeam->units[i]->battleData.staminaLeft = enemyTeam->units[i]->maxStamina;
@@ -761,7 +770,7 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
             if (x >= 0 && x < tilemap.width && y >= 0 && y < tilemap.height && tilemap.collisionmap[x][y])
             {
                 cDoubleVector newMtv = checkCDoubleRectCollision(playerSprite.drawRect, (cDoubleRect) {x * tilemap.tileSize, y * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize});  //get collision result
-                if ((mtv.magnitude == 0 || ((int) newMtv.degrees % 180 == 90 && (int) mtv.degrees % 180 == 0) || ((int) newMtv.degrees % 180 == 0 && (int) mtv.degrees % 180 == 90)) && (int) mtv.degrees % 90 == 0)
+                if ((mtv.magnitude < 0.001 || ((int) newMtv.degrees % 180 == 90 && (int) mtv.degrees % 180 == 0) || ((int) newMtv.degrees % 180 == 0 && (int) mtv.degrees % 180 == 90)) && (int) mtv.degrees % 90 != 45)
                 {
                     mtv = addCDoubleVectors(mtv, newMtv);  //if we don't have a partial mtv on the same axis, add these partials together
                     //printf("- found %f at %f deg", newMtv.magnitude, newMtv.degrees);
