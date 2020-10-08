@@ -139,8 +139,8 @@ void drawWarperCircle(void* circle, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b, wCircle->circleColor.a);
 
     for(int d = 0; d <= 360; d += wCircle->deltaDegrees)
-        SDL_RenderDrawLine(global.mainRenderer, (wCircle->center.x + (wCircle->radius * cos(degToRad(d - wCircle->deltaDegrees)))) * global.windowW / camera.rect.w, (wCircle->center.y + (wCircle->radius * sin(degToRad(d - wCircle->deltaDegrees)))) * global.windowH / camera.rect.h,
-                                                (wCircle->center.x + (wCircle->radius * cos(degToRad(d)))) * global.windowW / camera.rect.w, (wCircle->center.y + (wCircle->radius * sin(degToRad(d)))) * global.windowH / camera.rect.h);
+        SDL_RenderDrawLine(global.mainRenderer, (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d - wCircle->deltaDegrees)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d - wCircle->deltaDegrees)))) * global.windowH / camera.rect.h,
+                                                (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d)))) * global.windowH / camera.rect.h);
 
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
 }

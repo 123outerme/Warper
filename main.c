@@ -169,7 +169,7 @@ int gameLoop(warperTilemap tilemap)
         initC2DModel(&mapModel, tileSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
         initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
+                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 1 * tilemap.tileSize, 1 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
         initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
@@ -232,8 +232,6 @@ int gameLoop(warperTilemap tilemap)
                 testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
                 testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
-
-                playerUnit.battleData.staminaLeft += mtv.magnitude;
             }
 
             if (input.keyStates[SDL_SCANCODE_A])
@@ -255,8 +253,6 @@ int gameLoop(warperTilemap tilemap)
                 testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
                 testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
-
-                playerUnit.battleData.staminaLeft -= mtv.magnitude;
             }
 
             testCamera.rect.x = testPlayerSprite.drawRect.x - testCamera.rect.w / 2;  //set the camera to center on the player
@@ -450,11 +446,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 {  //end turn
                     playerTurn = false;
 
-                    //restore each enemy unit's battle stats (stamina, energy)
+                    //restore each enemy unit's battle stats (stamina, etcg)
                     for(int i = 0; i < enemyTeam->unitsSize; i++)
                     {
                         enemyTeam->units[i]->battleData.staminaLeft = enemyTeam->units[i]->maxStamina;
-                        enemyTeam->units[i]->battleData.energyLeft = enemyTeam->units[i]->maxStamina;
+                        enemyTeam->units[i]->battleData.energyLeft = enemyTeam->units[i]->maxEnergy;
                         enemyTeam->units[i]->battleData.teleportedOrAttacked = false;
                         //iterate on status effects
                     }
@@ -471,11 +467,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     //DEBUG: force enemy pass turn
                     playerTurn = true;
 
-                    //restore each player unit's battle stats (stamina, energy)
+                    //restore each player unit's battle stats (stamina, etc)
                     for(int i = 0; i < playerTeam->unitsSize; i++)
                     {
                         playerTeam->units[i]->battleData.staminaLeft = playerTeam->units[i]->maxStamina;
-                        playerTeam->units[i]->battleData.energyLeft = playerTeam->units[i]->maxStamina;
+                        playerTeam->units[i]->battleData.energyLeft = playerTeam->units[i]->maxEnergy;
                         playerTeam->units[i]->battleData.teleportedOrAttacked = false;
                         //iterate on status effects
                     }
@@ -595,15 +591,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 if (battleTextBox.selection < 2)
                                 {
                                     //if we're moving, do a search for the correct path
-                                    /*
-                                    movePath = PseudoFlowField(tilemap, playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y,
-                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y, &lengthOfPath, false, NULL);
-
-                                    if (movePath)
-                                    {
-                                        distance = movePath[(int) playerTeam->units[selectedUnit]->sprite->drawRect.y / tilemap.tileSize][(int) playerTeam->units[selectedUnit]->sprite->drawRect.x / tilemap.tileSize].distance;
-                                    }
-                                    //*/
                                     //*
                                     movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
                                                                   (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
@@ -640,7 +627,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
 
-                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft)
+                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
                                     {
                                         strncpy(templateStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;
@@ -651,6 +638,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 {
                                     snprintf(questionStr, 60, templateStr, (int) moveDistance);
                                     confirmPlayerSprite.renderLayer = 3;
+                                    confirmPlayerSprite.drawRect.w = playerTeam->units[selectedUnit]->sprite->drawRect.w;
+                                    confirmPlayerSprite.drawRect.h = playerTeam->units[selectedUnit]->sprite->drawRect.h;
 
                                     //create confirm textbox and backup regular textbox
                                     initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
@@ -677,7 +666,10 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             //printf("found enemy %d\n", enemyIndex);
                             //calculate if we hit, calculate damage
                             double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y, enemyTeam->units[enemyIndex]->sprite->drawRect.x, enemyTeam->units[enemyIndex]->sprite->drawRect.y);
-                            //...
+                            warperAttackResult attackResult = doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
+
+                            playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
+                            //do something with the result?
                         }
                     }
                 }
@@ -758,17 +750,18 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
 {
     cDoubleVector mtv = {0, 0};
 
-    int playerX = round(playerSprite.drawRect.x / tilemap.tileSize), playerY = round(playerSprite.drawRect.y / tilemap.tileSize);
+    int playerX = round(-0.45 + playerSprite.drawRect.x / tilemap.tileSize), playerY = round(-0.45 + playerSprite.drawRect.y / tilemap.tileSize);
+    int playerW = round(0.45 + playerSprite.drawRect.w / tilemap.tileSize), playerH = round(0.45 + playerSprite.drawRect.h / tilemap.tileSize);
 
-    for(int x = playerX - 1; x <= playerX + 1; x++)
+    for(int x = playerX; x <= playerX + playerW; x++)
     {
-        for(int y = playerY - 1; y <= playerY + 1; y++)
+        for(int y = playerY - 1; y <= playerY + playerH; y++)
         {
             //printf("%d, %d", x, y);
             if (x >= 0 && x < tilemap.width && y >= 0 && y < tilemap.height && tilemap.collisionmap[x][y])
             {
                 cDoubleVector newMtv = checkCDoubleRectCollision(playerSprite.drawRect, (cDoubleRect) {x * tilemap.tileSize, y * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize});  //get collision result
-                if ((mtv.magnitude == 0 || ((int) newMtv.degrees % 180 == 90 && (int) mtv.degrees % 180 == 0) || ((int) newMtv.degrees % 180 == 0 && (int) mtv.degrees % 180 == 90)) && (int) mtv.degrees % 90 != 45)
+                if ((mtv.magnitude == 0 || ((int) newMtv.degrees % 180 == 90 && (int) mtv.degrees % 180 == 0) || ((int) newMtv.degrees % 180 == 0 && (int) mtv.degrees % 180 == 90)) && (int) mtv.degrees % 90 == 0)
                 {
                     mtv = addCDoubleVectors(mtv, newMtv);  //if we don't have a partial mtv on the same axis, add these partials together
                     //printf("- found %f at %f deg", newMtv.magnitude, newMtv.degrees);
@@ -778,6 +771,11 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
         }
     }
     //printf("--------\n");
+
+    /*
+    if (mtv.magnitude)
+        printf("final mtv == %f @ %f deg\n", mtv.magnitude, mtv.degrees);
+    //*/
 
     return mtv;
 }

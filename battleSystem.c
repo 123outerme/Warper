@@ -229,7 +229,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                 if (nextX >= 0 && nextX < tilemap.width * tilemap.tileSize && nextY >= 0 && nextY < tilemap.height * tilemap.tileSize && !searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited)
                 {
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited = true;
-                    searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : 2 * sqrt(2));
+                    searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2));
 
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
 
@@ -256,7 +256,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x = ((int) searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x / tilemap.tileSize) * tilemap.tileSize;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y = ((int) searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y / tilemap.tileSize) * tilemap.tileSize;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited = true;
-                    searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : 2 * sqrt(2));
+                    searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2));
 
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
 
@@ -287,6 +287,9 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                             //waitForKey(true);
                         }
                     }
+                    else
+                        searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = -1;
+
 
                 }
             }
@@ -327,7 +330,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     }
     free(queue);
 
-    //*Backtrack through the found path(s) and see if there are better nodes to travel through
+    /*Backtrack through the found path(s) and see if there are better nodes to travel through
     curNode = &(searchList[checkStartY][checkStartX]);
     quit = false;
 
@@ -351,7 +354,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
         }
 
         curNode->lastNode = nextNode;
-        curNode->distance = nextNode->distance + ((foundIVal % 2 == 0) ? 1 : 2 * sqrt(2)); //recalculate distance
+        curNode->distance = nextNode->distance + ((foundIVal % 2 == 0) ? 1 : sqrt(2)); //recalculate distance
 
         if (nextNode->lastNode == (void*) 1)
             quit = true;
@@ -383,8 +386,9 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     return path;
 }
 
-void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
+warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
 {
+    warperAttackResult result = {.damage = 0, .status = statusNone};
     //attack calculations
     int damage = 0;
     double hitChance = 0;
@@ -428,10 +432,17 @@ void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double dista
 
     double randChance = rand() / (double) RAND_MAX;
     if (hitChance + luckAffect - randChance >= 0.001) //if hit chance + luck modifier is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
+    {
         defendingUnit->battleData.curHp -= damage;
+        result.damage = damage;
+    }
 
     if (statusChance + luckAffect - randChance >= 0.001)
+    {
         defendingUnit->battleData.status = inflictingStatus;
+        result.status = inflictingStatus;
+    }
+    return result;
 }
 
 /** \brief Add money, exp, and all other win-related stuff
