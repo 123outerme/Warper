@@ -327,7 +327,38 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     }
     free(queue);
 
-    //Backtrack through the found path(s) and see if there are better nodes to travel through
+    //*Backtrack through the found path(s) and see if there are better nodes to travel through
+    curNode = &(searchList[checkStartY][checkStartX]);
+    quit = false;
+
+    while(!quit)
+    {
+        node* nextNode = NULL;
+        double minDistance = -1;
+        int foundIVal = -1;
+        for(int i = 0; i < 8; i++)
+        {
+            //angle to next node = i * (360 / 8) = i * 45
+            int nextX = curNode->x + tilemap.tileSize * (i == 7 || i == 0 || i == 1) - tilemap.tileSize * (i == 3 || i == 4 || i == 5);
+            int nextY = curNode->y + tilemap.tileSize * (i > 4) - tilemap.tileSize * (i == 1 || i == 2 || i == 3);
+
+            if (minDistance == -1 || (nextX >= 0 && nextX < tilemap.width * tilemap.tileSize && nextY >= 0 && nextY < tilemap.height * tilemap.tileSize && searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance < minDistance && searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance > -1))
+            {  //find the node next to our current node with the shortest path
+                nextNode = &(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]);
+                foundIVal = i;
+                minDistance = searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance;
+            }
+        }
+
+        curNode->lastNode = nextNode;
+        curNode->distance = nextNode->distance + ((foundIVal % 2 == 0) ? 1 : 2 * sqrt(2)); //recalculate distance
+
+        if (nextNode->lastNode == (void*) 1)
+            quit = true;
+
+        curNode = curNode->lastNode;
+    }
+    //*/
 
     quit = false;
     int pathCount = 1;
@@ -358,6 +389,7 @@ void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double dista
     int damage = 0;
     double hitChance = 0;
     double statusChance = 0;
+    double luckAffect = 0;
     enum warperStatus inflictingStatus = statusNone;
 
     if (attackingUnit->classType == classNone)
@@ -373,29 +405,32 @@ void doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double dista
         //            2 < x < infinity: inverse square law
         //damage: calculated based on attack and speed maybe?
         //status: based on equipment
+        //luck: only slightly affects the hit chance outcome
     }
     if (attackingUnit->classType == classShooter)
     {
         //shooter calculations
         //hit chance: bell curve centering around 3-ish tiles away
-        //damage: calculated based on attack and status chance maybe?
+        //damage: calculated based on attack and range maybe?
         //status: based on equipment
+        //luck: somewhat affects the hit chance outcome, slightly affects damage
     }
     if (attackingUnit->classType == classTechnomancer)
     {
         //technomancer calculations
-        //hit chance: bell curve centering around X tiles away, higher plateau on the end of 0 < X, and a lower plateau on the end of X < infinity
+        //hit chance: bell curve centering around X tiles away, lower plateau on the end of 0 < X, and a higher plateau on the end of X < infinity
         //damage: calculated based on attack and tech affinity
         //status: based on equipment
+        //luck: affects status proc chance and damage?
     }
     //status chance: calculated based on opponent's status resist stat and your status chance
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 
     double randChance = rand() / (double) RAND_MAX;
-    if (hitChance - randChance >= 0.001) //if hit chance is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
+    if (hitChance + luckAffect - randChance >= 0.001) //if hit chance + luck modifier is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
         defendingUnit->battleData.curHp -= damage;
 
-    if (statusChance - randChance >= 0.001)
+    if (statusChance + luckAffect - randChance >= 0.001)
         defendingUnit->battleData.status = inflictingStatus;
 }
 

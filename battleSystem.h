@@ -28,6 +28,16 @@ enum warperObjective
     objectiveRescue
 };
 
+enum warperItemType
+{
+    itemMisc,
+    itemMelee,
+    itemRanged,
+    itemMagic,
+    itemConsumable,
+    itemStory
+};
+
 //struct definitions
 typedef struct _node
 {
@@ -46,6 +56,7 @@ typedef struct _warperStats
     int tp;
     int statusResistance;
     int techAffinity;
+    int luck;
 } warperStats;
 
 typedef struct _warperBattleData
@@ -58,6 +69,13 @@ typedef struct _warperBattleData
     bool teleportedOrAttacked;
 } warperBattleData;
 
+typedef struct _warperItem
+{
+    enum warperItemType itemType;
+    int id;
+    int count;
+} warperItem;
+
 typedef struct _warperUnit
 {
     cSprite* sprite;
@@ -67,15 +85,10 @@ typedef struct _warperUnit
     int maxStamina;
     int maxEnergy;
     enum warperClass classType;
+    warperItem weapon;
     warperStats stats;
     warperBattleData battleData;
 } warperUnit;
-
-typedef struct _warperItem
-{
-    int id;
-    int number;
-} warperItem;
 
 typedef struct _warperTeam
 {

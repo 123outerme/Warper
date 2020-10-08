@@ -129,6 +129,31 @@ void destroyWarperPath(void* path)
     nodePath->pathLength = 0;
 }
 
+void drawWarperCircle(void* circle, cCamera camera)
+{
+    warperCircle* wCircle = (warperCircle*) circle;
+
+    Uint8 prevR = 0, prevG = 0, prevB = 0, prevA = 0;
+    SDL_GetRenderDrawColor(global.mainRenderer, &prevR, &prevG, &prevB, &prevA);
+
+    SDL_SetRenderDrawColor(global.mainRenderer, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b, wCircle->circleColor.a);
+
+    for(int d = 0; d <= 360; d += wCircle->deltaDegrees)
+        SDL_RenderDrawLine(global.mainRenderer, (wCircle->center.x + (wCircle->radius * cos(degToRad(d - wCircle->deltaDegrees)))) * global.windowW / camera.rect.w, (wCircle->center.y + (wCircle->radius * sin(degToRad(d - wCircle->deltaDegrees)))) * global.windowH / camera.rect.h,
+                                                (wCircle->center.x + (wCircle->radius * cos(degToRad(d)))) * global.windowW / camera.rect.w, (wCircle->center.y + (wCircle->radius * sin(degToRad(d)))) * global.windowH / camera.rect.h);
+
+    SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
+}
+
+void destroyWarperCircle(void* circle)
+{
+    warperCircle* wCircle = (warperCircle*) circle;
+    wCircle->center = (cDoublePt) {0, 0};
+    wCircle->deltaDegrees = 0;
+    wCircle->radius = 0;
+    wCircle->circleColor = (SDL_Color) {0,0,0,0};
+}
+
 /** \brief Shorthand funct to create a battle textbox (menu)
  *
  * \param textBox warperTextBox*

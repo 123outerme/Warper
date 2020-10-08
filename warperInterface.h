@@ -27,6 +27,14 @@ typedef struct _warperPath
     int pathfinderHeight;
 } warperPath;
 
+typedef struct _warperCircle
+{
+    int deltaDegrees;
+    double radius;
+    cDoublePt center;
+    SDL_Color circleColor;
+} warperCircle;
+
 //functions:
 //CoSprite helper functs:
 void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, bool* isOption, int textsSize, bool isMenu);
@@ -34,6 +42,8 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera);
 void destroyWarperTextBox(void* textBoxSubclass);
 void drawWarperPath(void* path, cCamera camera);
 void destroyWarperPath(void* path);
+void drawWarperCircle(void* circle, cCamera camera);
+void destroyWarperCircle(void* circle);
 
 //battle helper functs:
 void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, warperTilemap tilemap);

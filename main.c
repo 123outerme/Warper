@@ -146,8 +146,8 @@ int gameLoop(warperTilemap tilemap)
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 50, 20, classNone, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 999, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 50, 20, classNone, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
     warperTeam playerTeam;
     initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
     warperTeam enemyTeam;
@@ -330,24 +330,28 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     const cDoubleRect textBoxDims = (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize};
 
-    cResource battleTextBoxRes, movePathRes;
+    cResource battleTextBoxRes, movePathRes, circleRes;
     warperTextBox battleTextBox, backupTextBox;
-    char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "End Turn"};
-    bool isOptions[] = {true, true, true, true, true};
-    createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 5, tilemap);
+    char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Skills", "End Turn"};
+    bool isOptions[] = {true, true, true, true, true, true};
+    createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 6, tilemap);
 
     warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
     //flowNode** movePath = NULL;
     double moveDistance = 0;
     int pathIndex = -1;
 
+    warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0xF0}};
+
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, &drawWarperTextBox, &destroyWarperTextBox, 2);
     initCResource(&movePathRes, (void*) &movePath, &drawWarperPath, &destroyWarperPath, 0);
+    initCResource(&circleRes, (void*) &circle, &drawWarperCircle, &destroyWarperCircle, 0);
 
     battleTextBox.selection = 0;
 
     addResourceToCScene(scene, &battleTextBoxRes);
     addResourceToCScene(scene, &movePathRes);
+    addResourceToCScene(scene, &circleRes);
 
     cSprite confirmPlayerSprite;
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
@@ -391,6 +395,18 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         battleTextBox.selection = i;
                     }
                 }
+
+                if (battleTextBox.selection == 2 && !confirmMode)
+                {
+                    //we want to teleport
+                    circle.center.x = playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
+                    circle.center.y = playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
+                    circle.radius = playerTeam->units[selectedUnit]->battleData.energyLeft * tilemap.tileSize;
+                    circleRes.renderLayer = 5;
+                }
+                else
+                    circleRes.renderLayer = 0;
+
                 if (battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2)
                 {
                     //we clicked on the minimize/maximize button
@@ -426,10 +442,22 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 }
 
                 if (battleTextBox.selection == 4)
+                {
+                    //open skills menu
+                }
+
+                if (battleTextBox.selection == 5)
                 {  //end turn
                     playerTurn = false;
 
                     //restore each enemy unit's battle stats (stamina, energy)
+                    for(int i = 0; i < enemyTeam->unitsSize; i++)
+                    {
+                        enemyTeam->units[i]->battleData.staminaLeft = enemyTeam->units[i]->maxStamina;
+                        enemyTeam->units[i]->battleData.energyLeft = enemyTeam->units[i]->maxStamina;
+                        enemyTeam->units[i]->battleData.teleportedOrAttacked = false;
+                        //iterate on status effects
+                    }
 
                     //set text box to be enemy turn textbox and back up your turns' textbox
                     initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
@@ -440,9 +468,17 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 }
                 if (battleTextBox.selection == 1 && playerTurn == false)
                 {
+                    //DEBUG: force enemy pass turn
                     playerTurn = true;
 
                     //restore each player unit's battle stats (stamina, energy)
+                    for(int i = 0; i < playerTeam->unitsSize; i++)
+                    {
+                        playerTeam->units[i]->battleData.staminaLeft = playerTeam->units[i]->maxStamina;
+                        playerTeam->units[i]->battleData.energyLeft = playerTeam->units[i]->maxStamina;
+                        playerTeam->units[i]->battleData.teleportedOrAttacked = false;
+                        //iterate on status effects
+                    }
 
                     //restore textbox to regular menu
                     destroyWarperTextBox((void*) &battleTextBox);
@@ -555,7 +591,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 //we can move there
                                 movePath.pathLength = 0;
                                 pathIndex = 0;
-                                //maybe change pathing algorithm to checking in the exact direction we want to go, then navigating around walls?
 
                                 if (battleTextBox.selection < 2)
                                 {
@@ -587,7 +622,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     //*/
 
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
-                                    if (moveDistance > 0 /*&& moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft*/)
+                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft)
                                     {
                                         strncpy(templateStr, "Do you want to move? It will use %d stamina.", 60);
                                         confirmMode = CONFIRM_MOVEMENT;
@@ -713,6 +748,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     //local resources must be removed before quitting
     removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
     removeResourceFromCScene(scene, &movePathRes, -1, true);
+    removeResourceFromCScene(scene, &circleRes, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
 
     return quitEverything;
