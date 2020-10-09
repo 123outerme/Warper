@@ -3,6 +3,8 @@
 
 #include "warper.h"
 
+//#defines
+#define WARPER_MAX_LEVEL 50
 
 //enum definitions
 enum warperClass
@@ -54,7 +56,6 @@ typedef struct _warperStats
     int attack;
     int speed;
     int tp;
-    int statusResistance;
     int techAffinity;
     int luck;
 } warperStats;

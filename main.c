@@ -148,8 +148,8 @@ int gameLoop(warperTilemap tilemap)
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 40, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
     warperTeam playerTeam;
     initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
     warperTeam enemyTeam;
@@ -636,7 +636,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
 
-                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
+                                    if (worldClickX >= 0 && worldClickY >= 0 &&  //not going out of bounds up or left
+                                        worldClickX <= tilemap.width * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.w &&  //not going out of bounds right
+                                        worldClickY <= tilemap.height * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.h &&  //not going out of bounds down
+                                        moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft && //are moving somewhere and have the energy to do so
+                                        !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)  //haven't teleported or attacked already
                                     {
                                         strncpy(templateStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;
@@ -688,30 +692,13 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
         if (movePath.path != NULL && !confirmMode)
         {
-            /* pseudoFlowField():
-            flowNode curNode = movePath[(int) playerTeam->units[selectedUnit]->sprite->drawRect.y / tilemap.tileSize][(int) playerTeam->units[selectedUnit]->sprite->drawRect.x / tilemap.tileSize];
-
-            if (curNode.distance == 0)
-            {
-                //we're at the end
-                for(int y = 0; y < tilemap.height; y++)
-                {
-                    free(movePath[y]);
-                }
-                free(movePath);
-                movePath = NULL;
-                lengthOfPath = 0;
-            }
-            else
-            {
-                playerTeam->units[selectedUnit]->sprite->drawRect.x -= (speed * cos(degToRad(curNode.fieldLineDegrees))) * 60.0 / framerate;
-                playerTeam->units[selectedUnit]->sprite->drawRect.y += (speed * sin(degToRad(curNode.fieldLineDegrees))) * 60.0 / framerate;
-            }
-            //*/
-            //playerTeam->units[chosenUnit]->battleData.remainingDistance -= (speed * 60.0 / framerate) / tilemap.tileSize;  //subtract out the magnitude of our movements
-
-            //* BreadthFirst():
             //move our unit until there are no more nodes
+            if (playerTeam->units[selectedUnit]->sprite->drawRect.x > movePath.path[pathIndex].x)  //if we're moving left
+                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_HORIZONTAL;
+            else
+                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_NONE;
+
+
             playerTeam->units[selectedUnit]->sprite->drawRect.x = movePath.path[pathIndex].x;
             playerTeam->units[selectedUnit]->sprite->drawRect.y = movePath.path[pathIndex].y;
 

@@ -386,6 +386,49 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     return path;
 }
 
+void calculateStats(warperUnit* unit)
+{
+    //for shooters and no-classes
+    int staminaBase = 13, energyBase = 5, hpBase = 40;  //base stat values at stat level 1
+    double staminaAmplitude = 35, energyAmplitude = 38;  //how high the sigmoid functions get
+    double staminaGrowth = 0.031, energyGrowth = 0.045, hpGrowth = 0.13; //how fast the stat functions grow
+    double hpShiftPoint = 0.52;  //where the polynomial function for HP intersects with the base (y-intercept, or more specifically "stat level 1"-intercept)
+    //stat lv 50: 24 stamina, 20 energy, 107 HP
+    //max: 29 stamina, 24 energy, 257 HP
+    if (unit->classType == classAttacker)
+    {
+        staminaBase = 22;
+        energyBase = 3;
+        hpBase = 30;
+        staminaAmplitude = 64;
+        energyAmplitude = 25;
+        staminaGrowth = 0.027;
+        energyGrowth = 0.038;
+        hpGrowth = 0.078;
+        hpShiftPoint = 0.62;
+        //stat lv 50: 33 stamina, 13 energy, 75 HP
+        //max: 50 stamina, 15 energy, 150 HP
+    }
+    if (unit->classType == classTechnomancer)
+    {
+        staminaBase = 8;
+        energyBase = 12;
+        hpBase = 20;
+        staminaAmplitude = 25;
+        energyAmplitude = 61;
+        staminaGrowth = 0.04;
+        energyGrowth = 0.034;
+        hpGrowth = 0.078;
+        hpShiftPoint = 0.62;
+        //stat lv 50: 17 stamina, 33 energy, 65 HP
+        //max: 20 stamina, 40 energy, 140 HP
+    }
+
+    unit->maxStamina = (int) round(staminaAmplitude / (1 + pow(M_E, -1 * staminaGrowth * (unit->stats.speed - 1))) + (staminaBase - staminaAmplitude / 2.0));  //sigmoid function
+    unit->maxEnergy = (int) round(energyAmplitude / (1 + pow(M_E, -1 * energyGrowth * (unit->stats.tp - 1))) + (energyBase - energyAmplitude / 2.0)); //sigmoid function
+    unit->maxHp = (int) round(pow(hpGrowth * (unit->stats.hp - 1), 2) + hpShiftPoint * (unit->stats.hp - 1) + hpBase);  //linear function
+}
+
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
 {
     warperAttackResult result = {.damage = 0, .status = statusNone};
@@ -393,7 +436,6 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
     int damage = 0;
     double hitChance = 0;
     double statusChance = 0;
-    double luckAffect = 0;
     enum warperStatus inflictingStatus = statusNone;
 
     if (attackingUnit->classType == classNone)
@@ -431,13 +473,13 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 
     double randChance = rand() / (double) RAND_MAX;
-    if (hitChance + luckAffect - randChance >= 0.001) //if hit chance + luck modifier is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
+    if (hitChance - randChance >= 0.001) //if hit chance + luck modifier is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
     {
         defendingUnit->battleData.curHp -= damage;
         result.damage = damage;
     }
 
-    if (statusChance + luckAffect - randChance >= 0.001)
+    if (statusChance - randChance >= 0.001)
     {
         defendingUnit->battleData.status = inflictingStatus;
         result.status = inflictingStatus;
@@ -451,7 +493,6 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
  */
 void finishBattle(warperTeam* team, warperBattle battle)
 {
-
     for(int i = 0; i < team->unitsSize; i++)
     {
         //add exp, check level up
@@ -468,12 +509,33 @@ void finishBattle(warperTeam* team, warperBattle battle)
  */
 void addExp(warperUnit* unit, int exp)
 {
-    unit->exp += exp;
+   unit->exp += exp;
     if (unit->exp >= 100)  //if exp goes over a certain amount
     {
         //level up
-        unit->exp -= 100;
-        unit->level++;
+        if (unit->level < WARPER_MAX_LEVEL)
+        {
+            unit->exp -= 100;
+            unit->level++;
+            if (unit->stats.attack < 100)
+                unit->stats.attack++;
+            if (unit->stats.hp < 100)
+                unit->stats.hp++;
+            if (unit->stats.luck < 100)
+                unit->stats.luck++;
+            if (unit->stats.speed < 100)
+                unit->stats.speed++;
+            if (unit->stats.techAffinity < 100)
+                unit->stats.techAffinity++;
+            if (unit->stats.tp < 100)
+                unit->stats.tp++;
+            calculateStats(unit);
+        }
+        else
+        {
+            unit->exp = 100;
+            //reset exp
+        }
         //add stat points (either for the player to allocate themselves or automatically)
     }
 }
