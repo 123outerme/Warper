@@ -188,6 +188,10 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
         for(int x = 0; x < tilemap.width; x++)
             initNode(&(searchList[y][x]), x * tilemap.tileSize + deltaEndX, y * tilemap.tileSize + deltaEndY, NULL, false, -1);
     }
+
+    searchList[startY / tilemap.tileSize][startX / tilemap.tileSize].x = startX;
+    searchList[startY / tilemap.tileSize][startX / tilemap.tileSize].y = startY;  //setting our start position to its own offset
+
     curNode = &(searchList[(int) endY / tilemap.tileSize][(int) endX / tilemap.tileSize]);
     curNode->lastNode = (void*) 1;  //marked as the beginning
     curNode->distance = 0;  //distance is obviously zero
@@ -294,8 +298,8 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                 }
             }
 
-            if (abs(nextX - startX) <= finderWidth / 2 && abs(nextY - startY) <= finderHeight / 2)
-            {  //check if node is at startX, startY plus or minus half the dimensions of the pathfinder. Stop if is, continue if not
+            if (abs(nextX - startX) <= tilemap.tileSize / 2 && abs(nextY - startY) <= tilemap.tileSize / 2)
+            {  //check if node is at startX, startY plus or minus half a tile. Stop if is, continue if not
                 checkStartX = nextX / tilemap.tileSize;
                 checkStartY = nextY / tilemap.tileSize;
                 quit = true;
@@ -517,17 +521,17 @@ void addExp(warperUnit* unit, int exp)
         {
             unit->exp -= 100;
             unit->level++;
-            if (unit->stats.attack < 100)
+            if (unit->stats.attack < WARPER_MAX_STAT_LEVEL)
                 unit->stats.attack++;
-            if (unit->stats.hp < 100)
+            if (unit->stats.hp < WARPER_MAX_STAT_LEVEL)
                 unit->stats.hp++;
-            if (unit->stats.luck < 100)
+            if (unit->stats.luck < WARPER_MAX_STAT_LEVEL)
                 unit->stats.luck++;
-            if (unit->stats.speed < 100)
+            if (unit->stats.speed < WARPER_MAX_STAT_LEVEL)
                 unit->stats.speed++;
-            if (unit->stats.techAffinity < 100)
+            if (unit->stats.techAffinity < WARPER_MAX_STAT_LEVEL)
                 unit->stats.techAffinity++;
-            if (unit->stats.tp < 100)
+            if (unit->stats.tp < WARPER_MAX_STAT_LEVEL)
                 unit->stats.tp++;
             calculateStats(unit);
         }

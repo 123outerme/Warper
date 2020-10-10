@@ -335,7 +335,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     const cDoubleRect textBoxDims = (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize};
 
-    cResource battleTextBoxRes, movePathRes, circleRes;
+    cResource battleTextBoxRes, movePathRes, circleRes, enemyCircleRes;
     warperTextBox battleTextBox, backupTextBox;
     char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Skills", "End Turn"};
     bool isOptions[] = {true, true, true, true, true, true};
@@ -347,16 +347,19 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     int pathIndex = -1;
 
     warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0xF0}};
+    warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0xF0}};
 
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, &drawWarperTextBox, &destroyWarperTextBox, 2);
     initCResource(&movePathRes, (void*) &movePath, &drawWarperPath, &destroyWarperPath, 0);
     initCResource(&circleRes, (void*) &circle, &drawWarperCircle, &destroyWarperCircle, 0);
+    initCResource(&enemyCircleRes, (void*) &enemyCircle, &drawWarperCircle, &destroyWarperCircle, 0);
 
     battleTextBox.selection = 0;
 
     addResourceToCScene(scene, &battleTextBoxRes);
     addResourceToCScene(scene, &movePathRes);
     addResourceToCScene(scene, &circleRes);
+    addResourceToCScene(scene, &enemyCircleRes);
 
     cSprite confirmPlayerSprite;
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
@@ -537,24 +540,42 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             {  //if we didn't click on the text box
                 if (!confirmMode)
                 {
-                    double worldClickX = input.click.x + scene->camera->rect.x - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2, worldClickY = input.click.y + scene->camera->rect.y - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;  //where we clicked on in the world
+                    double worldClickX = input.click.x + scene->camera->rect.x, worldClickY = input.click.y + scene->camera->rect.y;  //where we clicked on in the world
 
                     /*
                     double curSpeed = speed * 60.0 / framerate;
                     worldClickX = ((int)(worldClickX / curSpeed)) * curSpeed;
                     worldClickY = ((int)(worldClickY / curSpeed)) * curSpeed;  //bounding them each distance unit covered by 1 frame
                     //*/
-                    //if we want to select our unit
+                    //if we want to select a unit
                     if (battleTextBox.selection == 0)
                     {
                         for(int i = 0; i < playerTeam->unitsSize; i++)
                         {
-                            if (worldClickX > playerTeam->units[i]->sprite->drawRect.x && worldClickX < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w &&
-                                worldClickY > playerTeam->units[i]->sprite->drawRect.y && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
+                            if (worldClickX >= playerTeam->units[i]->sprite->drawRect.x && worldClickX < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w &&
+                                worldClickY >= playerTeam->units[i]->sprite->drawRect.y && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
                             {
                                 selectedUnit = i;
                                 //printf("found unit %d\n", i);
                             }
+                        }
+
+                        enemyCircleRes.renderLayer = 0;
+                        int enemyIndex = -1;
+                        for(int i = 0; i < enemyTeam->unitsSize; i++)
+                        {
+                            if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
+                                worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
+                                enemyIndex = i;
+                        }
+
+                        if (enemyIndex > -1)
+                        {
+                            //printf("found\n");
+                            enemyCircle.center.x = enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2;
+                            enemyCircle.center.y = enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2;
+                            enemyCircle.radius = enemyTeam->units[enemyIndex]->battleData.energyLeft * tilemap.tileSize;
+                            enemyCircleRes.renderLayer = 5;
                         }
                     }
 
@@ -565,16 +586,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         {
                             //printf("move\n");
 
-                            /*cDoubleRect oldRect = playerTeam->units[selectedUnit]->sprite->drawRect;  //save our current location rect
-
-                            playerTeam->units[selectedUnit]->sprite->drawRect.x = worldClickX;  //move the unit there pre-maturely
-                            playerTeam->units[selectedUnit]->sprite->drawRect.y = worldClickY;
-
-                            cDoubleVector mtv = getTilemapCollision(*(playerTeam->units[selectedUnit]->sprite), tilemap);  //check if we can move there
-                            */
-
-                            confirmPlayerSprite.drawRect.x = worldClickX;
-                            confirmPlayerSprite.drawRect.y = worldClickY;
+                            confirmPlayerSprite.drawRect.x = worldClickX  - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
+                            confirmPlayerSprite.drawRect.y = worldClickY  - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
 
                             cDoubleVector mtv = getTilemapCollision(confirmPlayerSprite, tilemap);  //check if we can move there
 
@@ -582,9 +595,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                             if (mtv.magnitude)
                             {  //if there was a collision
-                                //reset movement and tell the player maybe
                                 //printf("no\n");
-                                //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
                             }
                             else
                             {
@@ -597,7 +608,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 movePath.pathLength = 0;
                                 pathIndex = 0;
 
-                                if (battleTextBox.selection < 2)
+                                if (battleTextBox.selection == 1)
                                 {
                                     //if we're moving, do a search for the correct path
                                     //*
@@ -636,10 +647,10 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
 
-                                    if (worldClickX >= 0 && worldClickY >= 0 &&  //not going out of bounds up or left
-                                        worldClickX <= tilemap.width * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.w &&  //not going out of bounds right
-                                        worldClickY <= tilemap.height * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.h &&  //not going out of bounds down
-                                        moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft && //are moving somewhere and have the energy to do so
+                                    if (confirmPlayerSprite.drawRect.x >= 0 && confirmPlayerSprite.drawRect.y >= 0 &&  //not going out of bounds up or left
+                                        confirmPlayerSprite.drawRect.x <= tilemap.width * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.w &&  //not going out of bounds right
+                                        confirmPlayerSprite.drawRect.y <= tilemap.height * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.h &&  //not going out of bounds down
+                                        moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft &&  //are moving somewhere and have the energy to do so
                                         !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)  //haven't teleported or attacked already
                                     {
                                         strncpy(templateStr, "Do you want to teleport? It will use %d energy.", 60);
@@ -670,8 +681,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         int enemyIndex = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
                         {
-                            if (worldClickX > enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
-                                worldClickY > enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
+                            if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
+                                worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
                                 enemyIndex = i;
                         }
                         if (enemyIndex != -1)
@@ -737,6 +748,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
     removeResourceFromCScene(scene, &movePathRes, -1, true);
     removeResourceFromCScene(scene, &circleRes, -1, true);
+    removeResourceFromCScene(scene, &enemyCircleRes, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
 
     return quitEverything;

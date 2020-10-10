@@ -5,6 +5,7 @@
 
 //#defines
 #define WARPER_MAX_LEVEL 50
+#define WARPER_MAX_STAT_LEVEL 100
 
 //enum definitions
 enum warperClass
