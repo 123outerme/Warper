@@ -87,7 +87,7 @@ typedef struct _warperUnit
     int maxStamina;
     int maxEnergy;
     enum warperClass classType;
-    warperItem weapon;
+    warperItem* weapon;
     warperStats stats;
     warperBattleData battleData;
 } warperUnit;
@@ -111,6 +111,8 @@ typedef struct _warperAttackResult
 {
     int damage;
     enum warperStatus status;
+    bool crit;
+    bool miss;
 } warperAttackResult;
 
 //function prototypes
@@ -119,6 +121,7 @@ void destroyWarperTeam(warperTeam* team);
 void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, int* lengthOfPath, const bool drawDebug, cCamera* camera);
+void calculateStats(warperUnit* unit, bool setBattleStats);
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);

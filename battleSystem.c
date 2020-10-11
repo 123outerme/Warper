@@ -390,15 +390,15 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     return path;
 }
 
-void calculateStats(warperUnit* unit)
+void calculateStats(warperUnit* unit, bool setBattleStats)
 {
-    //for shooters and no-classes
-    int staminaBase = 13, energyBase = 5, hpBase = 40;  //base stat values at stat level 1
+    //for no-classes
+    int staminaBase = 13, energyBase = 5, hpBase = 30;  //base stat values at stat level 1
     double staminaAmplitude = 35, energyAmplitude = 38;  //how high the sigmoid functions get
-    double staminaGrowth = 0.031, energyGrowth = 0.045, hpGrowth = 0.13; //how fast the stat functions grow
-    double hpShiftPoint = 0.52;  //where the polynomial function for HP intersects with the base (y-intercept, or more specifically "stat level 1"-intercept)
-    //stat lv 50: 24 stamina, 20 energy, 107 HP
-    //max: 29 stamina, 24 energy, 257 HP
+    double staminaGrowth = 0.031, energyGrowth = 0.045, hpGrowth = 0.078; //how fast the stat functions grow
+    double hpShiftPoint = 0.62;  //where the polynomial function for HP intersects with the base (y-intercept, or more specifically "stat level 1"-intercept)
+    //stat lv 50: 24 stamina, 20 energy, 75 HP
+    //max: 29 stamina, 24 energy, 151 HP
     if (unit->classType == classAttacker)
     {
         staminaBase = 22;
@@ -411,7 +411,21 @@ void calculateStats(warperUnit* unit)
         hpGrowth = 0.078;
         hpShiftPoint = 0.62;
         //stat lv 50: 33 stamina, 13 energy, 75 HP
-        //max: 50 stamina, 15 energy, 150 HP
+        //max: 50 stamina, 15 energy, 151 HP
+    }
+    if (unit->classType == classShooter)
+    {
+        staminaBase = 13;
+        energyBase = 5;
+        hpBase = 40;
+        staminaAmplitude = 35;
+        energyAmplitude = 38;
+        staminaGrowth = 0.031;
+        energyGrowth = 0.045;
+        hpGrowth = 0.13;
+        hpShiftPoint = 0.52;
+        //stat lv 50: 24 stamina, 20 energy, 107 HP
+        //max: 29 stamina, 24 energy, 257 HP
     }
     if (unit->classType == classTechnomancer)
     {
@@ -425,50 +439,112 @@ void calculateStats(warperUnit* unit)
         hpGrowth = 0.078;
         hpShiftPoint = 0.62;
         //stat lv 50: 17 stamina, 33 energy, 65 HP
-        //max: 20 stamina, 40 energy, 140 HP
+        //max: 20 stamina, 40 energy, 141 HP
     }
 
     unit->maxStamina = (int) round(staminaAmplitude / (1 + pow(M_E, -1 * staminaGrowth * (unit->stats.speed - 1))) + (staminaBase - staminaAmplitude / 2.0));  //sigmoid function
     unit->maxEnergy = (int) round(energyAmplitude / (1 + pow(M_E, -1 * energyGrowth * (unit->stats.tp - 1))) + (energyBase - energyAmplitude / 2.0)); //sigmoid function
     unit->maxHp = (int) round(pow(hpGrowth * (unit->stats.hp - 1), 2) + hpShiftPoint * (unit->stats.hp - 1) + hpBase);  //linear function
+
+    if (setBattleStats)
+    {
+        unit->battleData.curHp = unit->maxHp;
+        unit->battleData.energyLeft = unit->maxEnergy;
+        unit->battleData.staminaLeft = unit->maxStamina;
+    }
 }
 
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
 {
-    warperAttackResult result = {.damage = 0, .status = statusNone};
+    warperAttackResult result = {.damage = 0, .status = statusNone, .miss = false, .crit = true};
     //attack calculations
     int damage = 0;
-    double hitChance = 0;
-    double statusChance = 0;
+    double hitChance = 0, statusChance = 0, critChance = (attackingUnit->stats.luck - defendingUnit->stats.luck) / 100.0 + .05;
+    //crit: 5% + 1% more for each luck point attacker has more than defender, - 1% for each luck point the defender has more than attacker
     enum warperStatus inflictingStatus = statusNone;
+
+    double baseDamage = 15;  //damage calculations
 
     if (attackingUnit->classType == classNone)
     {
         //no-class calculations
         //pretty much just debug calculations, although maybe this is like the 1st act/tutorial case?
+
+        //hit chance (attacker chances minus the luck affect
+        if (distance < 2)
+            hitChance = 1;  //100%
+
+        if (distance >= 2 && distance < 3)
+            hitChance = -0.15 * (distance - 2) + 1;  //linearly decreases from 100% to 85%
+
+        if (distance > 3)
+            hitChance = -0.7 * (distance - 3) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 4.214 tiles)
+
+        //damage: like an attacker but less strong
+
         //status: none ever
     }
     if (attackingUnit->classType == classAttacker)
     {
         //attacker calculations
-        //hit chance: 0 tiles < x < 2 tiles: linearly decreasing from 100% to 85%
-        //            2 < x < infinity: inverse square law
+
+        //hit chance
+        if (distance < 2)
+            hitChance = 1;  //100%
+
+        if (distance >= 2 && distance < 3)
+            hitChance = -0.15 * (distance - 2) + 1;  //linearly decreases from 100% to 85%
+
+        if (distance > 3)
+            hitChance = -0.7 * (distance - 3) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 4.214 tiles)
+
+        if (attackingUnit->stats.luck > defendingUnit->stats.luck)
+            hitChance += 0.002 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.2% for every point of difference between attacker's and defender's luck
+
         //damage: calculated based on attack and speed maybe?
         //status: based on equipment
-        //luck: only slightly affects the hit chance outcome
+
     }
     if (attackingUnit->classType == classShooter)
     {
         //shooter calculations
-        //hit chance: bell curve centering around 3-ish tiles away
-        //damage: calculated based on attack and range maybe?
+
+        //hit chance
+        if (distance < 3)
+            hitChance = 0.1 * distance + .65;  //linearly increases from 65% to 95% hit rate
+
+        if (distance >= 3 && distance < 10)
+            hitChance = 1; //max hit rate at 100%
+
+        if (distance >= 10 && distance < 20)
+            hitChance = .95; //hit rate at 95%
+
+        if (distance >= 20)
+            hitChance = -0.08 * (distance - 20) + .95;  //linearly decreases from 95% hit rate
+
+        if (attackingUnit->stats.luck > defendingUnit->stats.luck)
+            hitChance += 0.005 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.5% for every point of difference between attacker's and defender's luck
+
+        //damage: calculated based on attack and distance/hit chance maybe?
         //status: based on equipment
-        //luck: somewhat affects the hit chance outcome, slightly affects damage
     }
     if (attackingUnit->classType == classTechnomancer)
     {
         //technomancer calculations
-        //hit chance: bell curve centering around X tiles away, lower plateau on the end of 0 < X, and a higher plateau on the end of X < infinity
+
+        //hit chance: Gaussian curve centering around 30 tiles away, lower plateau on the end of 0 < 30, and a higher plateau on the end of 30 < infinity
+        if (hitChance <= 37)
+        {
+            double hitAmplitude = 5, hitGrowth = 4, hitBase = 0.7, hitCurveCenter = 30;
+
+            //70% chance hit rate base, from 0 to ~20 tiles out. After ~20, increases to 100% at the center (26-34 tiles), then decreases to 80% at 37 tiles, which is where it stays to infinity
+
+            hitChance = hitAmplitude * ( (1 / (hitGrowth * sqrt(2 * M_PI))) * pow(M_E, (-0.5 * pow((distance - hitCurveCenter) / hitAmplitude, 2))) ) + hitBase;
+
+        }
+        else
+            hitChance = .8;  //80% hit rate after 37 tile distance
+
         //damage: calculated based on attack and tech affinity
         //status: based on equipment
         //luck: affects status proc chance and damage?
@@ -477,13 +553,20 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 
     double randChance = rand() / (double) RAND_MAX;
-    if (hitChance - randChance >= 0.001) //if hit chance + luck modifier is greater than or equal to randChance within a 0.1% margin of error (0.001 as a number)
-    {
-        defendingUnit->battleData.curHp -= damage;
+    if (hitChance - randChance >= 0.00001) //if hitChance >= randChance within a 0.001% margin of error (0.00001 as a number) -- this was chosen due to the value of 1 / RAND_MAX
         result.damage = damage;
+    else
+        result.miss = true;
+
+    if (critChance - randChance >= 0.00001)
+    {
+        result.damage *= 1.5;
+        result.crit = true;
     }
 
-    if (statusChance - randChance >= 0.001)
+    defendingUnit->battleData.curHp -= damage;
+
+    if (statusChance - randChance >= 0.00001)
     {
         defendingUnit->battleData.status = inflictingStatus;
         result.status = inflictingStatus;
@@ -533,7 +616,7 @@ void addExp(warperUnit* unit, int exp)
                 unit->stats.techAffinity++;
             if (unit->stats.tp < WARPER_MAX_STAT_LEVEL)
                 unit->stats.tp++;
-            calculateStats(unit);
+            calculateStats(unit, true);
         }
         else
         {

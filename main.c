@@ -71,15 +71,13 @@ int main(int argc, char** argv)
         tilemap.height = TILEMAP_Y;
         tilemap.tileSize = TILE_SIZE;
 
-        tilemap.spritemap = calloc(tilemap.width, sizeof(int*));
-        tilemap.collisionmap = calloc(tilemap.width, sizeof(int*));
-        tilemap.eventmap = calloc(tilemap.width, sizeof(int*));
+        tilemap.spritemap = calloc(tilemap.width, sizeof(uint8_t*));
+        tilemap.collisionmap = calloc(tilemap.width, sizeof(uint8_t*));
 
         for(int x = 0; x < tilemap.width; x++)
         {
-            tilemap.spritemap[x] = calloc(tilemap.height, sizeof(int*));
-            tilemap.collisionmap[x] = calloc(tilemap.height, sizeof(int*));
-            tilemap.eventmap[x] = calloc(tilemap.height, sizeof(int*));
+            tilemap.spritemap[x] = calloc(tilemap.height, sizeof(uint8_t));
+            tilemap.collisionmap[x] = calloc(tilemap.height, sizeof(uint8_t));
 
             for(int y = 0; y < tilemap.height; y++)
             {
@@ -122,8 +120,6 @@ int main(int argc, char** argv)
 
                 if (x == tilemap.width - 2 && y == 1)  //top-right corner sprite
                     tilemap.spritemap[x][y] = 6;
-
-                tilemap.eventmap[x][y] = 0;
             }
         }
     }
@@ -133,6 +129,29 @@ int main(int argc, char** argv)
     {
         quit = gameLoop(tilemap);
         //pause menu, etc
+    }
+
+    for(int classType = 0; classType < 4; classType++)
+    {
+        printf("Class id %d\n", classType);
+        for(int i = 1; i <= 100; i++)
+        {
+            warperUnit testUnit =  (warperUnit) {NULL, i, 0, 0, 0, 0, classType, NULL, (warperStats) {i, i, i, i, i, i}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            calculateStats(&testUnit, true);
+            printf("Character with stats level %d: HP %d, Stamina %d, Energy %d\n", i, testUnit.maxHp, testUnit.maxStamina, testUnit.maxEnergy);
+
+            int avgDmgRequired = 0;
+
+            if (i < 25) //approx. early game
+                avgDmgRequired = testUnit.maxHp / 3;
+            if (i >= 25 && i < 66)  //approx. mid game
+                avgDmgRequired = testUnit.maxHp / 3;
+            if (i >= 66)  //approx late or post-game
+                avgDmgRequired = testUnit.maxHp / 3;
+
+            printf("            >damage to maintain average time to kill at this lv: %d\n", avgDmgRequired);
+        }
+        printf("-----------------\n");
     }
 
     destroyWarperTilemap(&tilemap);
@@ -148,8 +167,10 @@ int gameLoop(warperTilemap tilemap)
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 40, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, (warperItem) {itemMelee, 0, 1}, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
+    warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
+
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 25, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
     warperTeam playerTeam;
     initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
     warperTeam enemyTeam;
@@ -647,9 +668,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                            confirmPlayerSprite.drawRect.x, confirmPlayerSprite.drawRect.y) / tilemap.tileSize;
                                     //show the energy cost and ask for confirmation
 
-                                    if (confirmPlayerSprite.drawRect.x >= 0 && confirmPlayerSprite.drawRect.y >= 0 &&  //not going out of bounds up or left
-                                        confirmPlayerSprite.drawRect.x <= tilemap.width * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.w &&  //not going out of bounds right
-                                        confirmPlayerSprite.drawRect.y <= tilemap.height * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.h &&  //not going out of bounds down
+                                    if (worldClickX >= 0 && worldClickY >= 0 &&  //not going out of bounds up or left
+                                        worldClickX <= tilemap.width * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.w &&  //not going out of bounds right
+                                        worldClickY <= tilemap.height * tilemap.tileSize - playerTeam->units[selectedUnit]->sprite->drawRect.h &&  //not going out of bounds down
                                         moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft &&  //are moving somewhere and have the energy to do so
                                         !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)  //haven't teleported or attacked already
                                     {
@@ -690,10 +711,15 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             //printf("found enemy %d\n", enemyIndex);
                             //calculate if we hit, calculate damage
                             double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y, enemyTeam->units[enemyIndex]->sprite->drawRect.x, enemyTeam->units[enemyIndex]->sprite->drawRect.y);
+
+                            //if attacker is not a technomancer, check collision to see if bullets/sword are blocked
+
                             warperAttackResult attackResult = doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
 
                             playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
                             //do something with the result?
+
+                            printf("Attack did %d damage (was miss: %s)\n", attackResult.damage, boolToString(attackResult.miss));
                         }
                     }
                 }

@@ -9,15 +9,14 @@
 
 typedef struct _warperTilemap
 {
-    int** spritemap;
-    int** collisionmap;
-    int** eventmap;
+    uint8_t** spritemap;
+    uint8_t** collisionmap;
     int width;  //width of the matrices' elements
     int height;  //height of the matrices' elements
     int tileSize;  //in camera-coord values
 } warperTilemap;
 
-void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int** eventmap, int width, int height);
+void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height);
 void importTilemap(warperTilemap* tilemap, char* importedData);
 void exportTilemap(warperTilemap tilemap, char* exportedData);
 void destroyWarperTilemap(warperTilemap* tilemap);

@@ -3,6 +3,7 @@
 void createNewMap(warperTilemap* tilemap, int tileSize)
 {
     bool quit = false;
+    SDL_Keycode key;
 
     int width = 40, height = 40;
     char* dimensionInput = calloc(5, sizeof(char));
@@ -18,7 +19,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     while(!quit)
     {
         //cInputState keyboardState = cGetInputState(false);
-        SDL_Keycode key = getKey(false);
+        key = getKey(false);
 
         /*
         if (keyboardState.quitInput || keyboardState.keyStates[SDL_SCANCODE_ESCAPE] || keyboardState.keyStates[SDL_SCANCODE_RETURN])
@@ -37,9 +38,17 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
 
         drawCScene(&inputScene, true, true, NULL, 60);
     }
+    if (key == -1)
+    {
+        free(dimensionInput);
+        destroyCScene(&inputScene);
+        return;
+    }
+
+    key = SDLK_UNKNOWN;
 
     tilemap->width = strtol(dimensionInput, NULL, 10);
-    printf("%d\n", tilemap->width);
+    //printf("%d\n", tilemap->width);
     quit = false;
     free(dimensionInput);
 
@@ -50,7 +59,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     drawCScene(&inputScene, true, true, NULL, 0);
     while(!quit)
     {
-        SDL_Keycode key = getKey(false);
+        key = getKey(false);
         if (key == -1 || key == SDLK_ESCAPE || key == SDLK_RETURN)
             quit = true;
 
@@ -66,21 +75,21 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     free(dimensionInput);
     destroyCScene(&inputScene);
 
+    if (key == -1)
+        return;
+
     tilemap->tileSize = tileSize;
 
-    tilemap->spritemap = calloc(width, sizeof(int*));
-    tilemap->collisionmap = calloc(width, sizeof(int*));
-    tilemap->eventmap = calloc(width, sizeof(int*));
+    tilemap->spritemap = calloc(width, sizeof(uint8_t*));
+    tilemap->collisionmap = calloc(width, sizeof(uint8_t*));
     for(int x = 0; x < width; x++)
     {
-        tilemap->spritemap[x] = calloc(height, sizeof(int));
-        tilemap->collisionmap[x] = calloc(height, sizeof(int));
-        tilemap->eventmap[x] = calloc(height, sizeof(int));
+        tilemap->spritemap[x] = calloc(height, sizeof(uint8_t));
+        tilemap->collisionmap[x] = calloc(height, sizeof(uint8_t));
         for(int y = 0; y < height; y++)
         {
             tilemap->spritemap[x][y] = 4;
             tilemap->collisionmap[x][y] = 0;
-            tilemap->eventmap[x][y] = 0;
         }
     }
 
