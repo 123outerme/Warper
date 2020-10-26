@@ -140,16 +140,30 @@ int main(int argc, char** argv)
             calculateStats(&testUnit, true);
             printf("Character with stats level %d: HP %d, Stamina %d, Energy %d\n", i, testUnit.maxHp, testUnit.maxStamina, testUnit.maxEnergy);
 
-            int avgDmgRequired = 0;
+            warperUnit attackingUnit = (warperUnit) {NULL, i, 0, 0, 0, 0, classNone, NULL, (warperStats) {i, i, i, i, i, i}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            warperAttackResult result = doAttack(&attackingUnit, &testUnit, 0);
+
+            //printf("            >No-class character dmg %d. ttk: %d\n", result.damage, (int) round((double) testUnit.maxHp / result.damage + 0.45));
+
+            int maxDmgRequired = 0, minDmgRequired = 0;
 
             if (i < 25) //approx. early game
-                avgDmgRequired = testUnit.maxHp / 3;
+            {
+                maxDmgRequired = testUnit.maxHp - 1; //2+ hits
+                minDmgRequired = testUnit.maxHp / 2;
+            }
             if (i >= 25 && i < 66)  //approx. mid game
-                avgDmgRequired = testUnit.maxHp / 3;
+            {
+                maxDmgRequired = testUnit.maxHp / 2 - 1;  //3+ hits
+                minDmgRequired = testUnit.maxHp / 3;
+            }
             if (i >= 66)  //approx late or post-game
-                avgDmgRequired = testUnit.maxHp / 3;
+            {
+                maxDmgRequired = testUnit.maxHp / 3 - 1;  //4+ hits
+                minDmgRequired = testUnit.maxHp / 4;
+            }
 
-            printf("            >damage to maintain average time to kill at this lv: %d\n", avgDmgRequired);
+            //printf("            >max damage to maintain average time to kill at this lv: %d\n            >min damage to maintain average time to kill at this lv: %d\n", maxDmgRequired, minDmgRequired);
         }
         printf("-----------------\n");
     }

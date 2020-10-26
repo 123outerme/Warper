@@ -393,58 +393,58 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
 void calculateStats(warperUnit* unit, bool setBattleStats)
 {
     //for no-classes
-    int staminaBase = 13, energyBase = 5, hpBase = 30;  //base stat values at stat level 1
+    int staminaBase = 13, energyBase = 5, hpBase = 300;  //base stat values at stat level 1
     double staminaAmplitude = 35, energyAmplitude = 38;  //how high the sigmoid functions get
     double staminaGrowth = 0.031, energyGrowth = 0.045, hpGrowth = 0.078; //how fast the stat functions grow
     double hpShiftPoint = 0.62;  //where the polynomial function for HP intersects with the base (y-intercept, or more specifically "stat level 1"-intercept)
-    //stat lv 50: 24 stamina, 20 energy, 75 HP
-    //max: 29 stamina, 24 energy, 151 HP
+    //stat lv 50: 24 stamina, 20 energy, 750 HP
+    //max: 29 stamina, 24 energy, 1510 HP
     if (unit->classType == classAttacker)
     {
         staminaBase = 22;
         energyBase = 3;
-        hpBase = 30;
+        hpBase = 300;
         staminaAmplitude = 64;
         energyAmplitude = 25;
         staminaGrowth = 0.027;
         energyGrowth = 0.038;
         hpGrowth = 0.078;
         hpShiftPoint = 0.62;
-        //stat lv 50: 33 stamina, 13 energy, 75 HP
-        //max: 50 stamina, 15 energy, 151 HP
+        //stat lv 50: 33 stamina, 13 energy, 750 HP
+        //max: 50 stamina, 15 energy, 1510 HP
     }
     if (unit->classType == classShooter)
     {
         staminaBase = 13;
         energyBase = 5;
-        hpBase = 40;
+        hpBase = 400;
         staminaAmplitude = 35;
         energyAmplitude = 38;
         staminaGrowth = 0.031;
         energyGrowth = 0.045;
         hpGrowth = 0.13;
         hpShiftPoint = 0.52;
-        //stat lv 50: 24 stamina, 20 energy, 107 HP
-        //max: 29 stamina, 24 energy, 257 HP
+        //stat lv 50: 24 stamina, 20 energy, 1061 HP
+        //max: 29 stamina, 24 energy, 2571 HP
     }
     if (unit->classType == classTechnomancer)
     {
         staminaBase = 8;
         energyBase = 12;
-        hpBase = 20;
+        hpBase = 200;
         staminaAmplitude = 25;
         energyAmplitude = 61;
         staminaGrowth = 0.04;
         energyGrowth = 0.034;
         hpGrowth = 0.078;
         hpShiftPoint = 0.62;
-        //stat lv 50: 17 stamina, 33 energy, 65 HP
-        //max: 20 stamina, 40 energy, 141 HP
+        //stat lv 50: 17 stamina, 33 energy, 650 HP
+        //max: 20 stamina, 40 energy, 1410 HP
     }
 
     unit->maxStamina = (int) round(staminaAmplitude / (1 + pow(M_E, -1 * staminaGrowth * (unit->stats.speed - 1))) + (staminaBase - staminaAmplitude / 2.0));  //sigmoid function
     unit->maxEnergy = (int) round(energyAmplitude / (1 + pow(M_E, -1 * energyGrowth * (unit->stats.tp - 1))) + (energyBase - energyAmplitude / 2.0)); //sigmoid function
-    unit->maxHp = (int) round(pow(hpGrowth * (unit->stats.hp - 1), 2) + hpShiftPoint * (unit->stats.hp - 1) + hpBase);  //linear function
+    unit->maxHp = (int) round((pow(hpGrowth * (unit->stats.hp - 1), 2) + hpShiftPoint * (unit->stats.hp - 1)) * 10) + hpBase;  //quadratic function
 
     if (setBattleStats)
     {
@@ -463,14 +463,15 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
     //crit: 5% + 1% more for each luck point attacker has more than defender, - 1% for each luck point the defender has more than attacker
     enum warperStatus inflictingStatus = statusNone;
 
-    double baseDamage = 15;  //damage calculations
+    int baseDamage = 182;  //damage calculations
+    double damageGrowth = 0.0006, damageShift = 2.0967;  //ax^2, bx
 
     if (attackingUnit->classType == classNone)
     {
         //no-class calculations
         //pretty much just debug calculations, although maybe this is like the 1st act/tutorial case?
 
-        //hit chance (attacker chances minus the luck affect
+        //hit chance (attacker chances minus the luck affect)
         if (distance < 2)
             hitChance = 1;  //100%
 
@@ -480,7 +481,11 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         if (distance > 3)
             hitChance = -0.7 * (distance - 3) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 4.214 tiles)
 
-        //damage: like an attacker but less strong
+        /*damage: like an attacker but less strong
+        damageGrowth = 0.0005;  // = 0.0005x^2 + 0.1499x + 14
+        damageShift = 0.1499;
+        baseDamage = 14;
+        //*/
 
         //status: none ever
     }
@@ -549,6 +554,9 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         //status: based on equipment
         //luck: affects status proc chance and damage?
     }
+
+    damage = damageGrowth * pow(attackingUnit->stats.attack, 2) + damageShift * attackingUnit->stats.attack + baseDamage;
+
     //status chance: calculated based on opponent's status resist stat and your status chance
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 

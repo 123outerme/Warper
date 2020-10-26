@@ -11,6 +11,7 @@
 /logs/
 /maps/
 /CoSprite/
+/assets/mockups/
 *.cbp
 *.depend
 *.layout
