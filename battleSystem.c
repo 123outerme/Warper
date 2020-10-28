@@ -422,10 +422,10 @@ void calculateStats(warperUnit* unit, bool setBattleStats)
         energyAmplitude = 38;
         staminaGrowth = 0.031;
         energyGrowth = 0.045;
-        hpGrowth = 0.13;
+        hpGrowth = 0.1;
         hpShiftPoint = 0.52;
-        //stat lv 50: 24 stamina, 20 energy, 1061 HP
-        //max: 29 stamina, 24 energy, 2571 HP
+        //stat lv 50: 24 stamina, 20 energy, 895 HP
+        //max: 29 stamina, 24 energy, 1895 HP
     }
     if (unit->classType == classTechnomancer)
     {
@@ -527,14 +527,14 @@ warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUn
         if (distance < 6)
             attack.hitChance = 0.05 * distance + .65;  //linearly increases from 65% to 95% hit rate
 
-        if (distance >= 6 && distance < 20)
+        if (distance >= 6 && distance < 16)
             attack.hitChance = 1; //max hit rate at 100%
 
-        if (distance >= 20 && distance < 30)
+        if (distance >= 16 && distance < 26)
             attack.hitChance = .95; //hit rate at 95%
 
-        if (distance >= 30)
-            attack.hitChance = -0.08 * (distance - 30) + .95;  //linearly decreases from 95% hit rate
+        if (distance >= 26)
+            attack.hitChance = -0.08 * (distance - 26) + .95;  //linearly decreases from 95% hit rate
 
         if (attackingUnit->stats.luck > defendingUnit->stats.luck)
             attack.hitChance += 0.005 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.5% for every point of difference between attacker's and defender's luck
@@ -578,7 +578,7 @@ warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUn
         //increase effective attack by gear points
 
         //status: based on equipment
-        //luck: affects status proc chance and damage?
+        //tech affinity: affects status proc chance and damage?
     }
 
     attack.damage = damageGrowth * pow((effectiveAttack - 1), 2) + damageShift * (effectiveAttack - 1) + baseDamage;
@@ -657,13 +657,18 @@ void addExp(warperUnit* unit, int exp)
                 unit->stats.techAffinity++;
             if (unit->stats.tp < WARPER_MAX_STAT_LEVEL)
                 unit->stats.tp++;
+
+            //add stat points (either for the player to allocate themselves or automatically)
+            unit->stats.statPts += 3;  //3 extra stat points
+
             calculateStats(unit, true);
+
         }
         else
         {
-            unit->exp = 100;
-            //reset exp
+            unit->exp = 99;
+            //reset exp to max
         }
-        //add stat points (either for the player to allocate themselves or automatically)
+
     }
 }

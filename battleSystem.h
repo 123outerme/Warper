@@ -20,7 +20,9 @@ enum warperStatus
 {
     statusNone,
     statusHacked,  /**< unable to use attack with anything other than basic attacks, and movement is restricted to walking */
-    statusBleed  /**< damage over time (damage at the start of each turn) */
+    statusBleed,  /**< damage over time (damage at the start of each turn) */
+    statusSlow,  /**< reduces stamina by 25-ish % */
+    statusExposed  /**< crits are easier (maybe use this, maybe not) */
 };
 
 enum warperObjective
@@ -59,6 +61,7 @@ typedef struct _warperStats
     int tp;
     int techAffinity;
     int luck;
+    int statPts;
 } warperStats;
 
 typedef struct _warperBattleData

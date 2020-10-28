@@ -71,36 +71,39 @@ int main(int argc, char** argv)
         tilemap.height = TILEMAP_Y;
         tilemap.tileSize = TILE_SIZE;
 
-        tilemap.spritemap = calloc(tilemap.width, sizeof(uint8_t*));
-        tilemap.collisionmap = calloc(tilemap.width, sizeof(uint8_t*));
+        tilemap.spritemap_layer1 = calloc(tilemap.width, sizeof(int*));
+        tilemap.spritemap_layer2 = calloc(tilemap.width, sizeof(int*));
+        tilemap.collisionmap = calloc(tilemap.width, sizeof(int*));
 
         for(int x = 0; x < tilemap.width; x++)
         {
-            tilemap.spritemap[x] = calloc(tilemap.height, sizeof(uint8_t));
-            tilemap.collisionmap[x] = calloc(tilemap.height, sizeof(uint8_t));
+            tilemap.spritemap_layer1[x] = calloc(tilemap.height, sizeof(int));
+            tilemap.spritemap_layer2[x] = calloc(tilemap.height, sizeof(int));
+            tilemap.collisionmap[x] = calloc(tilemap.height, sizeof(int));
 
             for(int y = 0; y < tilemap.height; y++)
             {
-                tilemap.spritemap[x][y] = 4;  //normal sprite
+                tilemap.spritemap_layer1[x][y] = 4;  //normal sprite
+                tilemap.spritemap_layer2[x][y] = 798;  //invisible sprite?
 
                 if (x == 1)  //left row sprite
-                    tilemap.spritemap[x][y] = 1;
+                    tilemap.spritemap_layer1[x][y] = 1;
 
                 if (y == 1)  //top row sprite
-                    tilemap.spritemap[x][y] = 3;
+                    tilemap.spritemap_layer1[x][y] = 3;
 
                 if (x == tilemap.width - 2)  //right row sprite
-                    tilemap.spritemap[x][y] = 7;
+                    tilemap.spritemap_layer1[x][y] = 7;
 
                 if (y == tilemap.height - 2)  //bottom row sprite
-                    tilemap.spritemap[x][y] = 5;
+                    tilemap.spritemap_layer1[x][y] = 5;
 
                 if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height || (y == 20 && x > tilemap.width / 2) || (y == 40 && x < tilemap.height / 2))
                 {
                     if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height)
-                        tilemap.spritemap[x][y] = 36;  //skyscraper sprite
+                        tilemap.spritemap_layer1[x][y] = 36;  //skyscraper sprite
                     else
-                        tilemap.spritemap[x][y] = 13; //collision sprite
+                        tilemap.spritemap_layer1[x][y] = 13; //collision sprite
 
                     tilemap.collisionmap[x][y] = 1;
                 }
@@ -108,18 +111,16 @@ int main(int argc, char** argv)
                     tilemap.collisionmap[x][y] = 0;
 
                 if (x == 1 && y == 1)  //top-left corner sprite
-                    tilemap.spritemap[x][y] = 0;
-
-
+                    tilemap.spritemap_layer1[x][y] = 0;
 
                 if (x == tilemap.width - 2 && y == tilemap.height - 2)  //bottom-right corner sprite
-                    tilemap.spritemap[x][y] = 8;
+                    tilemap.spritemap_layer1[x][y] = 8;
 
                 if (x == 1 && y == tilemap.height - 2)  //bottom-left corner sprite
-                    tilemap.spritemap[x][y] = 2;
+                    tilemap.spritemap_layer1[x][y] = 2;
 
                 if (x == tilemap.width - 2 && y == 1)  //top-right corner sprite
-                    tilemap.spritemap[x][y] = 6;
+                    tilemap.spritemap_layer1[x][y] = 6;
             }
         }
     }
@@ -131,21 +132,22 @@ int main(int argc, char** argv)
         //pause menu, etc
     }
 
+    /*/
     for(int classType = 0; classType < 4; classType++)
     {
         printf("Class id %d\n", classType);
         for(int i = 1; i <= 100; i++)
         {
-            warperUnit testUnit =  (warperUnit) {NULL, i, 0, 0, 0, 0, classType, NULL, (warperStats) {i, i, i, i, i, i}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            warperUnit testUnit =  (warperUnit) {NULL, i, 0, 0, 0, 0, classType, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
             calculateStats(&testUnit, true);
             printf("Character with stats level %d: HP %d, Stamina %d, Energy %d\n", i, testUnit.maxHp, testUnit.maxStamina, testUnit.maxEnergy);
 
-            warperUnit attackingUnit = (warperUnit) {NULL, i, 0, 0, 0, 0, classNone, NULL, (warperStats) {i, i, i, i, i, i}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            warperUnit attackingUnit = (warperUnit) {NULL, i, 0, 0, 0, 0, classTechnomancer, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
             warperAttackCheck checkResult = checkAttack(&attackingUnit, &testUnit, 0);
 
-            printf("            >No-class character dmg %d. ttk: %d\n", checkResult.damage, (int) round((double) testUnit.maxHp / checkResult.damage + 0.45));
+            printf("            >Attacker character dmg %d. ttk: %d\n", checkResult.damage, (int) round((double) testUnit.maxHp / checkResult.damage + 0.45));
 
-            /*
+            / *
             int maxDmgRequired = 0, minDmgRequired = 0;
 
             if (i < 25) //approx. early game
@@ -165,10 +167,11 @@ int main(int argc, char** argv)
             }
 
             //printf("            >max damage to maintain average time to kill at this lv: %d\n            >min damage to maintain average time to kill at this lv: %d\n", maxDmgRequired, minDmgRequired);
-            //*/
+            // * /
         }
         printf("-----------------\n");
     }
+    //*/
 
     destroyWarperTilemap(&tilemap);
 
@@ -179,43 +182,29 @@ int main(int argc, char** argv)
 
 int gameLoop(warperTilemap tilemap)
 {
-    c2DModel mapModel;
+    c2DModel mapModel_layer1, mapModel_layer2;
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
     warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 25, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {15, statusNone, 0, 35, 25, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
     warperTeam playerTeam;
     initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
     warperTeam enemyTeam;
     initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
-    {
-        SDL_Texture* tilesetTexture;
-        loadIMG("assets/worldTilesheet.png", &tilesetTexture);
-        cSprite* tileSprites = calloc(tilemap.width * tilemap.height, sizeof(cSprite));
-        for(int x = 0; x < tilemap.width; x++)
-        {
-            for(int y = 0; y < tilemap.height; y++)
-            {
-                initCSprite(&tileSprites[x * tilemap.height + y], tilesetTexture, "assets/worldTilesheet.png", tilemap.spritemap[x][y],
-                            (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize},
-                            (cDoubleRect) {(tilemap.spritemap[x][y] / 20) * tilemap.tileSize / 2, (tilemap.spritemap[x][y] % 20) * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
-            }
-        }
-        initC2DModel(&mapModel, tileSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
-        initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
+    loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
+
+    initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
                     (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 4 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
-        initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
-                    (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
-                    (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyTeam, 4);
-    }
+    initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
+                (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
+                (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyTeam, 4);
 
     cResource textBoxResource;
     warperTextBox textBox;
@@ -237,7 +226,7 @@ int gameLoop(warperTilemap tilemap)
     initCCamera(&testCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1, 0.0);
 
     cScene testScene;
-    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[1]) {&mapModel}, 1, /*(cResource*[1]) {&textBoxResource}, 1,*/ NULL, 0, NULL, 0);
+    initCScene(&testScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &testCamera, (cSprite*[2]) {&testPlayerSprite, &testEnemySprite}, 2, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, /*(cResource*[1]) {&textBoxResource}, 1,*/ NULL, 0, NULL, 0);
 
     bool quit = false;
 
