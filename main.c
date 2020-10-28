@@ -141,10 +141,11 @@ int main(int argc, char** argv)
             printf("Character with stats level %d: HP %d, Stamina %d, Energy %d\n", i, testUnit.maxHp, testUnit.maxStamina, testUnit.maxEnergy);
 
             warperUnit attackingUnit = (warperUnit) {NULL, i, 0, 0, 0, 0, classNone, NULL, (warperStats) {i, i, i, i, i, i}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
-            warperAttackResult result = doAttack(&attackingUnit, &testUnit, 0);
+            warperAttackCheck checkResult = checkAttack(&attackingUnit, &testUnit, 0);
 
-            //printf("            >No-class character dmg %d. ttk: %d\n", result.damage, (int) round((double) testUnit.maxHp / result.damage + 0.45));
+            printf("            >No-class character dmg %d. ttk: %d\n", checkResult.damage, (int) round((double) testUnit.maxHp / checkResult.damage + 0.45));
 
+            /*
             int maxDmgRequired = 0, minDmgRequired = 0;
 
             if (i < 25) //approx. early game
@@ -164,6 +165,7 @@ int main(int argc, char** argv)
             }
 
             //printf("            >max damage to maintain average time to kill at this lv: %d\n            >min damage to maintain average time to kill at this lv: %d\n", maxDmgRequired, minDmgRequired);
+            //*/
         }
         printf("-----------------\n");
     }
@@ -710,7 +712,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             }
                         }
                     }
-                    if (battleTextBox.selection == 3 && playerTurn)
+                    if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
                     {  //battle
                         //find which enemy we clicked on, if any
                         int enemyIndex = -1;
@@ -724,16 +726,19 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         {
                             //printf("found enemy %d\n", enemyIndex);
                             //calculate if we hit, calculate damage
-                            double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y, enemyTeam->units[enemyIndex]->sprite->drawRect.x, enemyTeam->units[enemyIndex]->sprite->drawRect.y);
+                            double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2,
+                                                          playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2,
+                                                          enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2,
+                                                          enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2) / tilemap.tileSize;
 
                             //if attacker is not a technomancer, check collision to see if bullets/sword are blocked
 
-                            warperAttackResult attackResult = doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
+                            warperAttackCheck checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
 
-                            playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
+                            //playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
                             //do something with the result?
 
-                            printf("Attack did %d damage (was miss: %s)\n", attackResult.damage, boolToString(attackResult.miss));
+                            printf("Attack does %d damage (chance to hit: %f%% against enemy %f tiles away)\n", checkResult.damage, checkResult.hitChance * 100.0, distance);
                         }
                     }
                 }

@@ -454,17 +454,19 @@ void calculateStats(warperUnit* unit, bool setBattleStats)
     }
 }
 
-warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
+warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
 {
-    warperAttackResult result = {.damage = 0, .status = statusNone, .miss = false, .crit = true};
+    warperAttackCheck attack = {.damage = 0, .status = statusNone, .hitChance = 0, .critChance = 0, .statusChance = 0};
+
     //attack calculations
-    int damage = 0;
-    double hitChance = 0, statusChance = 0, critChance = (attackingUnit->stats.luck - defendingUnit->stats.luck) / 100.0 + .05;
+
+    attack.critChance = (attackingUnit->stats.luck - defendingUnit->stats.luck) / 100.0 + .05;
     //crit: 5% + 1% more for each luck point attacker has more than defender, - 1% for each luck point the defender has more than attacker
-    enum warperStatus inflictingStatus = statusNone;
 
     int baseDamage = 182;  //damage calculations
     double damageGrowth = 0.0006, damageShift = 2.0967;  //ax^2, bx
+
+    int effectiveAttack = attackingUnit->stats.attack;
 
     if (attackingUnit->classType == classNone)
     {
@@ -472,19 +474,19 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         //pretty much just debug calculations, although maybe this is like the 1st act/tutorial case?
 
         //hit chance (attacker chances minus the luck affect)
-        if (distance < 2)
-            hitChance = 1;  //100%
+        if (distance < 5)
+            attack.hitChance = 1;  //100%
 
-        if (distance >= 2 && distance < 3)
-            hitChance = -0.15 * (distance - 2) + 1;  //linearly decreases from 100% to 85%
+        if (distance >= 5 && distance < 6)
+            attack.hitChance = -0.15 * (distance - 5) + 1;  //linearly decreases from 100% to 85%
 
-        if (distance > 3)
-            hitChance = -0.7 * (distance - 3) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 4.214 tiles)
+        if (distance > 6)
+            attack.hitChance = -0.7 * (distance - 6) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 7.214 tiles)
 
-        /*damage: like an attacker but less strong
-        damageGrowth = 0.0005;  // = 0.0005x^2 + 0.1499x + 14
-        damageShift = 0.1499;
-        baseDamage = 14;
+        /*/damage: 0.0006x^2 + 2.0967x + 182
+        damageGrowth = 0.0006;
+        damageShift = 2.0967;
+        baseDamage = 182;
         //*/
 
         //status: none ever
@@ -494,19 +496,26 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         //attacker calculations
 
         //hit chance
-        if (distance < 2)
-            hitChance = 1;  //100%
+        if (distance < 5)
+            attack.hitChance = 1;  //100%
 
-        if (distance >= 2 && distance < 3)
-            hitChance = -0.15 * (distance - 2) + 1;  //linearly decreases from 100% to 85%
+        if (distance >= 5 && distance < 6)
+            attack.hitChance = -0.15 * (distance - 5) + 1;  //linearly decreases from 100% to 85%
 
-        if (distance > 3)
-            hitChance = -0.7 * (distance - 3) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 4.214 tiles)
+        if (distance > 6)
+            attack.hitChance = -0.7 * (distance - 6) + 0.85;  //sharp dropoff to 0% (chance = 0 @ distance = 7.214 tiles)
 
         if (attackingUnit->stats.luck > defendingUnit->stats.luck)
-            hitChance += 0.002 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.2% for every point of difference between attacker's and defender's luck
+            attack.hitChance += 0.002 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.2% for every point of difference between attacker's and defender's luck
 
-        //damage: calculated based on attack and speed maybe?
+        //damage: 0.009x^2 + 3x + 204
+        damageGrowth = 0.0009;
+        damageShift = 3;
+        baseDamage = 204;
+
+        effectiveAttack += attackingUnit->stats.speed / 10; //each 10 stat points increases your effective attack
+        //increase effective attack by gear points
+
         //status: based on equipment
 
     }
@@ -515,22 +524,30 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         //shooter calculations
 
         //hit chance
-        if (distance < 3)
-            hitChance = 0.1 * distance + .65;  //linearly increases from 65% to 95% hit rate
+        if (distance < 6)
+            attack.hitChance = 0.05 * distance + .65;  //linearly increases from 65% to 95% hit rate
 
-        if (distance >= 3 && distance < 10)
-            hitChance = 1; //max hit rate at 100%
+        if (distance >= 6 && distance < 20)
+            attack.hitChance = 1; //max hit rate at 100%
 
-        if (distance >= 10 && distance < 20)
-            hitChance = .95; //hit rate at 95%
+        if (distance >= 20 && distance < 30)
+            attack.hitChance = .95; //hit rate at 95%
 
-        if (distance >= 20)
-            hitChance = -0.08 * (distance - 20) + .95;  //linearly decreases from 95% hit rate
+        if (distance >= 30)
+            attack.hitChance = -0.08 * (distance - 30) + .95;  //linearly decreases from 95% hit rate
 
         if (attackingUnit->stats.luck > defendingUnit->stats.luck)
-            hitChance += 0.005 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.5% for every point of difference between attacker's and defender's luck
+            attack.hitChance += 0.005 * (attackingUnit->stats.luck - defendingUnit->stats.luck);  //increases the hit chance by 0.5% for every point of difference between attacker's and defender's luck
 
-        //damage: calculated based on attack and distance/hit chance maybe?
+        //damage: 0.0004x^2 + 1.9x + 180
+        damageGrowth = 0.0004;
+        damageShift = 1.9;
+        baseDamage = 180;
+        //*/
+
+        effectiveAttack += attackingUnit->stats.luck / 10; //each 10 stat points increases your effective attack
+        //increase effective attack by gear points
+
         //status: based on equipment
     }
     if (attackingUnit->classType == classTechnomancer)
@@ -538,47 +555,63 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         //technomancer calculations
 
         //hit chance: Gaussian curve centering around 30 tiles away, lower plateau on the end of 0 < 30, and a higher plateau on the end of 30 < infinity
-        if (hitChance <= 37)
+        if (distance <= 47)
         {
-            double hitAmplitude = 5, hitGrowth = 4, hitBase = 0.7, hitCurveCenter = 30;
+            double hitAmplitude = 5, hitGrowth = 4, hitBase = 0.7, hitCurveCenter = 40;
 
-            //70% chance hit rate base, from 0 to ~20 tiles out. After ~20, increases to 100% at the center (26-34 tiles), then decreases to 80% at 37 tiles, which is where it stays to infinity
+            //70% chance hit rate base, from 0 to ~30 tiles out. After ~230, increases to 100% at the center (36-44 tiles), then decreases to 80% at 47 tiles, which is where it stays to infinity
 
-            hitChance = hitAmplitude * ( (1 / (hitGrowth * sqrt(2 * M_PI))) * pow(M_E, (-0.5 * pow((distance - hitCurveCenter) / hitAmplitude, 2))) ) + hitBase;
+            attack.hitChance = hitAmplitude * ( (1 / (hitGrowth * sqrt(2 * M_PI))) * pow(M_E, (-0.5 * pow((distance - hitCurveCenter) / hitAmplitude, 2))) ) + hitBase;
 
         }
         else
-            hitChance = .8;  //80% hit rate after 37 tile distance
+            attack.hitChance = .8;  //80% hit rate after 37 tile distance
 
-        //damage: calculated based on attack and tech affinity
+        //damage: calculated based on attack and tech affinity?
+        //damage: 0.0006x^2 + 2.0967x + 182
+        damageGrowth = 0.0006;
+        damageShift = 2.0967;
+        baseDamage = 182;
+        //*/
+
+        effectiveAttack += attackingUnit->stats.techAffinity / 10; //each 10 stat points increases your effective attack
+        //increase effective attack by gear points
+
         //status: based on equipment
         //luck: affects status proc chance and damage?
     }
 
-    damage = damageGrowth * pow(attackingUnit->stats.attack, 2) + damageShift * attackingUnit->stats.attack + baseDamage;
+    attack.damage = damageGrowth * pow((effectiveAttack - 1), 2) + damageShift * (effectiveAttack - 1) + baseDamage;
 
     //status chance: calculated based on opponent's status resist stat and your status chance
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 
+    return attack;
+}
+
+warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, warperAttackCheck checkResult)
+{
+    warperAttackResult result = {.damage = 0, .status = statusNone, .miss = false, .crit = false};
     double randChance = rand() / (double) RAND_MAX;
-    if (hitChance - randChance >= 0.00001) //if hitChance >= randChance within a 0.001% margin of error (0.00001 as a number) -- this was chosen due to the value of 1 / RAND_MAX
-        result.damage = damage;
+    if (checkResult.hitChance - randChance >= 0.00001) //if hitChance >= randChance within a 0.001% margin of error (0.00001 as a number) -- this was chosen due to the value of 1 / RAND_MAX
+        result.damage = checkResult.damage;
     else
         result.miss = true;
 
-    if (critChance - randChance >= 0.00001)
+    if (checkResult.critChance - randChance >= 0.00001)
     {
         result.damage *= 1.5;
         result.crit = true;
     }
 
-    defendingUnit->battleData.curHp -= damage;
+    defendingUnit->battleData.curHp -= checkResult.damage;
 
-    if (statusChance - randChance >= 0.00001)
+    if (checkResult.statusChance - randChance >= 0.00001)
     {
-        defendingUnit->battleData.status = inflictingStatus;
-        result.status = inflictingStatus;
+        defendingUnit->battleData.status = checkResult.status;
+        result.status = checkResult.status;
     }
+
     return result;
 }
 

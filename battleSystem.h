@@ -107,6 +107,15 @@ typedef struct _warperBattle
     bool isPlayerTurn;
 } warperBattle;
 
+typedef struct _warperAttackCheck
+{
+    int damage;
+    enum warperStatus status;
+    double hitChance;
+    double critChance;
+    double statusChance;
+} warperAttackCheck;
+
 typedef struct _warperAttackResult
 {
     int damage;
@@ -122,7 +131,8 @@ void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double 
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 void calculateStats(warperUnit* unit, bool setBattleStats);
-warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
+warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
+warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, warperAttackCheck checkResult);
 void finishBattle(warperTeam* team, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
 
