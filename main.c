@@ -5,10 +5,13 @@
 
 int gameLoop(warperTilemap tilemap);
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
+
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 
 #define TILEMAP_X 80  //(global.windowW / TILE_SIZE)
 #define TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
+
+#define WARPER_FRAME_LIMIT 60
 
 #define CONFIRM_NONE 0
 #define CONFIRM_MOVEMENT 1
@@ -27,17 +30,59 @@ int main(int argc, char** argv)
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
     //choose between map-maker or not
-    SDL_Keycode temp_k = waitForKey(true);
 
     warperTilemap tilemap;
 
-    if (temp_k == SDLK_m)
+    //menu
+    cScene menuScene;
+
+    char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Quit"};
+    warperTextBox menuBox;
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
+
+    cResource menuBoxResource;
+    initCResource(&menuBoxResource, (void*) &menuBox, &drawWarperTextBox, &destroyWarperTextBox, 5);
+
+    cCamera camera;
+    initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
+
+    initCScene(&menuScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, NULL, 0, NULL, 0, (cResource*[1]) {&menuBoxResource}, 1, NULL, 0);
+
+    cInputState input;
+    int fps = 0;
+    while(menuBox.selection == -1)
+    {
+        input = cGetInputState(true);
+
+        if (input.quitInput)
+            menuBox.selection = 3;  //quit
+
+        if (input.isClick)
+        {
+            //if we clicked
+            if (menuBoxResource.renderLayer != 0 && (input.click.x > menuBox.rect.x && input.click.x < menuBox.rect.x + menuBox.rect.w && input.click.y > menuBox.rect.y && input.click.y < menuBox.rect.y + menuBox.rect.h))
+            {
+                for(int i = 0; i < menuBox.textsSize; i++)
+                {
+                    if (input.click.x > menuBox.texts[i].rect.x && input.click.x < menuBox.texts[i].rect.x + menuBox.texts[i].rect.w &&
+                        input.click.y > menuBox.texts[i].rect.y && input.click.y < menuBox.texts[i].rect.y + menuBox.texts[i].rect.h)
+                    {
+                        //we clicked on an element
+                        menuBox.selection = i;
+                    }
+                }
+            }
+        }
+        drawCScene(&menuScene, true, true, &fps, WARPER_FRAME_LIMIT);
+    }
+
+    if (menuBox.selection == 2)
     {
         //create map
-        createNewMap(&tilemap, TILE_SIZE);
+        if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
+            menuBox.selection = 3;  //treat it as a quit
     }
-    else
-    if (temp_k == SDLK_l)
+    if (menuBox.selection == 1)
     {
         //load map
         char* importedMap = calloc(7, sizeof(char));
@@ -64,7 +109,7 @@ int main(int argc, char** argv)
 
         tilemap.tileSize = TILE_SIZE;
     }
-    else
+    if (menuBox.selection == 0)
     {
         //create temp map
         tilemap.width = TILEMAP_X;
@@ -124,8 +169,16 @@ int main(int argc, char** argv)
             }
         }
     }
-
     bool quit = false;
+    if (menuBox.selection == 3)
+    {
+        destroyCScene(&menuScene);
+        closeCoSprite();
+        return 0;
+    }
+
+    destroyCScene(&menuScene);  //have to destroy after to preserve selection
+
     while (!quit)
     {
         quit = gameLoop(tilemap);
@@ -217,7 +270,7 @@ int gameLoop(warperTilemap tilemap)
             initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
         }
         initWarperTextBox(&textBox, (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize},
-                          (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0xC0},
+                          (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0xC0},
                           texts, (bool[2]) {false, false}, textCount, true);
     }
     initCResource(&textBoxResource, (void*) &textBox, &drawWarperTextBox, &destroyWarperTextBox, 0);
@@ -363,7 +416,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     cResource battleTextBoxRes, movePathRes, circleRes, enemyCircleRes;
     warperTextBox battleTextBox, backupTextBox;
-    char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Skills", "End Turn"};
+    char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Mods", "End Turn"};
     bool isOptions[] = {true, true, true, true, true, true};
     createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 6, tilemap);
 
@@ -477,7 +530,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                 if (battleTextBox.selection == 4)
                 {
-                    //open skills menu
+                    //open mods menu
                 }
 
                 if (battleTextBox.selection == 5)
@@ -494,7 +547,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     }
 
                     //set text box to be enemy turn textbox and back up your turns' textbox
-                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
+                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                     destroyWarperTextBox((void*) &battleTextBox);
                     char* enemyTurnStrings[] = {"Choose Unit", "End Their Turn (Debug)"};
                     bool enemyTurnIsOptions[] = {true, true};
@@ -516,7 +569,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                     //restore textbox to regular menu
                     destroyWarperTextBox((void*) &battleTextBox);
-                    initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                    initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
                     destroyWarperTextBox((void*) &backupTextBox);
                 }
 
@@ -557,7 +610,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                         //restore textbox to regular menu
                         destroyWarperTextBox((void*) &battleTextBox);
-                        initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                        initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
                         destroyWarperTextBox((void*) &backupTextBox);
                     }
                 }
@@ -692,7 +745,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     confirmPlayerSprite.drawRect.h = playerTeam->units[selectedUnit]->sprite->drawRect.h;
 
                                     //create confirm textbox and backup regular textbox
-                                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
+                                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                     destroyWarperTextBox((void*) &battleTextBox);
                                     createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap);
                                 }
@@ -775,7 +828,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         if (input.keyStates[SDL_SCANCODE_F11])
             printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);
 
-        drawCScene(scene, true, true, &framerate, 60);
+        drawCScene(scene, true, true, &framerate, WARPER_FRAME_LIMIT);
     }
 
     //local resources must be removed before quitting

@@ -118,9 +118,11 @@ void destroyWarperTilemap(warperTilemap* tilemap)
     for(int x = 0; x < tilemap->width; x++)
     {
         free(tilemap->spritemap_layer1[x]);
+        free(tilemap->spritemap_layer2[x]);
         free(tilemap->collisionmap[x]);
     }
     free(tilemap->spritemap_layer1);
+    free(tilemap->spritemap_layer2);
     free(tilemap->collisionmap);
 
     tilemap->width = 0;

@@ -1,8 +1,9 @@
 #include "mapMaker.h"
 
-void createNewMap(warperTilemap* tilemap, int tileSize)
+bool createNewMap(warperTilemap* tilemap, int tileSize)
 {
     bool quit = false;
+    bool fullQuit = false;
     SDL_Keycode key;
 
     char* dimensionInput = calloc(5, sizeof(char));
@@ -41,7 +42,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     {
         free(dimensionInput);
         destroyCScene(&inputScene);
-        return;
+        return true;
     }
 
     key = SDLK_UNKNOWN;
@@ -75,7 +76,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     destroyCScene(&inputScene);
 
     if (key == -1)
-        return;
+        return true;
 
     tilemap->tileSize = tileSize;
 
@@ -146,6 +147,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
             if(e.type == SDL_QUIT)
             {
                 quit = true;
+                fullQuit = true;
             }
             else
             {
@@ -238,6 +240,7 @@ void createNewMap(warperTilemap* tilemap, int tileSize)
     free(tileMapData);
 
     destroyCScene(&inputScene);
+    return fullQuit;
 }
 
 warperFilter initWarperFilter(int r, int g, int b, int a)

@@ -11,9 +11,10 @@
  * \param textsSize int
  * \param isMenu bool
  */
-void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, bool* isOption, int textsSize, bool isMenu)
+void initWarperTextBox(warperTextBox* textBox, cDoubleRect rect, SDL_Color outlineColor, SDL_Color bgColor, SDL_Color highlightColor, cText* texts, bool* isOption, int textsSize, bool isMenu)
 {
     textBox->rect = rect;
+    textBox->outlineColor = outlineColor;
     textBox->bgColor = bgColor;
     textBox->highlightColor = highlightColor;
     textBox->textsSize = textsSize;
@@ -62,6 +63,10 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, textBox->bgColor.r, textBox->bgColor.g, textBox->bgColor.b, textBox->bgColor.a);
     SDL_RenderFillRect(global.mainRenderer, &boxRect);
 
+    //draw outline
+    SDL_SetRenderDrawColor(global.mainRenderer, textBox->outlineColor.r, textBox->outlineColor.g, textBox->outlineColor.b, textBox->outlineColor.a);
+    SDL_RenderDrawRect(global.mainRenderer, &boxRect);
+
     //draw cTexts
     for(int i = 0; i < textBox->textsSize; i++)
     {
@@ -73,8 +78,8 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     if (textBox->isMenu && textBox->selection != -1 && textBox->texts[textBox->selection].renderLayer > 0)
     {
         SDL_SetRenderDrawColor(global.mainRenderer, textBox->highlightColor.r, textBox->highlightColor.g, textBox->highlightColor.b, textBox->highlightColor.a);
-        SDL_Rect selectionRect = (SDL_Rect) {textBox->rect.x, boxRect.y + textBox->selection * textBox->texts[textBox->selection].font->fontSize, textBox->texts[textBox->selection].rect.w, textBox->texts[textBox->selection].rect.h};
-        SDL_RenderDrawRect(global.mainRenderer, &selectionRect);
+        SDL_Rect selectionRect = (SDL_Rect) {textBox->texts[textBox->selection].rect.x, textBox->texts[textBox->selection].rect.y, textBox->texts[textBox->selection].rect.w, textBox->texts[textBox->selection].rect.h};
+        SDL_RenderFillRect(global.mainRenderer, &selectionRect);
     }
 
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
@@ -165,31 +170,46 @@ void destroyWarperCircle(void* circle)
  */
 void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, warperTilemap tilemap)
 {
+    int textCount = stringsLength + 2;  //3 options + the +/- buttons
+    cText* texts = calloc(textCount, sizeof(cText));
+    for(int i = 0; i < textCount - 2; i++)
     {
-        int textCount = stringsLength + 2;  //3 options + the +/- buttons
-        cText* texts = calloc(textCount, sizeof(cText));
-        for(int i = 0; i < textCount - 2; i++)
-        {
-            initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
-        }
-
-        initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tilemap.tileSize, 14 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
-        initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tilemap.tileSize, 19 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
-
-        bool* fixedIsOptions = calloc(stringsLength + 2, sizeof(bool));
-        for(int i = 0; i < stringsLength; i++)
-        {
-            fixedIsOptions[i] = isOptions[i];
-        }
-        fixedIsOptions[stringsLength] = true; //setting true for the + and - options
-        fixedIsOptions[stringsLength + 1] = true;
-
-        initWarperTextBox(textBox, dimensions, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0xC0}, texts, fixedIsOptions, textCount, true);
-
-        for(int i = 0; i < textCount; i++)
-            destroyCText(&(texts[i]));
-
-        free(texts);
-        free(fixedIsOptions);
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     }
+
+    initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tilemap.tileSize, 14 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+    initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tilemap.tileSize, 19 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
+
+    bool* fixedIsOptions = calloc(stringsLength + 2, sizeof(bool));  //adding isOptions for + and -
+    for(int i = 0; i < stringsLength; i++)
+    {
+        fixedIsOptions[i] = isOptions[i];
+    }
+    fixedIsOptions[stringsLength] = true; //setting true for the + and - options
+    fixedIsOptions[stringsLength + 1] = true;
+
+    initWarperTextBox(textBox, dimensions, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xC0}, (SDL_Color) {0xFF, 0x00, 0x00, 0x20}, texts, fixedIsOptions, textCount, true);
+
+    for(int i = 0; i < textCount; i++)
+        destroyCText(&(texts[i]));
+
+    free(texts);
+    free(fixedIsOptions);
+}
+
+void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, cFont* font)
+{
+    cText* texts = calloc(stringsLength, sizeof(cText));
+    for(int i = 0; i < stringsLength; i++)
+    {
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {dimensions.x, dimensions.y + i * font->fontSize, 30 * font->fontSize, font->fontSize}, 30 * font->fontSize,
+                  (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, font, 1.0, SDL_FLIP_NONE, 0, true, 5);
+    }
+
+    initWarperTextBox(textBox, dimensions, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0x00, 0x00, 0x00, 0x58}, (SDL_Color) {0xFF, 0x00, 0x00, 0x20}, texts, isOptions, stringsLength, true);
+
+    for(int i = 0; i < stringsLength; i++)
+        destroyCText(&(texts[i]));
+
+    free(texts);
 }
