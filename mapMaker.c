@@ -98,7 +98,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     }
 
     quit = false;
-    bool spriteMode = true;
+    bool spriteMode = true, drawLayer1 = true, drawMulti = false;
 
     c2DModel mapModel_layer1, mapModel_layer2;
     c2DModel collisionModel;
@@ -136,7 +136,12 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
     initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[1]) {&tileSprite}, 1, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &collisionModel}, 3, (cResource*[1]) {&shadeResource}, 1, NULL, 0);
 
-    bool drawLayer1 = true;
+
+    int previousIndex = 0;
+
+    const warperMultiProperties multiProperties[] = WARPER_MULTI_PROPS;
+    //building properties
+    //x = x-coord in tiles, y = y-coord in tiles, w = width in tiles, h = height in tiles
 
     while(!quit)
     {
@@ -153,11 +158,105 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
             {
                 if(e.type == SDL_KEYDOWN)
                 {
+                    if (e.key.keysym.sym == SDLK_1)
+                    {
+                        drawMulti = false;
+                        int temp = previousIndex;  //swap previousIndex and tile id
+                        previousIndex = tileSprite.id;
+                        tileSprite.id = temp;
+                        tileSprite.srcClipRect.x = tileSprite.id / 20 * tileSize / 2;
+                        tileSprite.srcClipRect.y = tileSprite.id % 20 * tileSize / 2;
+                        tileSprite.srcClipRect.w = tileSize / 2;
+                        tileSprite.srcClipRect.h = tileSize / 2;
+                        tileSprite.drawRect.w = tileSize;
+                        tileSprite.drawRect.h = tileSize;
+                    }
+
+                    if (e.key.keysym.sym == SDLK_2)
+                    {
+                        //multi (building) placing
+                        drawMulti = true;
+                        int temp = previousIndex;  //swap previousIndex and tile id
+                        previousIndex = tileSprite.id;
+                        tileSprite.id = temp;
+                        tileSprite.srcClipRect.x = multiProperties[tileSprite.id].tileRect.x * tileSize / 2;
+                        tileSprite.srcClipRect.y = multiProperties[tileSprite.id].tileRect.y * tileSize / 2;
+                        tileSprite.srcClipRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize / 2;
+                        tileSprite.srcClipRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize / 2;
+                        tileSprite.drawRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize;
+                        tileSprite.drawRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize;
+                    }
+
                     if (e.key.keysym.sym == SDLK_q && tileSprite.id > 0)
+                    {
                         tileSprite.id--;
+                        if (!drawMulti)
+                        {
+                            tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
+                            tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
+                            tileSprite.srcClipRect.w = tileSize / 2;
+                            tileSprite.srcClipRect.h = tileSize / 2;
+                            tileSprite.drawRect.w = tileSize;
+                            tileSprite.drawRect.h = tileSize;
+                        }
+                        else
+                        {
+                            tileSprite.srcClipRect.x = multiProperties[tileSprite.id].tileRect.x * tileSize / 2;
+                            tileSprite.srcClipRect.y = multiProperties[tileSprite.id].tileRect.y * tileSize / 2;
+                            tileSprite.srcClipRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize / 2;
+                            tileSprite.srcClipRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize / 2;
+                            tileSprite.drawRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize;
+                            tileSprite.drawRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize;
+                        }
+                    }
 
                     if (e.key.keysym.sym == SDLK_e)
+                    {
                         tileSprite.id++;
+                        if (!drawMulti)
+                        {
+                            tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
+                            tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
+                            tileSprite.srcClipRect.w = tileSize / 2;
+                            tileSprite.srcClipRect.h = tileSize / 2;
+                            tileSprite.drawRect.w = tileSize;
+                            tileSprite.drawRect.h = tileSize;
+                        }
+                        else
+                        {
+                            tileSprite.srcClipRect.x = multiProperties[tileSprite.id].tileRect.x * tileSize / 2;
+                            tileSprite.srcClipRect.y = multiProperties[tileSprite.id].tileRect.y * tileSize / 2;
+                            tileSprite.srcClipRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize / 2;
+                            tileSprite.srcClipRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize / 2;
+                            tileSprite.drawRect.w = multiProperties[tileSprite.id].tileRect.w * tileSize;
+                            tileSprite.drawRect.h = multiProperties[tileSprite.id].tileRect.h * tileSize;
+                        }
+                    }
+
+                    if (drawMulti && multiProperties[tileSprite.id].resizesW && e.key.keysym.sym == SDLK_MINUS)
+                    {
+                        //x-
+                        if (tileSprite.drawRect.w > multiProperties[tileSprite.id].tileRect.w * tileSize)
+                            tileSprite.drawRect.w -= tileSize;
+                    }
+
+                    if (drawMulti && multiProperties[tileSprite.id].resizesW && e.key.keysym.sym == SDLK_EQUALS)
+                    {
+                        //x+
+                        tileSprite.drawRect.w += tileSize;
+                    }
+
+                    if (drawMulti && multiProperties[tileSprite.id].resizesH && e.key.keysym.sym == SDLK_LEFTBRACKET)
+                    {
+                        if (tileSprite.drawRect.h > multiProperties[tileSprite.id].tileRect.h * tileSize)
+                            tileSprite.drawRect.h -= tileSize;
+                    }
+
+                    if (drawMulti && multiProperties[tileSprite.id].resizesH && e.key.keysym.sym == SDLK_RIGHTBRACKET)
+                    {
+                        //y+
+                        tileSprite.drawRect.h += tileSize;
+                    }
 
                     if (e.key.keysym.sym == SDLK_w)
                         inputCamera.rect.y -= 6;
@@ -174,6 +273,15 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                     if (e.key.keysym.sym == SDLK_LSHIFT)
                     {
                         spriteMode = !spriteMode;
+
+                        if (drawMulti)
+                        {
+                            int temp = previousIndex;  //swap previousIndex and tile id
+                            previousIndex = tileSprite.id;
+                            tileSprite.id = temp;
+                        }
+                        drawMulti = false;
+
                         collisionModel.renderLayer = spriteMode ? 0 : 4;
                     }
 
@@ -188,9 +296,6 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                         else
                             shadeResource.renderLayer = 5;
                     }
-
-                    tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
-                    tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
                 }
                 if ((SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT) || SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_RIGHT)) && e.button.button != 0)
                 {
@@ -199,19 +304,50 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                     {
                         if (spriteMode)
                         {
-                            if (drawLayer1)  //shift draw to layer 2
+                            int** layer = tilemap->spritemap_layer1;
+                            c2DModel* layerModel = &mapModel_layer1;
+                            if (!drawLayer1)
                             {
-                                tilemap->spritemap_layer1[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
-                                mapModel_layer1.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap_layer1[tileX][tileY];
-                                mapModel_layer1.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap_layer1[tileX][tileY] / 20) * tilemap->tileSize / 2;
-                                mapModel_layer1.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap_layer1[tileX][tileY] % 20) * tilemap->tileSize / 2;
+                                layer = tilemap->spritemap_layer2;
+                                layerModel = &mapModel_layer2;
+                            }
+
+                            if (!drawMulti)  //shift draw to layer 2
+                            {
+                                //draw single
+                                layer[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
+                                layerModel->sprites[tileX * tilemap->height + tileY].id = layer[tileX][tileY];
+                                layerModel->sprites[tileX * tilemap->height + tileY].srcClipRect.x = (layer[tileX][tileY] / 20) * tilemap->tileSize / 2;
+                                layerModel->sprites[tileX * tilemap->height + tileY].srcClipRect.y = (layer[tileX][tileY] % 20) * tilemap->tileSize / 2;
                             }
                             else
                             {
-                                tilemap->spritemap_layer2[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 798;
-                                mapModel_layer2.sprites[tileX * tilemap->height + tileY].id = tilemap->spritemap_layer2[tileX][tileY];
-                                mapModel_layer2.sprites[tileX * tilemap->height + tileY].srcClipRect.x = (tilemap->spritemap_layer2[tileX][tileY] / 20) * tilemap->tileSize / 2;
-                                mapModel_layer2.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (tilemap->spritemap_layer2[tileX][tileY] % 20) * tilemap->tileSize / 2;
+                                //draw multi
+                                int difW = tileSprite.drawRect.w / tileSize - multiProperties[tileSprite.id].tileRect.w,
+                                    difH = tileSprite.drawRect.h / tileSize - multiProperties[tileSprite.id].tileRect.h;
+
+                                int xOffset = 0;
+                                for(int x = tileX; x < tileX + tileSprite.drawRect.w / tileSize; x++)
+                                {
+                                    if (difW > 0 && x - tileX > multiProperties[tileSprite.id].colToRepeat && x - tileX <= multiProperties[tileSprite.id].colToRepeat + difW)
+                                        xOffset++;
+
+                                    int yOffset = 0;
+                                    for(int y = tileY; y < tileY + tileSprite.drawRect.h / tileSize; y++)
+                                    {
+                                        if (difH > 0 && y - tileY > multiProperties[tileSprite.id].rowToRepeat && y - tileY <= multiProperties[tileSprite.id].rowToRepeat + difH)
+                                            yOffset++;
+
+                                        int drawY = multiProperties[tileSprite.id].tileRect.y + y - tileY - yOffset,
+                                            drawX = multiProperties[tileSprite.id].tileRect.x + x - tileX - xOffset;
+
+
+                                        layer[x][y] = drawY % 20 + drawX * 20;
+                                        layerModel->sprites[x * tilemap->height + y].id = layer[x][y];
+                                        layerModel->sprites[x * tilemap->height + y].srcClipRect.x = (layer[x][y] / 20) * tilemap->tileSize / 2;
+                                        layerModel->sprites[x * tilemap->height + y].srcClipRect.y = (layer[x][y] % 20) * tilemap->tileSize / 2;
+                                    }
+                                }
                             }
                         }
                         else

@@ -251,7 +251,7 @@ int gameLoop(warperTilemap tilemap)
     loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
 
     initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 4 * tilemap.tileSize, 2 * tilemap.tileSize},
+                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
     initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
