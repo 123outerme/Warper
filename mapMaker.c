@@ -140,8 +140,6 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     int previousIndex = 0;
 
     const warperMultiProperties multiProperties[] = WARPER_MULTI_PROPS;
-    //building properties
-    //x = x-coord in tiles, y = y-coord in tiles, w = width in tiles, h = height in tiles
 
     while(!quit)
     {
@@ -233,26 +231,26 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                         }
                     }
 
-                    if (drawMulti && multiProperties[tileSprite.id].resizesW && e.key.keysym.sym == SDLK_MINUS)
+                    if (drawMulti && multiProperties[tileSprite.id].colToRepeat != -1 && e.key.keysym.sym == SDLK_MINUS)
                     {
                         //x-
                         if (tileSprite.drawRect.w > multiProperties[tileSprite.id].tileRect.w * tileSize)
                             tileSprite.drawRect.w -= tileSize;
                     }
 
-                    if (drawMulti && multiProperties[tileSprite.id].resizesW && e.key.keysym.sym == SDLK_EQUALS)
+                    if (drawMulti && multiProperties[tileSprite.id].colToRepeat != -1 && e.key.keysym.sym == SDLK_EQUALS)
                     {
                         //x+
                         tileSprite.drawRect.w += tileSize;
                     }
 
-                    if (drawMulti && multiProperties[tileSprite.id].resizesH && e.key.keysym.sym == SDLK_LEFTBRACKET)
+                    if (drawMulti && multiProperties[tileSprite.id].rowToRepeat != -1 && e.key.keysym.sym == SDLK_LEFTBRACKET)
                     {
                         if (tileSprite.drawRect.h > multiProperties[tileSprite.id].tileRect.h * tileSize)
                             tileSprite.drawRect.h -= tileSize;
                     }
 
-                    if (drawMulti && multiProperties[tileSprite.id].resizesH && e.key.keysym.sym == SDLK_RIGHTBRACKET)
+                    if (drawMulti && multiProperties[tileSprite.id].rowToRepeat != -1 && e.key.keysym.sym == SDLK_RIGHTBRACKET)
                     {
                         //y+
                         tileSprite.drawRect.h += tileSize;
@@ -274,6 +272,8 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                     {
                         spriteMode = !spriteMode;
 
+                        collisionModel.renderLayer = spriteMode ? 0 : 4;
+
                         if (drawMulti)
                         {
                             int temp = previousIndex;  //swap previousIndex and tile id
@@ -282,7 +282,13 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                         }
                         drawMulti = false;
 
-                        collisionModel.renderLayer = spriteMode ? 0 : 4;
+                        tileSprite.srcClipRect.x = ((spriteMode) ? (tileSprite.id / 20) : 39) * tilemap->tileSize / 2;
+                        tileSprite.srcClipRect.y = ((spriteMode) ? (tileSprite.id % 20) : 19) * tilemap->tileSize / 2;
+                        tileSprite.srcClipRect.w = tileSize / 2;
+                        tileSprite.srcClipRect.h = tileSize / 2;
+                        tileSprite.drawRect.w = tileSize;
+                        tileSprite.drawRect.h = tileSize;
+
                     }
 
                     if (e.key.keysym.sym == SDLK_RETURN)
@@ -300,48 +306,50 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                 if ((SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT) || SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_RIGHT)) && e.button.button != 0)
                 {
                     int tileX = (e.button.x + inputCamera.rect.x) / tilemap->tileSize, tileY = (e.button.y + inputCamera.rect.y) / tilemap->tileSize;
-                    if (tileX >= 0 && tileY >= 0)
+                    if (spriteMode)
                     {
-                        if (spriteMode)
+                        int** layer = tilemap->spritemap_layer1;
+                        c2DModel* layerModel = &mapModel_layer1;
+                        if (!drawLayer1)
                         {
-                            int** layer = tilemap->spritemap_layer1;
-                            c2DModel* layerModel = &mapModel_layer1;
-                            if (!drawLayer1)
-                            {
-                                layer = tilemap->spritemap_layer2;
-                                layerModel = &mapModel_layer2;
-                            }
+                            layer = tilemap->spritemap_layer2;
+                            layerModel = &mapModel_layer2;
+                        }
 
-                            if (!drawMulti)  //shift draw to layer 2
+                        if (!drawMulti)  //shift draw to layer 2
+                        {
+                            //draw single
+                            if (!(tileX < 0 || tileX >= tilemap->width || tileY < 0 || tileY >= tilemap->height))  //if we are within bounds
                             {
-                                //draw single
                                 layer[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? tileSprite.id : 0;
                                 layerModel->sprites[tileX * tilemap->height + tileY].id = layer[tileX][tileY];
                                 layerModel->sprites[tileX * tilemap->height + tileY].srcClipRect.x = (layer[tileX][tileY] / 20) * tilemap->tileSize / 2;
                                 layerModel->sprites[tileX * tilemap->height + tileY].srcClipRect.y = (layer[tileX][tileY] % 20) * tilemap->tileSize / 2;
                             }
-                            else
+                        }
+                        else
+                        {
+                            //draw multi
+                            int difW = tileSprite.drawRect.w / tileSize - multiProperties[tileSprite.id].tileRect.w,
+                                difH = tileSprite.drawRect.h / tileSize - multiProperties[tileSprite.id].tileRect.h;
+
+                            int xOffset = 0;
+                            for(int x = tileX; x < tileX + tileSprite.drawRect.w / tileSize; x++)
                             {
-                                //draw multi
-                                int difW = tileSprite.drawRect.w / tileSize - multiProperties[tileSprite.id].tileRect.w,
-                                    difH = tileSprite.drawRect.h / tileSize - multiProperties[tileSprite.id].tileRect.h;
+                                if (difW > 0 && x - tileX > multiProperties[tileSprite.id].colToRepeat && x - tileX <= multiProperties[tileSprite.id].colToRepeat + difW)
+                                    xOffset++;
 
-                                int xOffset = 0;
-                                for(int x = tileX; x < tileX + tileSprite.drawRect.w / tileSize; x++)
+                                int yOffset = 0;
+                                for(int y = tileY; y < tileY + tileSprite.drawRect.h / tileSize; y++)
                                 {
-                                    if (difW > 0 && x - tileX > multiProperties[tileSprite.id].colToRepeat && x - tileX <= multiProperties[tileSprite.id].colToRepeat + difW)
-                                        xOffset++;
+                                    if (difH > 0 && y - tileY > multiProperties[tileSprite.id].rowToRepeat && y - tileY <= multiProperties[tileSprite.id].rowToRepeat + difH)
+                                        yOffset++;
 
-                                    int yOffset = 0;
-                                    for(int y = tileY; y < tileY + tileSprite.drawRect.h / tileSize; y++)
+                                    int drawY = multiProperties[tileSprite.id].tileRect.y + y - tileY - yOffset,
+                                        drawX = multiProperties[tileSprite.id].tileRect.x + x - tileX - xOffset;
+
+                                    if (!(x < 0 || x >= tilemap->width || y < 0 || y >= tilemap->height))  //if we're drawing within bounds
                                     {
-                                        if (difH > 0 && y - tileY > multiProperties[tileSprite.id].rowToRepeat && y - tileY <= multiProperties[tileSprite.id].rowToRepeat + difH)
-                                            yOffset++;
-
-                                        int drawY = multiProperties[tileSprite.id].tileRect.y + y - tileY - yOffset,
-                                            drawX = multiProperties[tileSprite.id].tileRect.x + x - tileX - xOffset;
-
-
                                         layer[x][y] = drawY % 20 + drawX * 20;
                                         layerModel->sprites[x * tilemap->height + y].id = layer[x][y];
                                         layerModel->sprites[x * tilemap->height + y].srcClipRect.x = (layer[x][y] / 20) * tilemap->tileSize / 2;
@@ -350,13 +358,13 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                                 }
                             }
                         }
-                        else
-                        {
-                            tilemap->collisionmap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? 1 : 0;
-                            collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
-                            collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 39 * tilemap->tileSize / 2;
-                            collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (18 + (e.button.button == SDL_BUTTON_LEFT)) * tilemap->tileSize / 2;
-                        }
+                    }
+                    else
+                    {
+                        tilemap->collisionmap[tileX][tileY] = (e.button.button == SDL_BUTTON_LEFT) ? 1 : 0;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].id = 1;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.x = 39 * tilemap->tileSize / 2;
+                        collisionModel.sprites[tileX * tilemap->height + tileY].srcClipRect.y = (18 + (e.button.button == SDL_BUTTON_LEFT)) * tilemap->tileSize / 2;
                     }
                 }
                 if (e.type == SDL_MOUSEMOTION)
