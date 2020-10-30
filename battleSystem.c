@@ -1,5 +1,14 @@
 #include "battleSystem.h"
 
+/** \brief
+ *
+ * \param team warperTeam* - team to initialize
+ * \param units warperUnit** - array of warperUnit*s with the team's memebers
+ * \param unitsSize int - size of units
+ * \param inventory warperItem* - array of warperItems
+ * \param inventorySize int - size of inventory
+ * \param money int - how much money this team has
+ */
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money)
 {
     //TODO: copy this mem, don't do shallow copies
@@ -390,6 +399,11 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     return path;
 }
 
+/** \brief Calculate and update a unit's stamina, energy, and HP
+ *
+ * \param unit warperUnit* - Unit to calculate stats on
+ * \param setBattleStats bool - if true, sets unit's battleData, otherwise does not
+ */
 void calculateStats(warperUnit* unit, bool setBattleStats)
 {
     //for no-classes
@@ -454,6 +468,13 @@ void calculateStats(warperUnit* unit, bool setBattleStats)
     }
 }
 
+/** \brief
+ *
+ * \param attackingUnit warperUnit* - unit that is attacking
+ * \param defendingUnit warperUnit* - unit that is defending
+ * \param distance double - distance between attacking and defending unit
+ * \return warperAttackCheck - theoretical result of the attack
+ */
 warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance)
 {
     warperAttackCheck attack = {.damage = 0, .status = statusNone, .hitChance = 0, .critChance = 0, .statusChance = 0};
@@ -589,6 +610,13 @@ warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUn
     return attack;
 }
 
+/** \brief Complete an attack on a defender
+ *
+ * \param attackingUnit warperUnit* - unit to do the attack
+ * \param defendingUnit warperUnit* - unit to take the attack
+ * \param checkResult warperAttackCheck - result of an attackCheck
+ * \return warperAttackResult result of the attack (for display purposes)
+ */
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, warperAttackCheck checkResult)
 {
     warperAttackResult result = {.damage = 0, .status = statusNone, .miss = false, .crit = false};
@@ -617,16 +645,18 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
 
 /** \brief Add money, exp, and all other win-related stuff
  *
- * \param unit warperUnit* the units that finished the fight
+ * \param team warperTeam* - the units that finished the fight
+ * \param enemyTeam warperTeam* - the enemy team
+ * \param battle warperBattle - type of battle completed
  */
-void finishBattle(warperTeam* team, warperBattle battle)
+void finishBattle(warperTeam* team, warperTeam* enemyTeam, warperBattle battle)
 {
     for(int i = 0; i < team->unitsSize; i++)
     {
         //add exp, check level up
         addExp(team->units[i], 1);
     }
-    team->money += 1;  //add money based on battle
+    team->money += enemyTeam->money;  //add money based on battle
     //drop items?
 }
 

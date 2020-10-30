@@ -85,7 +85,31 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
 }
 
-/** \brief CoSprite helper function; if using, cast textBox to a warperTextBox*
+/** \brief Automatically updates storedSelection and selection of a textbox based on what you click
+ *
+ * \param textBox warperTextBox* - text box you want updated
+ * \param xClick int - x coordinate of click (based on text box's text rects)
+ * \param yClick int - y coordinate of click (based on text box's text rects)
+ */
+void checkWarperTextBoxClick(warperTextBox* textBox, int xClick, int yClick)
+{
+    if (xClick > textBox->rect.x && xClick < textBox->rect.x + textBox->rect.w && yClick > textBox->rect.y && yClick < textBox->rect.y + textBox->rect.h)
+    {
+        textBox->storedSelection = textBox->selection;
+
+        for(int i = 0; i < textBox->textsSize; i++)
+        {
+            if (textBox->isOption[i] && (xClick > textBox->texts[i].rect.x && xClick < textBox->texts[i].rect.x + textBox->texts[i].rect.w &&
+                yClick > textBox->texts[i].rect.y && yClick < textBox->texts[i].rect.y + textBox->texts[i].rect.h))
+            {
+                //we clicked on an element
+                textBox->selection = i;
+            }
+        }
+    }
+}
+
+/** \brief CoSprite helper function; if using, cast textBox to a void*
  *
  * \param textBoxSubclass void*
  */
@@ -106,6 +130,11 @@ void destroyWarperTextBox(void* textBoxSubclass)
     textBox->selection = 0;
 }
 
+/** \brief CoSprite helper function
+ *
+ * \param path void*
+ * \param camera cCamera
+ */
 void drawWarperPath(void* path, cCamera camera)
 {
     warperPath* nodePath = (warperPath*) path;
@@ -124,6 +153,10 @@ void drawWarperPath(void* path, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
 }
 
+/** \brief CoSprite helper function; if using, cast path to a void*
+ *
+ * \param path void*
+ */
 void destroyWarperPath(void* path)
 {
     warperPath* nodePath = (warperPath*) path;
@@ -134,6 +167,11 @@ void destroyWarperPath(void* path)
     nodePath->pathLength = 0;
 }
 
+/** \brief CoSprite helper function
+ *
+ * \param circle void*
+ * \param camera cCamera
+ */
 void drawWarperCircle(void* circle, cCamera camera)
 {
     warperCircle* wCircle = (warperCircle*) circle;
@@ -150,6 +188,10 @@ void drawWarperCircle(void* circle, cCamera camera)
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
 }
 
+/** \brief CoSprite helper function; if using, cast circle to a void*
+ *
+ * \param circle void*
+ */
 void destroyWarperCircle(void* circle)
 {
     warperCircle* wCircle = (warperCircle*) circle;
@@ -161,24 +203,24 @@ void destroyWarperCircle(void* circle)
 
 /** \brief Shorthand funct to create a battle textbox (menu)
  *
- * \param textBox warperTextBox*
- * \param dimensions cDoubleRect
- * \param strings char**
- * \param isOptions bool*
- * \param stringsLength int
- * \param tilemap warperTilemap
+ * \param textBox warperTextBox* - text box pointer to fill in
+ * \param dimensions cDoubleRect - dimensions of the textbox
+ * \param strings char** - array of char*s with your lines of text
+ * \param isOptions bool* - array of bools with true = clickable/actable, false = not actable
+ * \param stringsLength int - length of strings = length of isOptions
+ * \param int tileSize - tilemap's tile size
  */
-void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, warperTilemap tilemap)
+void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, int tileSize)
 {
     int textCount = stringsLength + 2;  //3 options + the +/- buttons
     cText* texts = calloc(textCount, sizeof(cText));
     for(int i = 0; i < textCount - 2; i++)
     {
-        initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tilemap.tileSize, (14 + i) * tilemap.tileSize, 30 * tilemap.tileSize, (14 - i) * tilemap.tileSize}, 30 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tileSize, (14 + i) * tileSize, 30 * tileSize, (14 - i) * tileSize}, 30 * tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     }
 
-    initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tilemap.tileSize, 14 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
-    initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tilemap.tileSize, 19 * tilemap.tileSize, tilemap.tileSize, tilemap.tileSize}, tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
+    initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tileSize, 14 * tileSize, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+    initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tileSize, 19 * tileSize, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
 
     bool* fixedIsOptions = calloc(stringsLength + 2, sizeof(bool));  //adding isOptions for + and -
     for(int i = 0; i < stringsLength; i++)
@@ -197,6 +239,15 @@ void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** 
     free(fixedIsOptions);
 }
 
+/** \brief Shorthand funct to create a menu textbox
+ *
+ * \param textBox warperTextBox* - text box pointer to fill in
+ * \param dimensions cDoubleRect - dimensions of the textbox
+ * \param strings char** - array of char*s with your lines of text
+ * \param isOptions bool* - array of bools with true = clickable/actable, false = not actable
+ * \param stringsLength int - length of strings = length of isOptions
+ * \param font cFont* - font you want to use
+ */
 void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, cFont* font)
 {
     cText* texts = calloc(stringsLength, sizeof(cText));

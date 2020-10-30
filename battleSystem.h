@@ -136,7 +136,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
 void calculateStats(warperUnit* unit, bool setBattleStats);
 warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, double distance);
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, warperAttackCheck checkResult);
-void finishBattle(warperTeam* team, warperBattle battle);
+void finishBattle(warperTeam* team, warperTeam* enemyTeam, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
 
 #endif // PLAYER_H_INCLUDED

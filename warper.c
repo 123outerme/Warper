@@ -21,8 +21,8 @@ void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionm
 
 /** \brief Imports a tilemap from text (hex) data
  *
- * \param tilemap warperTilemap* expects tilemap->width and ->height to be filled in
- * \param importedData char* your map data
+ * \param tilemap warperTilemap* - expects tilemap->width and ->height to be filled in
+ * \param importedData char* - your map data
  */
 void importTilemap(warperTilemap* tilemap, char* importedData)
 {
@@ -61,6 +61,12 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
     free(tileData);
 }
 
+/** \brief turns tilemap data into c2DModels to draw
+ *
+ * \param tilemap warperTilemap - the tilemap data to draw
+ * \param layer1 c2DModel* - the lower layer to draw
+ * \param layer2 c2DModel* - the higher layer to draw
+ */
 void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2)
 {
         SDL_Texture* tilesetTexture;
@@ -83,12 +89,17 @@ void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2
         }
         initC2DModel(layer1, tileSprites_layer1, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
 
-        initC2DModel(layer2, tileSprites_layer2, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);
+        initC2DModel(layer2, tileSprites_layer2, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);
 
         free(tileSprites_layer1);
         free(tileSprites_layer2);
 }
 
+/** \brief Prints the exported map data into an allocated exportedData
+ *
+ * \param tilemap warperTilemap - tilemap data to draw
+ * \param exportedData char* - an alloc'd string where the data will go
+ */
 void exportTilemap(warperTilemap tilemap, char* exportedData)
 {
     char* tileString = calloc(4, sizeof(char));
