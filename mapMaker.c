@@ -131,7 +131,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
     cResource shadeResource;
     warperFilter filter = initWarperFilter(0x00, 0x00, 0x00, 0x58);
-    initCResource(&shadeResource, &filter, &drawWarperFilter, &destroyWarperFilter, 0);
+    initCResource(&shadeResource, &filter, drawWarperFilter, destroyWarperFilter, 0);
 
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
     initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[1]) {&tileSprite}, 1, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &collisionModel}, 3, (cResource*[1]) {&shadeResource}, 1, NULL, 0);

@@ -176,16 +176,58 @@ void drawWarperCircle(void* circle, cCamera camera)
 {
     warperCircle* wCircle = (warperCircle*) circle;
 
-    Uint8 prevR = 0, prevG = 0, prevB = 0, prevA = 0;
-    SDL_GetRenderDrawColor(global.mainRenderer, &prevR, &prevG, &prevB, &prevA);
+    if (!wCircle->filled)
+    {
+        Uint8 prevR = 0, prevG = 0, prevB = 0, prevA = 0;
+        SDL_GetRenderDrawColor(global.mainRenderer, &prevR, &prevG, &prevB, &prevA);
 
-    SDL_SetRenderDrawColor(global.mainRenderer, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b, wCircle->circleColor.a);
+        SDL_SetRenderDrawColor(global.mainRenderer, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b, wCircle->circleColor.a);
 
-    for(int d = 0; d <= 360; d += wCircle->deltaDegrees)
-        SDL_RenderDrawLine(global.mainRenderer, (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d - wCircle->deltaDegrees)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d - wCircle->deltaDegrees)))) * global.windowH / camera.rect.h,
-                                                (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d)))) * global.windowH / camera.rect.h);
+        for(int d = 0; d <= 360; d += wCircle->deltaDegrees)
+            SDL_RenderDrawLine(global.mainRenderer, (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d - wCircle->deltaDegrees)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d - wCircle->deltaDegrees)))) * global.windowH / camera.rect.h,
+                                (wCircle->center.x - camera.rect.x + (wCircle->radius * cos(degToRad(d)))) * global.windowW / camera.rect.w, (wCircle->center.y - camera.rect.y + (wCircle->radius * sin(degToRad(d)))) * global.windowH / camera.rect.h);
 
-    SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
+        SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
+    }
+    else
+    {
+        /* from https://stackoverflow.com/questions/1201200/fast-algorithm-for-drawing-filled-circles
+        int r2 = wCircle->radius * wCircle->radius;
+        int area = r2 << 2;
+        int rr = ((int) wCircle->radius) << 1;
+
+        for (int i = 0; i < area; i++)
+        {
+            int tx = (i % rr) - wCircle->radius;
+            int ty = (i / rr) - wCircle->radius;
+
+            if (tx * tx + ty * ty <= r2)
+                SDL_RenderDrawPoint(global.mainRenderer, wCircle->center.x + tx - camera.rect.x, wCircle->center.y + ty - camera.rect.y);
+        }
+        //*/
+
+        /* from https://stackoverflow.com/questions/1201200/fast-algorithm-for-drawing-filled-circles
+        for(int y = -1 * wCircle->radius; y <= wCircle->radius; y++)
+            for(int x = -1 * wCircle->radius; x <= wCircle->radius; x++)
+                if(x * x + y * y <= wCircle->radius * wCircle->radius)
+                    SDL_RenderDrawPoint(global.mainRenderer, wCircle->center.x + x - camera.rect.x, wCircle->center.y + y - camera.rect.y);
+        //*/
+
+        //both of the above ran really slow. Until I can figure out why, I'm just cheating with this poorly drawn circle of arbitrary size
+        //*
+        cSprite cheatCircle;  //init the circle
+        initCSprite(&cheatCircle, NULL, "./assets/filledCircleCheat.png", 0,
+                    (cDoubleRect) {wCircle->center.x - wCircle->radius, wCircle->center.y - wCircle->radius, 2 * wCircle->radius, 2 * wCircle->radius},
+                    (cDoubleRect) {0, 0, 507, 507}, NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 5);
+
+        //do some color and alpha modding
+        SDL_SetTextureColorMod(cheatCircle.texture, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b);
+        SDL_SetTextureAlphaMod(cheatCircle.texture, wCircle->circleColor.a);
+
+        drawCSprite(cheatCircle, camera, false, false);  //draw it then free the memory
+        destroyCSprite(&cheatCircle);
+        //*/
+    }
 }
 
 /** \brief CoSprite helper function; if using, cast circle to a void*

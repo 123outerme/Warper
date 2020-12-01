@@ -1,7 +1,6 @@
 #ifndef WARPERINTERFACE_H_INCLUDED
 #define WARPERINTERFACE_H_INCLUDED
 
-#include "CoSprite/csGraphics.h"
 #include "warper.h"
 #include "battleSystem.h"
 
@@ -34,6 +33,7 @@ typedef struct _warperCircle
     double radius;
     cDoublePt center;
     SDL_Color circleColor;
+    bool filled;
 } warperCircle;
 
 //functions:

@@ -30,7 +30,8 @@ enum warperObjective
     objectiveNone,
     objectiveDefeat,
     objectiveRetreat,
-    objectiveRescue
+    objectiveRescue,
+    objectiveCapture
 };
 
 enum warperItemType
