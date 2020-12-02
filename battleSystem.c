@@ -154,10 +154,9 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
 
 node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, int* lengthOfPath, const bool drawDebug, cCamera* camera)
 {
-    /* TODO: new algorithm
-
-    breadth-first based, except nodes are created, on the fly, so that their x's and y's are (at first) offset by the same amount the start (or end?) x and y are from being aligned to the tile-grid
-    except we will:
+    /*
+    breadth-first based, except nodes are created so that their x's and y's are (at first) offset by the same amount the start (or end?) x and y are from being aligned to the tile-grid
+    except it will:
     -search the neighbor "nodes" that have no collision
     --if there is none for this node: create a neighbor node that correspond to your current node's x and y position plus the tile offset in the direction (so if it's to the right, it's tilemap.tileSize more on the X)
     --if there isn't: find a path from the current node to the nearest node snapped to the tile grid
@@ -169,12 +168,19 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     //node* pathFromCollision = NULL;
     //int pathFromCollisionSize = 0;
 
-    if (!queue || (startX / tilemap.tileSize == endX / tilemap.tileSize && startY / tilemap.tileSize == endY / tilemap.tileSize))
+    if (!queue
+        || (startX / tilemap.tileSize == endX / tilemap.tileSize && startY / tilemap.tileSize == endY / tilemap.tileSize)
+        || startX < 0 || startY < 0 || endX < 0 || endY < 0 || startX > tilemap.width * tilemap.tileSize || startY > tilemap.height * tilemap.tileSize
+        || endX > tilemap.width * tilemap.tileSize || endY > tilemap.height * tilemap.tileSize)
     {
+        //if queue couldn't be calloc'd, if our start point and end point are the same tile, or if we're coming from or moving to is out of bounds
         *lengthOfPath = -1;
-        free(path);
+        if (path)
+            free(path);
+
         if (queue)
             free(queue);
+
         return NULL;
     }
 

@@ -362,16 +362,16 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
 
         //camera movement
         if (input.keyStates[SDL_SCANCODE_UP])
-            gameScene->camera->rect.y -= 10 * 60.0 / framerate;
+            gameScene->camera->rect.y -= 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_DOWN])
-            gameScene->camera->rect.y += 10 * 60.0 / framerate;
+            gameScene->camera->rect.y += 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_LEFT])
-            gameScene->camera->rect.x -= 10 * 60.0 / framerate;
+            gameScene->camera->rect.x -= 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_RIGHT])
-            gameScene->camera->rect.x += 10 * 60.0 / framerate;
+            gameScene->camera->rect.x += 10 * 60 / framerate;
 
         drawCScene(gameScene, true, true, &framerate, 60);
     }
@@ -401,8 +401,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     double moveDistance = 0;
     int pathIndex = -1;
 
-    warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0xA0}, .filled = true};
-    warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0xC0}, .filled = true};
+    warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
+    warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
 
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 1);
     initCResource(&movePathRes, (void*) &movePath, drawWarperPath, destroyWarperPath, 0);
@@ -763,7 +763,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2,
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2) / tilemap.tileSize;
 
-                            //if attacker is not a technomancer, check collision to see if bullets/sword are blocked
+                            //if attacker is not a technomancer, cast a ray or 2 or 4 (for all sprite corners) and check collision to see if bullets/sword are blocked
 
                             warperAttackCheck checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
 
@@ -847,16 +847,16 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
         //camera movement
         if (input.keyStates[SDL_SCANCODE_UP])
-            scene->camera->rect.y -= 10 * 60.0 / framerate;
+            scene->camera->rect.y -= 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_DOWN])
-            scene->camera->rect.y += 10 * 60.0 / framerate;
+            scene->camera->rect.y += 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_LEFT])
-            scene->camera->rect.x -= 10 * 60.0 / framerate;
+            scene->camera->rect.x -= 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_RIGHT])
-            scene->camera->rect.x += 10 * 60.0 / framerate;
+            scene->camera->rect.x += 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_F11])
             printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);
