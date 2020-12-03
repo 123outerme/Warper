@@ -8,8 +8,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 
-#define TILEMAP_X 80  //(global.windowW / TILE_SIZE)
-#define TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
+#define TEST_TILEMAP_X 80  //(global.windowW / TILE_SIZE)
+#define TEST_TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
 
 #define WARPER_FRAME_LIMIT 60
 
@@ -97,8 +97,8 @@ int main(int argc, char** argv)
     if (menuBox.selection == 0)
     {
         //create temp map
-        tilemap.width = TILEMAP_X;
-        tilemap.height = TILEMAP_Y;
+        tilemap.width = TEST_TILEMAP_X;
+        tilemap.height = TEST_TILEMAP_Y;
         tilemap.tileSize = TILE_SIZE;
 
         tilemap.spritemap_layer1 = calloc(tilemap.width, sizeof(int*));
@@ -154,7 +154,7 @@ int main(int argc, char** argv)
             }
         }
     }
-    bool quit = false;
+
     if (menuBox.selection == 3)
     {
         destroyCScene(&menuScene);
@@ -163,8 +163,8 @@ int main(int argc, char** argv)
     }
 
     destroyCScene(&menuScene);  //have to destroy after to preserve selection
-    initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //re-init camera
 
+    initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //re-init camera
 
     c2DModel mapModel_layer1, mapModel_layer2;
     loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
@@ -172,6 +172,7 @@ int main(int argc, char** argv)
     cScene gameScene;
     initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, NULL, 0, NULL, 0);
 
+    bool quit = false;
     while (!quit)
     {
         quit = gameLoop(tilemap, &gameScene);
@@ -233,23 +234,46 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
     cSprite testPlayerSprite;
     cSprite testEnemySprite;
 
+    warperTeam playerTeam;
+    warperTeam enemyTeam;
+
     warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
 
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {15, statusNone, 0, 35, 25, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 15, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {15, statusNone, 0, 35, 12, false}};
-    warperTeam playerTeam;
-    initWarperTeam(&playerTeam, (warperUnit*[1]) {&playerUnit}, 1, NULL, 0, 0);
-    warperTeam enemyTeam;
-    initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
+    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
 
     initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
                     (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerTeam, 4);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerUnit, 4);
     initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
                 (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
                 (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyTeam, 4);
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyUnit, 4);
+
+    //squad init
+    cSprite* testSquadSprites = calloc(4, sizeof(cSprite));
+    cDoublePt testSquadPts[4] = {(cDoublePt) {0, 0}, (cDoublePt) {tilemap.tileSize, 0}, (cDoublePt) {0, tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, tilemap.tileSize}};
+
+    warperUnit testSquadUnits[5];
+    testSquadUnits[0] = playerUnit;
+
+    for(int i = 0; i < 4; i++)
+    {
+        initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
+                    (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
+                    (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &(testSquadUnits[1 + i]), 4);
+
+        testSquadUnits[1 + i] = (warperUnit) {&(testSquadSprites[i]), 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
+
+        addSpriteToCScene(gameScene, &(testSquadSprites[i]));
+    }
+
+    initWarperTeam(&playerTeam, (warperUnit*[5]) {&playerUnit, &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, NULL, 0, 0);
+    //end squad init
+
+    initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
 
     addSpriteToCScene(gameScene, &testPlayerSprite);
     addSpriteToCScene(gameScene, &testEnemySprite);
@@ -377,6 +401,12 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
     }
 
     removeSpriteFromCScene(gameScene, &testPlayerSprite, -1, true);
+
+    for(int i = 0; i < 4; i++)
+        removeSpriteFromCScene(gameScene, &(testSquadSprites[i]), -1, true);
+
+    free(testSquadSprites);
+
     removeSpriteFromCScene(gameScene, &testEnemySprite, -1, true);
 
     return input.quitInput;
@@ -619,8 +649,10 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     {
                         for(int i = 0; i < playerTeam->unitsSize; i++)
                         {
-                            if (worldClickX >= playerTeam->units[i]->sprite->drawRect.x && worldClickX < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w &&
-                                worldClickY >= playerTeam->units[i]->sprite->drawRect.y && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
+                            if (worldClickX >= playerTeam->units[i]->sprite->drawRect.x
+                                && worldClickX < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w
+                                && worldClickY >= playerTeam->units[i]->sprite->drawRect.y
+                                && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
                             {
                                 selectedUnit = i;
                                 //printf("found unit %d\n", i);
