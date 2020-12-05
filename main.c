@@ -245,11 +245,11 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
     initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
                     (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &playerUnit, 4);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
     initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
                 (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
                 (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &enemyUnit, 4);
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
     //squad init
     cSprite* testSquadSprites = calloc(4, sizeof(cSprite));
@@ -263,7 +263,7 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
         initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
                     (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, (void*) &(testSquadUnits[1 + i]), 4);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
         testSquadUnits[1 + i] = (warperUnit) {&(testSquadSprites[i]), 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
 
@@ -414,6 +414,8 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
 
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
 {
+    //TODO: add a battle intro animation
+
     bool quit = false, quitEverything = false;
     int confirmMode = CONFIRM_NONE;  //used for confirming selections
     //double speed = 6.0;  //just a good speed value, nothing special. Pixels/frame at 60 FPS
@@ -455,7 +457,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     addSpriteToCScene(scene, &confirmPlayerSprite);
 
     cInputState input;
-    int framerate = 0;
+    int framerate = 60;
     int selectedUnit = 0;
 
     bool playerTurn = true, pathToCursor = false;
@@ -790,19 +792,31 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         {
                             //printf("found enemy %d\n", enemyIndex);
                             //calculate if we hit, calculate damage
+                            //get distance (in tiles)
                             double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2,
                                                           playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2,
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2,
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2) / tilemap.tileSize;
 
                             //if attacker is not a technomancer, cast a ray or 2 or 4 (for all sprite corners) and check collision to see if bullets/sword are blocked
+                            bool attackBlocked = false;
+                            if (playerTeam->units[selectedUnit]->classType != classTechnomancer)
+                            {
+                                for(double i = 0; i < distance; i += 0.5)  //for every half-tile step along the line between you and the enemy
+                                {
+                                    //check for a collision tile; if so, then attack is blocked
+                                }
+                            }
 
-                            warperAttackCheck checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
+                            if (!attackBlocked)
+                            {
+                                warperAttackCheck checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
 
-                            //playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
-                            //do something with the result?
+                                //playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
+                                //do something with the result?
 
-                            printf("Attack does %d damage (chance to hit: %f%% against enemy %f tiles away)\n", checkResult.damage, checkResult.hitChance * 100.0, distance);
+                                printf("Attack does %d damage (chance to hit: %f%% against enemy %f tiles away)\n", checkResult.damage, checkResult.hitChance * 100.0, distance);
+                            }
                         }
                     }
                 }
@@ -878,16 +892,16 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
 
         //camera movement
-        if (input.keyStates[SDL_SCANCODE_UP])
+        if (input.keyStates[SDL_SCANCODE_W])
             scene->camera->rect.y -= 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_DOWN])
+        if (input.keyStates[SDL_SCANCODE_S])
             scene->camera->rect.y += 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_LEFT])
+        if (input.keyStates[SDL_SCANCODE_A])
             scene->camera->rect.x -= 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_RIGHT])
+        if (input.keyStates[SDL_SCANCODE_D])
             scene->camera->rect.x += 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_F11])
