@@ -392,10 +392,22 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
             quit = true;
         else
         {
-            //printf("%d = pathCount\n", pathCount);
-            path[pathCount] = *((node*) (path[pathCount - 1].lastNode));
-            //printf("%p\n", (void*) path[pathCount].lastNode);
-            pathCount++;
+            if (path[pathCount - 1].lastNode)
+            {
+                //printf("%d = pathCount\n", pathCount);
+                path[pathCount] = *((node*) (path[pathCount - 1].lastNode));
+                //printf("%p\n", (void*) path[pathCount].lastNode);
+                pathCount++;
+            }
+            else
+            {  //error: found path nodes are not connected
+                *lengthOfPath = 0;
+                pathCount = 0;
+                free(path);
+                //clean up
+                quit = true;
+                printf("Pathfinding Error: found path nodes are not connected\n");
+            }
         }
     }
 

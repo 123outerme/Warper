@@ -449,12 +449,20 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     addResourceToCScene(scene, &enemyCircleRes);
 
     cSprite confirmPlayerSprite;
+    cSprite unitSelectSprite;
+
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {-1 * tilemap.tileSize, -1 * tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
+                    (cDoubleRect) {-3 * tilemap.tileSize, -3 * tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 2 * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 0);
 
+    initCSprite(&unitSelectSprite, NULL, "assets/uiTilesheet.png", 0,
+                playerTeam->units[0]->sprite->drawRect,  //put this over top of the first selected unit
+                (cDoubleRect) {0, 0, tilemap.tileSize, tilemap.tileSize},
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 3);
+
     addSpriteToCScene(scene, &confirmPlayerSprite);
+    addSpriteToCScene(scene, &unitSelectSprite);
 
     cInputState input;
     int framerate = 60;
@@ -510,11 +518,14 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 {
                     if (!confirmMode)
                     {  //if we are in confirm mode it's likely we're trying to move
-                        pathToCursor = false;
-                        confirmPlayerSprite.renderLayer = 0;
+                        if (!(battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2))  //if we're not maximizing/minimizing
+                        {
+                            pathToCursor = false;
+                            confirmPlayerSprite.renderLayer = 0;
 
-                        if (movePath.path)
-                            destroyWarperPath((void*) &movePath);  //free current path
+                            if (movePath.path)
+                                destroyWarperPath((void*) &movePath);  //free current path
+                        }
                     }
                 }
 
@@ -527,7 +538,10 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     circleRes.renderLayer = 2;
                 }
                 else
-                    circleRes.renderLayer = 0;
+                {
+                    if (!(battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2))  //if we're not maximizing/minimizing
+                        circleRes.renderLayer = 0;
+                }
 
                 if (battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2)
                 {
@@ -889,6 +903,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             }
             //*/
         }
+
+        //update unit select sprite position
+        unitSelectSprite.drawRect = playerTeam->units[selectedUnit]->sprite->drawRect;
 
 
         //camera movement
