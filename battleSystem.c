@@ -625,6 +625,24 @@ warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUn
     //status chance: calculated based on opponent's status resist stat and your status chance
     //               as attacker's status chance stat increases, it overpowers the status resist ever so slightly more, but not to an uncontrollable level
 
+    //hit chance bounds checking
+    if (attack.hitChance < 0)
+        attack.hitChance = 0;
+    if (attack.hitChance > 1)
+        attack.hitChance = 1;
+
+    //crit chance bounds checking
+    if (attack.critChance < 0)
+        attack.critChance = 0;
+    if (attack.critChance > 1)
+        attack.critChance = 1;
+
+    //status chance bounds checking
+    if (attack.statusChance < 0)
+        attack.statusChance = 0;
+    if (attack.statusChance > 1)
+        attack.statusChance = 1;
+
     return attack;
 }
 
@@ -650,7 +668,7 @@ warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit
         result.crit = true;
     }
 
-    defendingUnit->battleData.curHp -= checkResult.damage;
+    defendingUnit->battleData.curHp -= result.damage;
 
     if (checkResult.statusChance - randChance >= 0.00001)
     {

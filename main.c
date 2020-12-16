@@ -814,8 +814,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         enemyIndex = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
                         {
-                            if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
-                                worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
+                            if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w
+                                && worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h
+                                && enemyTeam->units[i]->sprite->renderLayer > 0)
                                 enemyIndex = i;
                         }
                         if (enemyIndex != -1)
@@ -857,7 +858,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 confirmMode = CONFIRM_ATTACK;
 
                                 char* questionStr = calloc(81, sizeof(char));
-                                snprintf(questionStr, 80, "Attack? It will do %d dmg; %d%% hit chance, %d%% crit chance, %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
+                                snprintf(questionStr, 80, "Attack? It will do %d dmg;\n%d%% hit chance, %d%% crit chance, %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
 
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
