@@ -464,9 +464,11 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     addSpriteToCScene(scene, &confirmPlayerSprite);
     addSpriteToCScene(scene, &unitSelectSprite);
 
+    warperAttackCheck checkResult;
+
     cInputState input;
     int framerate = 60;
-    int selectedUnit = 0;
+    int selectedUnit = 0, enemyIndex = -1;
 
     bool playerTurn = true, pathToCursor = false;
 
@@ -606,7 +608,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 if (confirmMode)
                 {
                     //If we are confirming an action
-                    if (battleTextBox.selection == 2 || battleTextBox.selection == 3)
+                    if (battleTextBox.selection == 2 || battleTextBox.selection == 3 || (battleTextBox.selection == 4 && confirmMode == CONFIRM_ATTACK))
                     {
                         //If we selected "Yes" or "No"
                         if (battleTextBox.selection == 2)
@@ -635,6 +637,20 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 destroyWarperPath((void*) &movePath);
                                 movePathRes.renderLayer = 0;
                                 pathIndex = -1;
+                            }
+
+                            //if we selected "yes" but only for attack confirm
+                            if (confirmMode == CONFIRM_ATTACK)
+                            {
+                                //do attack
+                                doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], checkResult);
+                                playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
+
+                                if (enemyTeam->units[enemyIndex]->battleData.curHp <= 0)
+                                {
+                                    //enemy is dead
+                                    enemyTeam->units[enemyIndex]->sprite->renderLayer = 0;
+                                }
                             }
                         }
                         confirmMode = CONFIRM_NONE;
@@ -795,7 +811,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
                     {  //battle
                         //find which enemy we clicked on, if any
-                        int enemyIndex = -1;
+                        enemyIndex = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
                         {
                             if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
@@ -805,18 +821,27 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         if (enemyIndex != -1)
                         {
                             //printf("found enemy %d\n", enemyIndex);
+                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 < enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2)
+                                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_NONE;  //if the player is more to the left than the enemy, face the enemy
+
+                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 > enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2)
+                                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_HORIZONTAL;  //if the player is more to the right than the enemy, face the enemy
+
+                            //otherwise, stay facing the same way
+
                             //calculate if we hit, calculate damage
+
                             //get distance (in tiles)
                             double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2,
                                                           playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2,
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2,
                                                           enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2) / tilemap.tileSize;
 
-                            //if attacker is not a technomancer, cast a ray or 2 or 4 (for all sprite corners) and check collision to see if bullets/sword are blocked
+                            //if attacker is not a technomancer, cast a ray or 4 (for all sprite edges) and check collision to see if bullets/sword are blocked
                             bool attackBlocked = false;
                             if (playerTeam->units[selectedUnit]->classType != classTechnomancer)
                             {
-                                for(double i = 0; i < distance; i += 0.5)  //for every half-tile step along the line between you and the enemy
+                                for(double i = 0; i - distance < 0.0001; /*floating pt accuracy check; equivalent to i < dist*/ i += 0.5)  //for every half-tile step along the line between you and the enemy
                                 {
                                     //check for a collision tile; if so, then attack is blocked
                                 }
@@ -824,12 +849,20 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                             if (!attackBlocked)
                             {
-                                warperAttackCheck checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
-
-                                //playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
-                                //do something with the result?
+                                checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
 
                                 printf("Attack does %d damage (chance to hit: %f%% against enemy %f tiles away)\n", checkResult.damage, checkResult.hitChance * 100.0, distance);
+
+                                //ask for confirmation
+                                confirmMode = CONFIRM_ATTACK;
+
+                                char* questionStr = calloc(81, sizeof(char));
+                                snprintf(questionStr, 80, "Attack? It will do %d dmg; %d%% hit chance, %d%% crit chance, %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
+
+                                initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
+                                destroyWarperTextBox((void*) &battleTextBox);
+                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [5]) {questionStr, " ", " ", "Yes", "No"}, (bool[5]) {false, false, false, true, true}, 5, tilemap.tileSize);
+                                free(questionStr);
                             }
                         }
                     }
@@ -880,7 +913,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             }
         }
 
-
         if (movePath.path != NULL && !confirmMode && !pathToCursor)  //we don't want to continuously move to cursor
         {
             //move our unit until there are no more nodes
@@ -907,7 +939,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         //update unit select sprite position
         unitSelectSprite.drawRect = playerTeam->units[selectedUnit]->sprite->drawRect;
 
-
         //camera movement
         if (input.keyStates[SDL_SCANCODE_W])
             scene->camera->rect.y -= 10 * 60 / framerate;
@@ -933,6 +964,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     removeResourceFromCScene(scene, &circleRes, -1, true);
     removeResourceFromCScene(scene, &enemyCircleRes, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
+    removeSpriteFromCScene(scene, &unitSelectSprite, -1, true);
 
     return quitEverything;
 }
