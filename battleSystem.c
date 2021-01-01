@@ -151,8 +151,23 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
     return path;
 }
 
-
-node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, int* lengthOfPath, const bool drawDebug, cCamera* camera)
+/** \brief Searches for a path between two points on the current map using a modified breadth-first search
+ *
+ * \param tilemap warperTilemap - the current tilemap
+ * \param startX int - start X coordinate
+ * \param startY int - start Y coordinate
+ * \param endX int - end X coordinate
+ * \param endY int - end Y coordinate
+ * \param finderWidth int - the width of the entity pathfinding
+ * \param finderHeight int - the height of the entity pathfinding
+ * \param customCollisions cDoubleRect* - an array containing colliding entities not found on the tilemap
+ * \param customCollisionLength int - the length of `customCollisions`
+ * \param lengthOfPath int* - a pointer to the int you want filled in with how many path nodes there are
+ * \param drawDebug const bool - debug screen drawing
+ * \param camera cCamera* - debug camera for screen drawing
+ * \return node* - NULL if no path found, otherwise will contain path data
+ */
+node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, cDoubleRect* customCollisions, int customCollisionLength, int* lengthOfPath, const bool drawDebug, cCamera* camera)
 {
     /*
     breadth-first based, except nodes are created so that their x's and y's are (at first) offset by the same amount the start (or end?) x and y are from being aligned to the tile-grid
@@ -221,9 +236,18 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
         //loop through all the groups of tiles adjacent to curNode and start creating new nodes
         for(int i = 0; i < 8; i++)
         {
-            //angle to next node = i * (360 / 8) = i * 45
+            /* angle to next node = i * (360 / 8) = i * 45
             int nextX = curNode->x + tilemap.tileSize * (i == 7 || i == 0 || i == 1) - tilemap.tileSize * (i == 3 || i == 4 || i == 5);
             int nextY = curNode->y + tilemap.tileSize * (i > 4) - tilemap.tileSize * (i == 1 || i == 2 || i == 3);
+            //*/
+
+            int xQueueOrder[8] = {1, 0, -1, 0, 1, -1, -1, 1};
+            int yQueueOrder[8] = {0, 1, 0, -1, 1, 1, -1, -1};
+            //0, 1, 2, 3 -> E, N, W, S
+            //4, 5, 6, 7 -> NE, NW, SW, SE
+
+            int nextX = curNode->x + tilemap.tileSize * xQueueOrder[i];
+            int nextY = curNode->y + tilemap.tileSize * yQueueOrder[i];
 
             //loop through all of the groups of tiles adjacent to curNode and check for collision
             bool isThereCollision = false;
@@ -233,12 +257,21 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                 {
                     if (x >= 0 && x < tilemap.width && y >= 0 && y < tilemap.height)
                     {
-
-                        if (tilemap.collisionmap[x][y] == 1)
+                        if (tilemap.collisionmap[x][y] == 1)  //if there is a collision at position (x, y)
                         {
                             isThereCollision = true;
+                            break;
                         }
                     }
+                }
+            }
+
+            for(int c = 0; c < customCollisionLength; c++)
+            {
+                if (quickCDoubleRectCollision((cDoubleRect) {nextX - tilemap.tileSize, nextY - tilemap.tileSize, 3 * tilemap.tileSize, 3 * tilemap.tileSize}, customCollisions[c]))
+                {  //checks for a collision in all of the tiles adjacent to the current node
+                    isThereCollision = true;
+                    break;
                 }
             }
 
@@ -280,22 +313,43 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
 
                     bool collision = false;
+                    //first check against tilemap collision
                     for(int y = 0; y <= (finderHeight - 1) / tilemap.tileSize; y++) //from 1 pixel to 1 tile, run once. When greater than 1 tile up to 2 tiles, run twice, from 2-3, run 3 times, etc
                     {
                         for(int x = 0; x <= (finderWidth - 1) / tilemap.tileSize; x++)  //that's why I subtract one from the width and height
                         {
                             //if there is a collision within the bounds of the pathfinder, then we do not want to add this node to the queue
-                            if (tilemap.collisionmap[nextX / tilemap.tileSize + x][nextY / tilemap.tileSize + y] == 1)
+                            if (nextX / tilemap.tileSize + x >= 0 && nextX / tilemap.tileSize + x < tilemap.width
+                                && nextY / tilemap.tileSize + y >= 0 && nextY / tilemap.tileSize + y < tilemap.height)  //if we are within the bounds of the map
+                            {
+                                if (tilemap.collisionmap[nextX / tilemap.tileSize + x][nextY / tilemap.tileSize + y] == 1)
+                                    collision = true;
+                            }
+                        }
+                    }
+
+                    //then check against custom collision (only necessary if there wasn't collision already found)
+                    if (!collision)
+                    {
+                        for(int c = 0; c < customCollisionLength; c++)
+                        {
+                            if (quickCDoubleRectCollision((cDoubleRect) {nextX, nextY, finderWidth, finderHeight}, customCollisions[c]))
+                            {
                                 collision = true;
+                                break;
+                            }
                         }
                     }
 
                     if (!collision)
                     {
+                        //if there is no collision then enqueue it
                         queue[queueCount] = malloc(sizeof(node));
                         initNode(queue[queueCount], searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y,
                                  searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode, true, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance);
                         queueCount++;
+
+                        //then do debug drawing stuff
                         if (drawDebug)
                         {
                             SDL_SetRenderDrawColor(global.mainRenderer, 0x00, 0xFF, 0x00, 0xC0);
@@ -307,7 +361,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                         }
                     }
                     else
-                        searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = -1;
+                        searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = -1;  //otherwise reset the node's distance count and do not add it to the queue
 
 
                 }

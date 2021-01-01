@@ -470,6 +470,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     int framerate = 60;
     int selectedUnit = 0, enemyIndex = -1;
 
+    const int CUSTOM_COLLISIONS_COUNT = playerTeam->unitsSize - 1 + enemyTeam->unitsSize;
+    cDoubleRect* customCollisions = calloc(CUSTOM_COLLISIONS_COUNT, sizeof(cDoubleRect));
+
     bool playerTurn = true, pathToCursor = false;
 
     while(!quit)
@@ -745,10 +748,22 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                         destroyWarperPath((void*) &movePath);  //free current path before we make a new one
                                     //if we're moving, do a search for the correct path
                                     //*
+                                    int customArrPos = 0;
+                                    for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects (except current)
+                                    {
+                                        if (i != selectedUnit)
+                                            customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
+                                    }
+
+                                    for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects
+                                        customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+
+
                                     movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
-                                                                  (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
-                                                                  (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
-                                                                   &(movePath.pathLength), false, scene->camera);
+                                                                        (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
+                                                                        (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
+                                                                        customCollisions, CUSTOM_COLLISIONS_COUNT,
+                                                                        &(movePath.pathLength), false, scene->camera);
 
                                     if (movePath.path)
                                     {
@@ -886,9 +901,21 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 if (movePath.path)  //free it first
                     destroyWarperPath((void*) &movePath);
 
+                int customArrPos = 0;
+                for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects (except current)
+                {
+                    if (i != selectedUnit)
+                        customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
+                }
+
+                for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects
+                    customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+
+
                 movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,  //current player position
                                                    (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,  //current mouse position
                                                    (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
+                                                    customCollisions, CUSTOM_COLLISIONS_COUNT,
                                                    &(movePath.pathLength), false, scene->camera);
 
                 if (movePath.path)
@@ -958,6 +985,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
         drawCScene(scene, true, true, &framerate, WARPER_FRAME_LIMIT);
     }
+
+    free(customCollisions);
 
     //local objects/resources must be removed before quitting
     removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
