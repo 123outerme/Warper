@@ -285,9 +285,11 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
 
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
 
-                    queue[queueCount] = malloc(sizeof(node));
+                    queue[queueCount] = &(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]); //malloc(sizeof(node));
+                    /*
                     initNode(queue[queueCount], searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y,
                              searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode, true, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance);
+                    //*/
                     queueCount++;
                     if (drawDebug)
                     {
@@ -344,9 +346,11 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                     if (!collision)
                     {
                         //if there is no collision then enqueue it
-                        queue[queueCount] = malloc(sizeof(node));
+                        queue[queueCount] = &(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]);  //malloc(sizeof(node));
+                        /*
                         initNode(queue[queueCount], searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y,
                                  searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode, true, searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance);
+                        //*/
                         queueCount++;
 
                         //then do debug drawing stuff
@@ -397,10 +401,10 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
         //select a new adjacent node and delete the last enqueued item
     }
 
-    for(int i = 0; i < queueCount; i++)
+    /*for(int i = 0; i < queueCount; i++)
     {
         free(queue[i]);
-    }
+    }*/
     free(queue);
 
     /*Backtrack through the found path(s) and see if there are better nodes to travel through

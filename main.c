@@ -253,7 +253,7 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
 
     //squad init
     cSprite* testSquadSprites = calloc(4, sizeof(cSprite));
-    cDoublePt testSquadPts[4] = {(cDoublePt) {0, 0}, (cDoublePt) {tilemap.tileSize, 0}, (cDoublePt) {0, tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, tilemap.tileSize}};
+    cDoublePt testSquadPts[4] = {(cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
 
     warperUnit testSquadUnits[5];
     testSquadUnits[0] = playerUnit;
@@ -582,12 +582,12 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     }
                 }
 
-                if (battleTextBox.selection == 4)
+                if (battleTextBox.selection == 4 && !confirmMode)
                 {
                     //open mods menu
                 }
 
-                if (battleTextBox.selection == 5)
+                if (battleTextBox.selection == 5 && !confirmMode)
                 {  //end turn
                     playerTurn = false;
 
@@ -648,6 +648,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 //do attack
                                 doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], checkResult);
                                 playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
+                                playerTeam->units[selectedUnit]->battleData.energyLeft = 0;
 
                                 if (enemyTeam->units[enemyIndex]->battleData.curHp <= 0)
                                 {
@@ -734,7 +735,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 //no collision; move is valid
                                 moveDistance = 0;
                                 char* questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
-                                char* templateStr = calloc(61, sizeof(char));
                                 //printf("start moving\n");
                                 //we can move there
                                 movePath.pathLength = 0;
@@ -779,7 +779,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
                                     if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft)
                                     {
-                                        strncpy(templateStr, "Do you want to move? It will use %d stamina.", 60);
+                                        strncpy(questionStr, "Do you want to move? It will use %d stamina.", 60);
                                         confirmMode = CONFIRM_MOVEMENT;
                                     }
                                     else
@@ -801,14 +801,14 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                         moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft &&  //are moving somewhere and have the energy to do so
                                         !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)  //haven't teleported or attacked already
                                     {
-                                        strncpy(templateStr, "Do you want to teleport? It will use %d energy.", 60);
+                                        strncpy(questionStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;
                                     }
                                 }
 
                                 if (confirmMode)
                                 {
-                                    snprintf(questionStr, 60, templateStr, (int) moveDistance);
+                                    snprintf(questionStr, 60, questionStr, (int) moveDistance);
                                     confirmPlayerSprite.renderLayer = 2;
                                     confirmPlayerSprite.drawRect.w = playerTeam->units[selectedUnit]->sprite->drawRect.w;
                                     confirmPlayerSprite.drawRect.h = playerTeam->units[selectedUnit]->sprite->drawRect.h;
@@ -819,7 +819,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
                                 }
                                 free(questionStr);
-                                free(templateStr);
                             }
                         //}
                     }
