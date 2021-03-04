@@ -429,6 +429,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 6, tilemap.tileSize);
 
     warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
+    warperUnit* pathfinderUnit = NULL;
     //flowNode** movePath = NULL;
     double moveDistance = 0;
     int pathIndex = -1;
@@ -640,6 +641,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 destroyWarperPath((void*) &movePath);
                                 movePathRes.renderLayer = 0;
                                 pathIndex = -1;
+                                pathfinderUnit = NULL;
                             }
 
                             //if we selected "yes" but only for attack confirm
@@ -758,7 +760,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects
                                         customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
 
-
                                     movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
                                                                         (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
                                                                         (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
@@ -773,6 +774,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                         movePathRes.renderLayer = 2;
                                         movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;
                                         movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
+                                        pathfinderUnit = playerTeam->units[selectedUnit];  //set the pathfinder so that we can reference it when the movement is confirmed and the unit starts moving
                                     }
                                     //*/
 
@@ -885,6 +887,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             }
         }
 
+        //if we should find a path non-stop to the cursor
         if (pathToCursor)
         {
             if (!(input.motion.x < 0 && input.motion.y < 0))
@@ -929,7 +932,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         movePathRes.renderLayer = 2;
                         confirmPlayerSprite.renderLayer = 2;
                     }
-                    movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;
+                    movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;  //set the pathfinder's dimensions to be equal to our selected unit's dims
                     movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
                 }
             }
@@ -940,17 +943,24 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             }
         }
 
-        if (movePath.path != NULL && !confirmMode && !pathToCursor)  //we don't want to continuously move to cursor
+        if (!playerTurn)
+        {
+            //TODO: ADD ENEMY AI HERE
+            //calculate best move based on AI type, enemy difficulty, each unit's class, remaining health, etc
+            //AI Types: Lone wolves each fight one unit, Pack wolves use 2-3 units to fight one of your units
+        }
+
+        if (movePath.path != NULL && !confirmMode && pathfinderUnit && !pathToCursor)  //we don't want to continuously move to cursor so we ignore when we try
         {
             //move our unit until there are no more nodes
-            if (playerTeam->units[selectedUnit]->sprite->drawRect.x > movePath.path[pathIndex].x)  //if we're moving left
-                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_HORIZONTAL;
+            if (pathfinderUnit->sprite->drawRect.x > movePath.path[pathIndex].x)  //if we're moving left
+                pathfinderUnit->sprite->flip = SDL_FLIP_HORIZONTAL;
             else
-                playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_NONE;
+                pathfinderUnit->sprite->flip = SDL_FLIP_NONE;
 
 
-            playerTeam->units[selectedUnit]->sprite->drawRect.x = movePath.path[pathIndex].x;  //update position
-            playerTeam->units[selectedUnit]->sprite->drawRect.y = movePath.path[pathIndex].y;
+            pathfinderUnit->sprite->drawRect.x = movePath.path[pathIndex].x;  //update position
+            pathfinderUnit->sprite->drawRect.y = movePath.path[pathIndex].y;
 
             pathIndex++;
 
@@ -959,6 +969,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 //set flag to false, reset variables, free movePath
                 destroyWarperPath((void*) &movePath);
                 pathIndex = -1;
+                pathfinderUnit = NULL;
             }
             //*/
         }
@@ -979,7 +990,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         if (input.keyStates[SDL_SCANCODE_D])
             scene->camera->rect.x += 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_F11])
+        if (input.keyStates[SDL_SCANCODE_F11])  //DEBUG
             printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);
 
         drawCScene(scene, true, true, &framerate, WARPER_FRAME_LIMIT);
