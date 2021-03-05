@@ -469,7 +469,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     cInputState input;
     int framerate = 60;
-    int selectedUnit = 0, enemyIndex = -1;
+    int selectedUnit = 0, selectedEnemy = -1;  //used for selecting a unit or an enemy unit
+    int turnEnemy = 0;  //used for going through enemy turns
 
     const int CUSTOM_COLLISIONS_COUNT = playerTeam->unitsSize - 1 + enemyTeam->unitsSize;
     cDoubleRect* customCollisions = calloc(CUSTOM_COLLISIONS_COUNT, sizeof(cDoubleRect));
@@ -648,14 +649,14 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             if (confirmMode == CONFIRM_ATTACK)
                             {
                                 //do attack
-                                doAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], checkResult);
+                                doAttack(playerTeam->units[selectedUnit], enemyTeam->units[selectedEnemy], checkResult);
                                 playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
                                 playerTeam->units[selectedUnit]->battleData.energyLeft = 0;
 
-                                if (enemyTeam->units[enemyIndex]->battleData.curHp <= 0)
+                                if (enemyTeam->units[selectedEnemy]->battleData.curHp <= 0)
                                 {
                                     //enemy is dead
-                                    enemyTeam->units[enemyIndex]->sprite->renderLayer = 0;
+                                    enemyTeam->units[selectedEnemy]->sprite->renderLayer = 0;
                                 }
                             }
                         }
@@ -827,21 +828,21 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
                     {  //battle
                         //find which enemy we clicked on, if any
-                        enemyIndex = -1;
+                        selectedEnemy = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
                         {
                             if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w
                                 && worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h
                                 && enemyTeam->units[i]->sprite->renderLayer > 0)
-                                enemyIndex = i;
+                                selectedEnemy = i;
                         }
-                        if (enemyIndex != -1)
+                        if (selectedEnemy != -1)
                         {
                             //printf("found enemy %d\n", enemyIndex);
-                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 < enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2)
+                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 < enemyTeam->units[selectedEnemy]->sprite->drawRect.x + enemyTeam->units[selectedEnemy]->sprite->drawRect.w / 2)
                                 playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_NONE;  //if the player is more to the left than the enemy, face the enemy
 
-                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 > enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2)
+                            if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 > enemyTeam->units[selectedEnemy]->sprite->drawRect.x + enemyTeam->units[selectedEnemy]->sprite->drawRect.w / 2)
                                 playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_HORIZONTAL;  //if the player is more to the right than the enemy, face the enemy
 
                             //otherwise, stay facing the same way
@@ -851,8 +852,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             //get distance (in tiles)
                             double distance = getDistance(playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2,
                                                           playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2,
-                                                          enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2,
-                                                          enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2) / tilemap.tileSize;
+                                                          enemyTeam->units[selectedEnemy]->sprite->drawRect.x + enemyTeam->units[selectedEnemy]->sprite->drawRect.w / 2,
+                                                          enemyTeam->units[selectedEnemy]->sprite->drawRect.y + enemyTeam->units[selectedEnemy]->sprite->drawRect.h / 2) / tilemap.tileSize;
 
                             //if attacker is not a technomancer, cast a ray or 4 (for all sprite edges) and check collision to see if bullets/sword are blocked
                             bool attackBlocked = false;
@@ -866,7 +867,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
                             if (!attackBlocked)
                             {
-                                checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[enemyIndex], distance);
+                                checkResult = checkAttack(playerTeam->units[selectedUnit], enemyTeam->units[selectedEnemy], distance);
 
                                 printf("Attack does %d damage (chance to hit: %f%% against enemy %f tiles away)\n", checkResult.damage, checkResult.hitChance * 100.0, distance);
 
@@ -948,6 +949,58 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             //TODO: ADD ENEMY AI HERE
             //calculate best move based on AI type, enemy difficulty, each unit's class, remaining health, etc
             //AI Types: Lone wolves each fight one unit, Pack wolves use 2-3 units to fight one of your units
+
+            //SIMPLE TEST AI - just repositions on top of you (you must teleport to escape)
+            if (!movePath.path)  //if we aren't currently following a path
+            {
+                if (turnEnemy >= enemyTeam->unitsSize)
+                {
+                    turnEnemy = 0;
+                    playerTurn = true;
+
+                    //restore each player unit's battle stats (stamina, etc)
+                    for(int i = 0; i < playerTeam->unitsSize; i++)
+                    {
+                        playerTeam->units[i]->battleData.staminaLeft = playerTeam->units[i]->maxStamina;
+                        playerTeam->units[i]->battleData.energyLeft = playerTeam->units[i]->maxEnergy;
+                        playerTeam->units[i]->battleData.teleportedOrAttacked = false;
+                        //iterate on status effects
+                    }
+
+                    //restore textbox to regular menu
+                    destroyWarperTextBox((void*) &battleTextBox);
+                    initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                    destroyWarperTextBox((void*) &backupTextBox);
+                }
+                else
+                {
+                    //printf("entered enemy pathfinding\n");
+                    pathfinderUnit = enemyTeam->units[turnEnemy];
+
+                    movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
+                    movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.w;
+
+                    //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
+                    for(int x = 0; x < playerTeam->unitsSize; x++)
+                    {
+                        int pathLength = 0;
+
+                        node* path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
+                                                           playerTeam->units[x]->sprite->drawRect.x, playerTeam->units[x]->sprite->drawRect.y,
+                                                           pathfinderUnit->sprite->drawRect.w, pathfinderUnit->sprite->drawRect.h,
+                                                           customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);
+
+                        if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest enemy and path to them
+                        {
+                            //printf("found a better path\n");
+                            movePath.path = path;
+                            movePath.pathLength = pathLength;
+                        }
+                    }
+                    //printf("path distance = %f\n", movePath.path[0].distance);
+                    turnEnemy++;
+                }
+            }
         }
 
         if (movePath.path != NULL && !confirmMode && pathfinderUnit && !pathToCursor)  //we don't want to continuously move to cursor so we ignore when we try

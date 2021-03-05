@@ -295,6 +295,10 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                     {
                         SDL_SetRenderDrawColor(global.mainRenderer, 0x00, 0x00, 0xFF, 0xC0);
                         SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = nextX - camera->rect.x, .y = nextY - camera->rect.y, .w = tilemap.tileSize, .h = tilemap.tileSize}));
+
+                        SDL_SetRenderDrawColor(global.mainRenderer, 0xFF, 0x00, 0x00, 0xFF);
+                        SDL_RenderFillRect(global.mainRenderer, &((SDL_Rect) {.x = startX - camera->rect.x, .y = startY - camera->rect.y, .w = finderWidth, .h = finderHeight}));
+
                         SDL_RenderPresent(global.mainRenderer);
                         //printf("%p\n", searchList[y][x].lastNode);
                         //waitForKey(true);
