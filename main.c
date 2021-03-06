@@ -974,30 +974,50 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 }
                 else
                 {
-                    //printf("entered enemy pathfinding\n");
-                    pathfinderUnit = enemyTeam->units[turnEnemy];
-
-                    movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
-                    movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.w;
-
-                    //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
-                    for(int x = 0; x < playerTeam->unitsSize; x++)
+                    if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the unit is alive
                     {
-                        int pathLength = 0;
+                        //printf("entered enemy pathfinding\n");
+                        pathfinderUnit = enemyTeam->units[turnEnemy];
 
-                        node* path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
-                                                           playerTeam->units[x]->sprite->drawRect.x, playerTeam->units[x]->sprite->drawRect.y,
-                                                           pathfinderUnit->sprite->drawRect.w, pathfinderUnit->sprite->drawRect.h,
-                                                           customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);
+                        movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
+                        movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.w;
 
-                        if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest enemy and path to them
+                        //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
+                        for(int targetUnit = 0; targetUnit < playerTeam->unitsSize; targetUnit++)
                         {
-                            //printf("found a better path\n");
-                            movePath.path = path;
-                            movePath.pathLength = pathLength;
+                            int pathLength = 0;
+                            double targetUnitX = playerTeam->units[targetUnit]->sprite->drawRect.x, targetUnitY = playerTeam->units[targetUnit]->sprite->drawRect.y;
+
+                            if (targetUnitX - pathfinderUnit->sprite->drawRect.x > pathfinderUnit->sprite->drawRect.w)
+                                targetUnitX -= pathfinderUnit->sprite->drawRect.w;  //move to the closest position on the left
+                            if (targetUnitX - pathfinderUnit->sprite->drawRect.x < pathfinderUnit->sprite->drawRect.w)
+                                targetUnitX += playerTeam->units[targetUnit]->sprite->drawRect.w;  //move to the closest position on the right
+
+                            if (fabs(playerTeam->units[targetUnit]->sprite->drawRect.x - targetUnitX) < 0.001)  //if we didn't adjust on the X direction
+                            {
+                                if (targetUnitY > pathfinderUnit->sprite->drawRect.y)
+                                    targetUnitY -= pathfinderUnit->sprite->drawRect.h;  //move to the closest position above
+                                if (targetUnitY < pathfinderUnit->sprite->drawRect.y)
+                                    targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //move to the closest position below
+                            }
+                            node* path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
+                                                            targetUnitX, targetUnitY,
+                                                            pathfinderUnit->sprite->drawRect.w, pathfinderUnit->sprite->drawRect.h,
+                                                            customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);
+
+                            if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest enemy and path to them
+                            {
+                                //printf("found a better path\n");
+                                if (movePath.path)
+                                    free(movePath.path);
+
+                                movePath.path = path;
+                                movePath.pathLength = pathLength;
+                            }
+
                         }
+                        //printf("path distance = %f\n", movePath.path[0].distance);
                     }
-                    //printf("path distance = %f\n", movePath.path[0].distance);
                     turnEnemy++;
                 }
             }
