@@ -613,7 +613,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                 if (confirmMode)
                 {
                     //If we are confirming an action
-                    if (battleTextBox.selection == 2 || battleTextBox.selection == 3 || (battleTextBox.selection == 4 && confirmMode == CONFIRM_ATTACK))
+                    if (battleTextBox.selection == 2 || battleTextBox.selection == 3 || (((battleTextBox.selection == 5 || battleTextBox.selection == 6) && confirmMode == CONFIRM_ATTACK)))
                     {
                         //If we selected "Yes" or "No"
                         if (battleTextBox.selection == 2)
@@ -644,7 +644,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 pathIndex = -1;
                                 pathfinderUnit = NULL;
                             }
-
+                        }
+                        if (battleTextBox.selection == 5)
+                        {
                             //if we selected "yes" but only for attack confirm
                             if (confirmMode == CONFIRM_ATTACK)
                             {
@@ -660,6 +662,9 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 }
                             }
                         }
+
+                        //printf("selection %d\n", battleTextBox.selection);
+
                         confirmMode = CONFIRM_NONE;
                         confirmPlayerSprite.renderLayer = 0;
 
@@ -874,12 +879,30 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 //ask for confirmation
                                 confirmMode = CONFIRM_ATTACK;
 
-                                char* questionStr = calloc(81, sizeof(char));
-                                snprintf(questionStr, 80, "Attack? It will do %d dmg;\n%d%% hit chance, %d%% crit chance, %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
-
+                                char* questionStr = calloc(82, sizeof(char));
+                                snprintf(questionStr, 81, "Attack? It will do %d dmg;\n%d%% hit chance, %d%% crit chance,\nand %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
-                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [5]) {questionStr, " ", " ", "Yes", "No"}, (bool[5]) {false, false, false, true, true}, 5, tilemap.tileSize);
+                                //createBattleTextBox(&battleTextBox, textBoxDims, (char* [5]) {questionStr, " ", " ", "Yes", "No"}, (bool[5]) {false, false, false, true, true}, 5, tilemap.tileSize);
+
+                                createBattleTextBox(&battleTextBox, (cDoubleRect) {1 * tilemap.tileSize, 1 * tilemap.tileSize, (38) * tilemap.tileSize, (18) * tilemap.tileSize}, (char* [7]) {questionStr, " ", " ", " ", " ", "Yes", "No"}, (bool[7]) {false, false, false, false, false, true, true}, 7, tilemap.tileSize);
+
+                                /*
+                                cText* tempTexts = calloc(7, sizeof(cText));
+
+                                initCText(&(tempTexts[0]), questionStr, (cDoubleRect) {2 * tilemap.tileSize, 2 * tilemap.tileSize, (tilemap.width - 12) * tilemap.tileSize, tilemap.tileSize}, (tilemap.width - 12) * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, 5);
+                                for(int i = 1; i < 5; i++)
+                                {
+                                    initCText(&(tempTexts[i]), " ", (cDoubleRect) {2 * tilemap.tileSize, (2 + i) * tilemap.tileSize, (tilemap.width - 12) * tilemap.tileSize, tilemap.tileSize}, (tilemap.width - 12) * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, 5);
+                                }
+                                initCText(&(tempTexts[5]), "Yes", (cDoubleRect) {2 * tilemap.tileSize, 7 * tilemap.tileSize, (tilemap.width - 12) * tilemap.tileSize, tilemap.tileSize}, (tilemap.width - 12) * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, 5);
+                                initCText(&(tempTexts[6]), "No", (cDoubleRect) {2 * tilemap.tileSize, 8 * tilemap.tileSize, (tilemap.width - 12) * tilemap.tileSize, tilemap.tileSize}, (tilemap.width - 12) * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, 5);
+
+                                initWarperTextBox(&battleTextBox, (cDoubleRect) {1 * tilemap.tileSize, 1 * tilemap.tileSize, (38) * tilemap.tileSize, (18) * tilemap.tileSize}, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0x00, 0x00, 0x00, 0x58}, (SDL_Color) {0xFF, 0x00, 0x00, 0x20}, tempTexts, (char[7]) {false, false, false, false, false, true, true}, 7, true);
+                                for(int i = 0; i < 7; i++)
+                                    destroyCText(&(tempTexts[i]));
+                                //*/
+
                                 free(questionStr);
                             }
                         }
@@ -891,7 +914,6 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         //if we should find a path non-stop to the cursor
         if (pathToCursor)
         {
-            if (!(input.motion.x < 0 && input.motion.y < 0))
             {
                 confirmPlayerSprite.drawRect.x = input.motion.x + scene->camera->rect.x - confirmPlayerSprite.drawRect.w / 2;
                 confirmPlayerSprite.drawRect.y = input.motion.y + scene->camera->rect.y - confirmPlayerSprite.drawRect.h / 2;

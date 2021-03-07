@@ -258,11 +258,11 @@ void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** 
     cText* texts = calloc(textCount, sizeof(cText));
     for(int i = 0; i < textCount - 2; i++)
     {
-        initCText(&(texts[i]), strings[i], (cDoubleRect) {5 * tileSize, (14 + i) * tileSize, 30 * tileSize, (14 - i) * tileSize}, 30 * tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {dimensions.x, dimensions.y + i * tileSize, dimensions.w - 2 * tileSize, dimensions.h - i * tileSize}, dimensions.w - 2 * tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     }
 
-    initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {34 * tileSize, 14 * tileSize, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
-    initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {34 * tileSize, 19 * tileSize, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
+    initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {dimensions.x + dimensions.w - 2 * tileSize, dimensions.y, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+    initCText(&(texts[textCount - 1]), "+", (cDoubleRect) {dimensions.x + dimensions.w - 2 * tileSize, 19 * tileSize, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 0);
 
     bool* fixedIsOptions = calloc(stringsLength + 2, sizeof(bool));  //adding isOptions for + and -
     for(int i = 0; i < stringsLength; i++)
