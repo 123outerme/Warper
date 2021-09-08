@@ -3,7 +3,7 @@
 /** \brief
  *
  * \param team warperTeam* - team to initialize
- * \param units warperUnit** - array of warperUnit*s with the team's memebers
+ * \param units warperUnit** - array of warperUnit*s with the team's members
  * \param unitsSize int - size of units
  * \param inventory warperItem* - array of warperItems
  * \param inventorySize int - size of inventory
@@ -11,12 +11,41 @@
  */
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money)
 {
-    //TODO: copy this mem, don't do shallow copies
-    team->units = units;
+    team->units = calloc(unitsSize, sizeof(warperUnit*));
+    for(int i = 0; i < unitsSize; i++)
+    {
+        team->units[i] = units[i];
+    }
     team->unitsSize = unitsSize;
-    team->inventory = inventory;
+    team->inventory = calloc(inventorySize, sizeof(warperItem));
+    for(int i = 0; i < inventorySize; i++)
+    {
+        team->inventory[i] = inventory[i];
+    }
     team->inventorySize = inventorySize;
     team->money = money;
+}
+
+/** \brief
+ *
+ * \param team warperTeam* - team to destroy
+ */
+void destroyWarperTeam(warperTeam* team, bool freeUnits)
+{
+    if (freeUnits)
+    {
+        for(int i = 0; i < team->unitsSize; i++)
+        {
+            free(team->units[i]);
+        }
+    }
+    free(team->units);
+    team->unitsSize = 0;
+
+    free(team->inventory);
+    team->inventorySize = 0;
+
+    team->money = 0;
 }
 
 /** \brief Inits a new node

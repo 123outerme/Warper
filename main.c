@@ -3,7 +3,8 @@
 #include "mapMaker.h"
 #include "warperInterface.h"
 
-int gameLoop(warperTilemap tilemap, cScene* gameScene);
+int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
+bool pauseMenu(cScene* gameScene);
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
     cScene menuScene;
     char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Quit"};
     warperTextBox menuBox;
-    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 0xFF, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
 
     cResource menuBoxResource;
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
@@ -172,12 +173,54 @@ int main(int argc, char** argv)
     cScene gameScene;
     initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, NULL, 0, NULL, 0);
 
+    warperTeam playerTeam, enemyTeam;
+
+    //TEST squads init
+    cSprite testEnemySprite;
+    warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
+
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
+
+    initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
+                (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
+                (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+
+    cSprite* testSquadSprites = calloc(5, sizeof(cSprite));
+    cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
+
+    warperUnit testSquadUnits[5];
+
+    for(int i = 0; i < 5; i++)
+    {
+        initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
+                    (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
+                    (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+
+        testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
+    }
+
+    initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, NULL, 0, 0);
+    initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
+    //end TEST squads init
+
+    for(int i = 0; i < playerTeam.unitsSize; i++)
+        addSpriteToCScene(&gameScene, playerTeam.units[i]->sprite);
+
+    for(int i = 0; i < enemyTeam.unitsSize; i++)
+        addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
+
     bool quit = false;
     while (!quit)
     {
-        quit = gameLoop(tilemap, &gameScene);
-        //pause menu, etc
+        quit = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+        if (!quit && pauseMenu(&gameScene))  //only execute pause menu when we are not trying to force quit
+            quit = true;  //if pause menu returns that we want to quit then quit
     }
+
+    destroyWarperTeam(&playerTeam, false);
+    destroyWarperTeam(&enemyTeam, false);
 
     destroyCScene(&gameScene);
 
@@ -229,54 +272,10 @@ int main(int argc, char** argv)
     return error;
 }
 
-int gameLoop(warperTilemap tilemap, cScene* gameScene)
+int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam)
 {
-    cSprite testPlayerSprite;
-    cSprite testEnemySprite;
-
-    warperTeam playerTeam;
-    warperTeam enemyTeam;
-
-    warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
-
-    warperUnit playerUnit = (warperUnit) {&testPlayerSprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
-
-    initCSprite(&testPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
-                    (cDoubleRect) {tilemap.tileSize, tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
-                    (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
-    initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
-                (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
-                (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
-
-    //squad init
-    cSprite* testSquadSprites = calloc(4, sizeof(cSprite));
-    cDoublePt testSquadPts[4] = {(cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
-
-    warperUnit testSquadUnits[5];
-    testSquadUnits[0] = playerUnit;
-
-    for(int i = 0; i < 4; i++)
-    {
-        initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
-                    (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
-                    (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
-
-        testSquadUnits[1 + i] = (warperUnit) {&(testSquadSprites[i]), 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
-
-        addSpriteToCScene(gameScene, &(testSquadSprites[i]));
-    }
-
-    initWarperTeam(&playerTeam, (warperUnit*[5]) {&playerUnit, &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, NULL, 0, 0);
-    //end squad init
-
-    initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
-
-    addSpriteToCScene(gameScene, &testPlayerSprite);
-    addSpriteToCScene(gameScene, &testEnemySprite);
+    cSprite* overworldSprite = playerTeam->units[0]->sprite;
+    cSprite* overworldEnemySprite = enemyTeam->units[0]->sprite;
 
     bool quit = false;
 
@@ -293,55 +292,55 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
         //character movement
         if (input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_S] || input.keyStates[SDL_SCANCODE_D])
         {
-            //double lastX = testPlayerSprite.drawRect.x, lastY = testPlayerSprite.drawRect.y;
+            //double lastX = overworldSprite->drawRect.x, lastY = overworldSprite->drawRect.y;
             double speed = 6.0;  //just a good speed value, nothing special. Pixels/frame at 60 FPS
             if ((input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_S]) && (input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_D]))
                 speed *= sin(degToRad(45));  //diagonal speed component
 
             if (input.keyStates[SDL_SCANCODE_W])
-                testPlayerSprite.drawRect.y -= (int) (speed * 60.0 / framerate);
+                overworldSprite->drawRect.y -= (int) (speed * 60.0 / framerate);
 
             if (input.keyStates[SDL_SCANCODE_S])
-                testPlayerSprite.drawRect.y += (int) (speed * 60.0 / framerate);
+                overworldSprite->drawRect.y += (int) (speed * 60.0 / framerate);
 
-            cDoubleVector mtv = getTilemapCollision(testPlayerSprite, tilemap);
+            cDoubleVector mtv = getTilemapCollision(*overworldSprite, tilemap);
 
             if (mtv.magnitude)
             {  //apply collision after doing y movements
                 //*
-                testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
-                testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
+                overworldSprite->drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
+                overworldSprite->drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
                 //*/
-                //testPlayerSprite.drawRect.y = lastY;
+                //overworldSprite->drawRect.y = lastY;
             }
 
             if (input.keyStates[SDL_SCANCODE_A])
             {
-                testPlayerSprite.drawRect.x -= (int) (speed * 60.0 / framerate);
-                testPlayerSprite.flip = SDL_FLIP_HORIZONTAL;
+                overworldSprite->drawRect.x -= (int) (speed * 60.0 / framerate);
+                overworldSprite->flip = SDL_FLIP_HORIZONTAL;
             }
 
             if (input.keyStates[SDL_SCANCODE_D])
             {
-                testPlayerSprite.drawRect.x += (int) (speed * 60.0 / framerate);
-                testPlayerSprite.flip = SDL_FLIP_NONE;
+                overworldSprite->drawRect.x += (int) (speed * 60.0 / framerate);
+                overworldSprite->flip = SDL_FLIP_NONE;
             }
 
-            mtv = getTilemapCollision(testPlayerSprite, tilemap);
+            mtv = getTilemapCollision(*overworldSprite, tilemap);
 
             if (mtv.magnitude)
             {  //apply collision again after doing x movements (allows smooth collision sliding. The only way I could figure out how to fix it without 100% hard-coding)
                 //*
-                testPlayerSprite.drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
-                testPlayerSprite.drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
+                overworldSprite->drawRect.x += mtv.magnitude * cos(degToRad(mtv.degrees));
+                overworldSprite->drawRect.y += mtv.magnitude * sin(degToRad(mtv.degrees));
                 //printf("translating %f at %f\n", mtv.magnitude, mtv.degrees);
                 //*/
-                //testPlayerSprite.drawRect.x = lastX;
+                //overworldSprite->drawRect.x = lastX;
             }
 
-            gameScene->camera->rect.x = (int) (testPlayerSprite.drawRect.x - gameScene->camera->rect.w / 2);  //set the camera to center on the player
-            gameScene->camera->rect.y = (int) (testPlayerSprite.drawRect.y - gameScene->camera->rect.h / 2);
+            gameScene->camera->rect.x = (int) (overworldSprite->drawRect.x - gameScene->camera->rect.w / 2);  //set the camera to center on the player
+            gameScene->camera->rect.y = (int) (overworldSprite->drawRect.y - gameScene->camera->rect.h / 2);
 
             if (gameScene->camera->rect.y < 0)  //if the camera is set out of bounds in the -y, fix it
                 gameScene->camera->rect.y = 0;
@@ -356,10 +355,10 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
                 gameScene->camera->rect.x = (tilemap.width - gameScene->camera->rect.w / tilemap.tileSize) * tilemap.tileSize;
         }
 
-        if (input.keyStates[SDL_SCANCODE_B] || getDistance(testPlayerSprite.drawRect.x, testPlayerSprite.drawRect.y, testEnemySprite.drawRect.x, testEnemySprite.drawRect.y) < 6 * tilemap.tileSize)
+        if (input.keyStates[SDL_SCANCODE_B] || getDistance(overworldSprite->drawRect.x, overworldSprite->drawRect.y, overworldEnemySprite->drawRect.x, overworldEnemySprite->drawRect.y) < 6 * tilemap.tileSize)
         {
             //have battle take place in a seperate loop
-            quit = battleLoop(tilemap, gameScene, &playerTeam, &enemyTeam);
+            quit = battleLoop(tilemap, gameScene, playerTeam, enemyTeam);
             input.quitInput = quit;
             //printf("Initiate battle\n");
         }
@@ -400,16 +399,63 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene)
         drawCScene(gameScene, true, true, &framerate, 60);
     }
 
-    removeSpriteFromCScene(gameScene, &testPlayerSprite, -1, true);
-
-    for(int i = 0; i < 4; i++)
-        removeSpriteFromCScene(gameScene, &(testSquadSprites[i]), -1, true);
-
-    free(testSquadSprites);
-
-    removeSpriteFromCScene(gameScene, &testEnemySprite, -1, true);
-
     return input.quitInput;
+}
+
+bool pauseMenu(cScene* gameScene)
+{
+    warperTextBox pauseBox;
+    char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
+    bool isOptions[] = {false, false, true, true, true, true, true};
+    createMenuTextBox(&pauseBox, (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
+
+    cResource pauseBoxResource;
+    initCResource(&pauseBoxResource, (void*) &pauseBox, drawWarperTextBox, destroyWarperTextBox, 1);
+
+    addResourceToCScene(gameScene, &pauseBoxResource);
+
+    cInputState input;
+    int fps = 0;
+    while(pauseBox.selection == -1)
+    {
+        input = cGetInputState(true);
+
+        if (input.quitInput)
+            pauseBox.selection = 6;  //quit
+
+        if (input.isClick)
+        {
+            //if we clicked
+            if (pauseBoxResource.renderLayer != 0)
+                checkWarperTextBoxClick(&pauseBox, input.click.x, input.click.y);
+        }
+        drawCScene(gameScene, true, true, &fps, WARPER_FRAME_LIMIT);
+
+        if (pauseBox.selection > 2 && pauseBox.selection < 6)
+        {
+            if (pauseBox.selection == 3)
+            {
+                //party menu
+            }
+
+            if (pauseBox.selection == 4)
+            {
+                //items menu
+            }
+
+            if (pauseBox.selection == 5)
+            {
+                //options menu
+            }
+            pauseBox.selection = -1;
+        }
+    }
+
+    int selection = pauseBox.selection;
+
+    removeResourceFromCScene(gameScene, &pauseBoxResource, -1, true);  //this will destroy pauseBox so we need to save its selection value
+
+    return (selection == 6);
 }
 
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
@@ -879,8 +925,8 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 //ask for confirmation
                                 confirmMode = CONFIRM_ATTACK;
 
-                                char* questionStr = calloc(82, sizeof(char));
-                                snprintf(questionStr, 81, "Attack? It will do %d dmg;\n%d%% hit chance, %d%% crit chance,\nand %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
+                                char* questionStr = calloc(84, sizeof(char));
+                                snprintf(questionStr, 83, "Attack? It will do %d dmg;\n%d%% hit chance, %d%% crit chance,\nand %d%% status chance.", checkResult.damage, (int) (100 * checkResult.hitChance), (int) (100 * checkResult.critChance), (int) (100 * checkResult.statusChance));
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
                                 //createBattleTextBox(&battleTextBox, textBoxDims, (char* [5]) {questionStr, " ", " ", "Yes", "No"}, (bool[5]) {false, false, false, true, true}, 5, tilemap.tileSize);
@@ -914,6 +960,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         //if we should find a path non-stop to the cursor
         if (pathToCursor)
         {
+            if (!(input.motion.x < 0 && input.motion.y < 0))
             {
                 confirmPlayerSprite.drawRect.x = input.motion.x + scene->camera->rect.x - confirmPlayerSprite.drawRect.w / 2;
                 confirmPlayerSprite.drawRect.y = input.motion.y + scene->camera->rect.y - confirmPlayerSprite.drawRect.h / 2;

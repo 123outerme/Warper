@@ -130,7 +130,7 @@ typedef struct _warperAttackResult
 
 //function prototypes
 void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperItem* inventory, int inventorySize, int money);
-void destroyWarperTeam(warperTeam* team);
+void destroyWarperTeam(warperTeam* team, bool freeUnits);
 void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double distance);
 node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, const int endX, const int endY, int* lengthOfPath, const bool drawDebug, cCamera* camera);
 node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, cDoubleRect* customCollisions, int customCollisionLength, int* lengthOfPath, const bool drawDebug, cCamera* camera);
@@ -139,5 +139,7 @@ warperAttackCheck checkAttack(warperUnit* attackingUnit, warperUnit* defendingUn
 warperAttackResult doAttack(warperUnit* attackingUnit, warperUnit* defendingUnit, warperAttackCheck checkResult);
 void finishBattle(warperTeam* team, warperTeam* enemyTeam, warperBattle battle);
 void addExp(warperUnit* unit, int exp);
+
+void initTestWarperTeams(warperTilemap tilemap, warperTeam* playerTeam, warperTeam* enemyTeam);
 
 #endif // PLAYER_H_INCLUDED
