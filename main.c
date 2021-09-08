@@ -774,21 +774,51 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                         /*if (movePath.path == NULL)
                         {*/
                             //printf("move\n");
+                            char* questionStr;
+                            double prevConfirmX = confirmPlayerSprite.drawRect.x, prevConfirmY = confirmPlayerSprite.drawRect.y;
 
-                            confirmPlayerSprite.drawRect.x = worldClickX  - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
-                            confirmPlayerSprite.drawRect.y = worldClickY  - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
+                            confirmPlayerSprite.drawRect.x = worldClickX - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
+                            confirmPlayerSprite.drawRect.y = worldClickY - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
 
                             cDoubleVector mtv = getTilemapCollision(confirmPlayerSprite, tilemap);  //check if we can move there
 
                             if (mtv.magnitude)
                             {  //if there was a collision
                                 //printf("no\n");
+                                confirmPlayerSprite.drawRect.x = prevConfirmX;
+                                confirmPlayerSprite.drawRect.y = prevConfirmY;
+
+                                if (battleTextBox.selection == 1)
+                                {  //show the previous valid path if we are walking
+                                    pathToCursor = false;
+
+                                    if (movePath.path)
+                                    {
+                                        moveDistance = (int) round(movePath.path[0].distance);
+                                        movePathRes.renderLayer = 2;
+                                        movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;
+                                        movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
+                                        pathfinderUnit = playerTeam->units[selectedUnit];  //set the pathfinder so that we can reference it when the movement is confirmed and the unit starts moving
+                                    }
+
+                                    if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft)
+                                    {
+                                        questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
+                                        strncpy(questionStr, "Do you want to move? It will use %d stamina.", 60);
+                                        confirmMode = CONFIRM_MOVEMENT;
+                                    }
+                                    else
+                                    {
+                                        //set flag to false, reset variables, free movePath
+                                        destroyWarperPath((void*) &movePath);
+                                        pathIndex = -1;
+                                    }
+                                }
                             }
                             else
                             {
                                 //no collision; move is valid
                                 moveDistance = 0;
-                                char* questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                 //printf("start moving\n");
                                 //we can move there
                                 movePath.pathLength = 0;
@@ -833,6 +863,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
                                     if (moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.staminaLeft)
                                     {
+                                        questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                         strncpy(questionStr, "Do you want to move? It will use %d stamina.", 60);
                                         confirmMode = CONFIRM_MOVEMENT;
                                     }
@@ -855,25 +886,25 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                         moveDistance > 0 && moveDistance <= playerTeam->units[selectedUnit]->battleData.energyLeft &&  //are moving somewhere and have the energy to do so
                                         !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)  //haven't teleported or attacked already
                                     {
+                                        questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                         strncpy(questionStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;
                                     }
                                 }
-
-                                if (confirmMode)
-                                {
-                                    snprintf(questionStr, 60, questionStr, (int) moveDistance);
-                                    confirmPlayerSprite.renderLayer = 2;
-                                    confirmPlayerSprite.drawRect.w = playerTeam->units[selectedUnit]->sprite->drawRect.w;
-                                    confirmPlayerSprite.drawRect.h = playerTeam->units[selectedUnit]->sprite->drawRect.h;
-
-                                    //create confirm textbox and backup regular textbox
-                                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
-                                    destroyWarperTextBox((void*) &battleTextBox);
-                                    createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
-                                }
-                                free(questionStr);
                             }
+                            if (confirmMode)  //if we have now entered confirm mode
+                            {
+                                snprintf(questionStr, 60, questionStr, (int) moveDistance);
+                                confirmPlayerSprite.renderLayer = 2;
+                                confirmPlayerSprite.drawRect.w = playerTeam->units[selectedUnit]->sprite->drawRect.w;
+                                confirmPlayerSprite.drawRect.h = playerTeam->units[selectedUnit]->sprite->drawRect.h;
+
+                                //create confirm textbox and backup regular textbox
+                                initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
+                                destroyWarperTextBox((void*) &battleTextBox);
+                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
+                            }
+                            free(questionStr);
                         //}
                     }
                     if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
@@ -960,6 +991,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
         //if we should find a path non-stop to the cursor
         if (pathToCursor)
         {
+            double prevConfirmX = confirmPlayerSprite.drawRect.x, prevConfirmY = confirmPlayerSprite.drawRect.y;
             if (!(input.motion.x < 0 && input.motion.y < 0))
             {
                 confirmPlayerSprite.drawRect.x = input.motion.x + scene->camera->rect.x - confirmPlayerSprite.drawRect.w / 2;
@@ -1008,8 +1040,10 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
             }
             else
             {
-                movePathRes.renderLayer = 0; //hide the movePath
-                confirmPlayerSprite.renderLayer = 0;  //hide the confirm sprite
+                //movePathRes.renderLayer = 0; //hide the movePath
+                //confirmPlayerSprite.renderLayer = 0;  //hide the confirm sprite
+                confirmPlayerSprite.drawRect.x = prevConfirmX;
+                confirmPlayerSprite.drawRect.y = prevConfirmY;
             }
         }
 
