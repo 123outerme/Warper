@@ -412,40 +412,41 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
 
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 {
-    int menuLevel = 0, menuId = WMENU_PAUSE;
-    warperTextBox* previousBoxes = calloc(3, sizeof(warperTextBox));
-    warperTextBox pauseBox;
+    int menuLevel = 0, menuId = WMENU_PAUSE, subMenuSelection = -1;
+    warperTextBox menuLayers[3];
+    warperTextBox* pauseBox;
     char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
     bool isOptions[] = {false, false, true, true, true, true, true};
-    createMenuTextBox(&pauseBox, (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
+    createMenuTextBox(&menuLayers[0], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
+
+    pauseBox = &menuLayers[0]; //start keeping track of menu layers
 
     cResource pauseBoxResource;
-    initCResource(&pauseBoxResource, (void*) &pauseBox, drawWarperTextBox, destroyWarperTextBox, 1);
+    initCResource(&pauseBoxResource, (void*) pauseBox, drawWarperTextBox, destroyWarperTextBox, 1);
 
     addResourceToCScene(gameScene, &pauseBoxResource);
 
     cInputState input;
     int fps = 0;
-    while(pauseBox.selection == -1)
+    while(pauseBox->selection == -1)
     {
         input = cGetInputState(true);
 
         if (input.quitInput)
-            pauseBox.selection = 6;  //quit
+            pauseBox->selection = 6;  //quit
 
         if (input.isClick)
         {
             //if we clicked
             if (pauseBoxResource.renderLayer != 0)
-                checkWarperTextBoxClick(&pauseBox, input.click.x, input.click.y);
+                checkWarperTextBoxClick(pauseBox, input.click.x, input.click.y);
         }
         drawCScene(gameScene, true, true, &fps, WARPER_FRAME_LIMIT);
 
-        if (menuId == WMENU_PAUSE && (pauseBox.selection > 2 && pauseBox.selection < 6))
+        if (menuId == WMENU_PAUSE && (pauseBox->selection > 2 && pauseBox->selection < 6))
         {
-            previousBoxes[menuLevel] = pauseBox;
             menuLevel++;
-            if (pauseBox.selection == 3)
+            if (pauseBox->selection == 3)
             {
                 //party menu
                 menuId = WMENU_PARTY;
@@ -471,40 +472,81 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 }
                 partyIsOptions[3 + playerTeam->unitsSize] = true;
 
-                createMenuTextBox(&pauseBox, (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
+                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
                 for(int i = 0; i < 4 + playerTeam->unitsSize; i++)
                 {
                     if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
                         free(partyArray[i]);
                 }
+
+                pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
             }
 
-            if (pauseBox.selection == 4)
+            if (pauseBox->selection == 4)
             {
                 //items menu
+
+                //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
             }
 
-            if (pauseBox.selection == 5)
+            if (pauseBox->selection == 5)
             {
                 //options menu
+
+                //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
             }
-            pauseBox.selection = -1;  //do not leave the loop
+            pauseBox->selection = -1;  //do not leave the loop
         }
 
-        if (menuId == WMENU_PARTY && pauseBox.selection > 2)
+        if (menuId == WMENU_PARTY && pauseBox->selection > 2)
         {
-            if (pauseBox.selection == 3 + playerTeam->unitsSize)
+            if (pauseBox->selection == 3 + playerTeam->unitsSize)
             {
+                //back to pause menu
+                destroyWarperTextBox((void*) &menuLayers[menuLevel]);
                 menuLevel--;
                 menuId = WMENU_PAUSE;
-                destroyWarperTextBox((void*) &pauseBox);
-                pauseBox = previousBoxes[menuLevel];
+                pauseBox = &menuLayers[menuLevel];  //set the previous menu to be what the loop accesses
+                pauseBoxResource.subclass = pauseBox;  //set the previous menu to be displayed
+
             }
-            pauseBox.selection = -1; //do not leave the loop
+            else
+            {
+                //go into a party member's menu
+                subMenuSelection = pauseBox->selection - 3;
+                menuId = WMENU_PARTYMEMBER;
+                menuLevel++;
+                char* memberArray[11] = {"Name", " ", "Class", "HP", "Attack", "Speed", "TP Range", "Tech Affinity", "Luck", "Stat Pts", "Back"};
+                memberArray[0] = calloc(strlen(playerTeam->units[subMenuSelection]->name), sizeof(char));
+                strcpy(memberArray[0], playerTeam->units[subMenuSelection]->name);
+
+                bool memberIsOptions[11] = {false, false, false, false, false, false, false, false, false, false, true};
+                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, memberArray, memberIsOptions, 11, &global.mainFont);
+
+                free(memberArray[0]);
+
+                pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+            }
+            pauseBox->selection = -1; //do not leave the loop
+        }
+
+        if (menuId == WMENU_PARTYMEMBER && pauseBox->selection == 10)
+        {
+            //back to party menu
+            destroyWarperTextBox((void*) &menuLayers[menuLevel]);
+            menuLevel--;
+            menuId = WMENU_PARTY;
+            pauseBox = &menuLayers[menuLevel];  //set the previous menu to be what the loop accesses
+            pauseBoxResource.subclass = pauseBox;  //set the previous menu to be displayed
+            pauseBox->selection = -1;
         }
     }
 
-    int selection = pauseBox.selection;
+    int selection = pauseBox->selection;
 
     removeResourceFromCScene(gameScene, &pauseBoxResource, -1, true);  //this will destroy pauseBox so we need to save its selection value
 
