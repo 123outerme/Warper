@@ -4,7 +4,7 @@
 #include "warperInterface.h"
 
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
-bool pauseMenu(cScene* gameScene);
+bool pauseMenu(cScene* gameScene, warperTeam* playerTeam);
 bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
@@ -18,6 +18,13 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 #define CONFIRM_MOVEMENT 1
 #define CONFIRM_TELEPORT 2
 #define CONFIRM_ATTACK 3
+
+#define WMENU_PAUSE 0
+#define WMENU_PARTY 1
+#define WMENU_PARTYMEMBER 4
+#define WMENU_INVENTORY 2
+#define WMENU_ITEM 5
+#define WMENU_OPTIONS 3
 
 int main(int argc, char** argv)
 {
@@ -179,7 +186,7 @@ int main(int argc, char** argv)
     cSprite testEnemySprite;
     warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
 
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
+    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
 
     initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
                 (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
@@ -190,6 +197,7 @@ int main(int argc, char** argv)
     cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
 
     warperUnit testSquadUnits[5];
+    char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
 
     for(int i = 0; i < 5; i++)
     {
@@ -198,7 +206,7 @@ int main(int argc, char** argv)
                     (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
-        testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
+        testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
     }
 
     initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, NULL, 0, 0);
@@ -215,7 +223,7 @@ int main(int argc, char** argv)
     while (!quit)
     {
         quit = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
-        if (!quit && pauseMenu(&gameScene))  //only execute pause menu when we are not trying to force quit
+        if (!quit && pauseMenu(&gameScene, &playerTeam))  //only execute pause menu when we are not trying to force quit
             quit = true;  //if pause menu returns that we want to quit then quit
     }
 
@@ -402,8 +410,10 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
     return input.quitInput;
 }
 
-bool pauseMenu(cScene* gameScene)
+bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 {
+    int menuLevel = 0, menuId = WMENU_PAUSE;
+    warperTextBox* previousBoxes = calloc(3, sizeof(warperTextBox));
     warperTextBox pauseBox;
     char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
     bool isOptions[] = {false, false, true, true, true, true, true};
@@ -431,11 +441,42 @@ bool pauseMenu(cScene* gameScene)
         }
         drawCScene(gameScene, true, true, &fps, WARPER_FRAME_LIMIT);
 
-        if (pauseBox.selection > 2 && pauseBox.selection < 6)
+        if (menuId == WMENU_PAUSE && (pauseBox.selection > 2 && pauseBox.selection < 6))
         {
+            previousBoxes[menuLevel] = pauseBox;
+            menuLevel++;
             if (pauseBox.selection == 3)
             {
                 //party menu
+                menuId = WMENU_PARTY;
+                char** partyArray = calloc(4 + playerTeam->unitsSize, sizeof(char*));
+                partyArray[0] = "PARTY";
+                partyArray[1] = calloc(9 + digits(playerTeam->money), sizeof(char));
+                snprintf(partyArray[1], 8 + digits(playerTeam->money), "Money: %d", playerTeam->money);
+                partyArray[2] = " ";
+                for(int i = 0; i < playerTeam->unitsSize; i++)
+                {
+                    partyArray[3 + i] = calloc(strlen(playerTeam->units[i]->name) + 1, sizeof(char));
+                    strcpy(partyArray[3 + i], playerTeam->units[i]->name);
+                }
+                partyArray[3 + playerTeam->unitsSize] = "Back";
+
+                bool* partyIsOptions = calloc(4 + playerTeam->unitsSize, sizeof(bool));
+                partyIsOptions[0] = false;
+                partyIsOptions[1] = false;
+                partyIsOptions[2] = false;
+                for(int i = 0; i < playerTeam->unitsSize; i++)
+                {
+                    partyIsOptions[3 + i] = true;
+                }
+                partyIsOptions[3 + playerTeam->unitsSize] = true;
+
+                createMenuTextBox(&pauseBox, (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
+                for(int i = 0; i < 4 + playerTeam->unitsSize; i++)
+                {
+                    if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
+                        free(partyArray[i]);
+                }
             }
 
             if (pauseBox.selection == 4)
@@ -447,7 +488,19 @@ bool pauseMenu(cScene* gameScene)
             {
                 //options menu
             }
-            pauseBox.selection = -1;
+            pauseBox.selection = -1;  //do not leave the loop
+        }
+
+        if (menuId == WMENU_PARTY && pauseBox.selection > 2)
+        {
+            if (pauseBox.selection == 3 + playerTeam->unitsSize)
+            {
+                menuLevel--;
+                menuId = WMENU_PAUSE;
+                destroyWarperTextBox((void*) &pauseBox);
+                pauseBox = previousBoxes[menuLevel];
+            }
+            pauseBox.selection = -1; //do not leave the loop
         }
     }
 

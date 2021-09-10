@@ -85,6 +85,7 @@ typedef struct _warperItem
 typedef struct _warperUnit
 {
     cSprite* sprite;
+    char* name;
     int level;
     int exp;
     int maxHp;
