@@ -5,7 +5,7 @@
 
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam);
-bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
+int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 
@@ -220,11 +220,21 @@ int main(int argc, char** argv)
         addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
 
     bool quit = false;
+    int controlCode = 0;
+
     while (!quit)
     {
-        quit = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
-        if (!quit && pauseMenu(&gameScene, &playerTeam))  //only execute pause menu when we are not trying to force quit
-            quit = true;  //if pause menu returns that we want to quit then quit
+        if (controlCode != 3) //if we did not try to pause from the battle loop
+            controlCode = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+
+        if (controlCode == 2 || controlCode == 3)  //if we are going into a battle, or returning to the battle from the pause menu
+            controlCode = battleLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+
+        if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
+            controlCode = -1;  //if pause menu returns that we want to quit then quit
+
+        if (controlCode == -1)
+            quit = true;
     }
 
     destroyWarperTeam(&playerTeam, false);
@@ -285,6 +295,8 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
     cSprite* overworldSprite = playerTeam->units[0]->sprite;
     cSprite* overworldEnemySprite = enemyTeam->units[0]->sprite;
 
+    int controlCode = 0;
+
     bool quit = false;
 
     cInputState input;
@@ -294,8 +306,14 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
     {
         input = cGetInputState(true);
 
-        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE] || input.keyStates[SDL_SCANCODE_RETURN])
+        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE])
+        {
             quit = true;
+            if (input.quitInput)
+                controlCode = -1;
+            if (input.keyStates[SDL_SCANCODE_ESCAPE])
+                controlCode = 1;
+        }
 
         //character movement
         if (input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_S] || input.keyStates[SDL_SCANCODE_D])
@@ -363,12 +381,11 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
                 gameScene->camera->rect.x = (tilemap.width - gameScene->camera->rect.w / tilemap.tileSize) * tilemap.tileSize;
         }
 
-        if (input.keyStates[SDL_SCANCODE_B] || getDistance(overworldSprite->drawRect.x, overworldSprite->drawRect.y, overworldEnemySprite->drawRect.x, overworldEnemySprite->drawRect.y) < 6 * tilemap.tileSize)
+        if (input.keyStates[SDL_SCANCODE_B] || (getDistance(overworldSprite->drawRect.x, overworldSprite->drawRect.y, overworldEnemySprite->drawRect.x, overworldEnemySprite->drawRect.y) < 6 * tilemap.tileSize && overworldEnemySprite->renderLayer != 0))
         {
-            //have battle take place in a seperate loop
-            quit = battleLoop(tilemap, gameScene, playerTeam, enemyTeam);
-            input.quitInput = quit;
-            //printf("Initiate battle\n");
+            //have battle take place
+            quit = true;
+            controlCode = 2;  //battle control code
         }
 
         /*
@@ -407,7 +424,7 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
         drawCScene(gameScene, true, true, &framerate, 60);
     }
 
-    return input.quitInput;
+    return controlCode;
 }
 
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
@@ -553,11 +570,12 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
     return (selection == 6);
 }
 
-bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
+int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
 {
     //TODO: add a battle intro animation
 
-    bool quit = false, quitEverything = false;
+    bool quit = false;
+    int controlCode = 0;
     int confirmMode = CONFIRM_NONE;  //used for confirming selections
     //double speed = 6.0;  //just a good speed value, nothing special. Pixels/frame at 60 FPS
 
@@ -577,6 +595,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
 
     warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
     warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
+    int selectedEnemyIndex = -1;
 
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 1);
     initCResource(&movePathRes, (void*) &movePath, drawWarperPath, destroyWarperPath, 0);
@@ -622,10 +641,13 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     {
         input = cGetInputState(true);
 
-        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE] || input.keyStates[SDL_SCANCODE_RETURN])
+        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE])
         {
             quit = true;
-            quitEverything = input.quitInput;
+            if (input.quitInput)
+                controlCode = -1;
+            else
+                controlCode = 3;  //go to pause menu and come back here when finished
         }
 
         if (input.isClick)
@@ -800,6 +822,14 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                                 {
                                     //enemy is dead
                                     enemyTeam->units[selectedEnemy]->sprite->renderLayer = 0;
+                                    int deadEnemies = 0;
+                                    for(int i = 0; i < enemyTeam->unitsSize; i++)
+                                    {
+                                        if (enemyTeam->units[i]->sprite->renderLayer == 0)
+                                            deadEnemies++;
+                                    }
+                                    if (deadEnemies == enemyTeam->unitsSize)
+                                        quit = true;
                                 }
                             }
                         }
@@ -861,6 +891,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                             enemyCircle.radius = enemyTeam->units[enemyIndex]->battleData.energyLeft * tilemap.tileSize;
                             enemyCircleRes.renderLayer = 2;
                         }
+                        selectedEnemyIndex = enemyIndex;  //reset if not found, otherwise will set to the enemy we clicked on
                     }
 
                     //if we want to move
@@ -1219,6 +1250,12 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
                     turnEnemy++;
                 }
             }
+            if (selectedEnemyIndex > -1)
+            {  //update circle after movement proceeds
+                enemyCircle.center.x = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.x + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.w / 2;
+                enemyCircle.center.y = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.y + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.h / 2;
+            }
+
         }
 
         if (movePath.path != NULL && !confirmMode && pathfinderUnit && !pathToCursor)  //we don't want to continuously move to cursor so we ignore when we try
@@ -1277,7 +1314,7 @@ bool battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, wa
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
     removeSpriteFromCScene(scene, &unitSelectSprite, -1, true);
 
-    return quitEverything;
+    return controlCode;
 }
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
