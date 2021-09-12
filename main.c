@@ -213,11 +213,9 @@ int main(int argc, char** argv)
     initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
     //end TEST squads init
 
-    for(int i = 0; i < playerTeam.unitsSize; i++)
-        addSpriteToCScene(&gameScene, playerTeam.units[i]->sprite);
 
-    for(int i = 0; i < enemyTeam.unitsSize; i++)
-        addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
+    addSpriteToCScene(&gameScene, playerTeam.units[0]->sprite);
+    addSpriteToCScene(&gameScene, enemyTeam.units[0]->sprite);
 
     bool quit = false;
     int controlCode = 0;
@@ -228,7 +226,27 @@ int main(int argc, char** argv)
             controlCode = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
 
         if (controlCode == 2 || controlCode == 3)  //if we are going into a battle, or returning to the battle from the pause menu
+        {
+            if (controlCode == 2)
+            {  //add in the player's squad and the enemy's squad
+                for(int i = 1; i < playerTeam.unitsSize; i++)
+                    addSpriteToCScene(&gameScene, playerTeam.units[i]->sprite);
+
+                for(int i = 1; i < enemyTeam.unitsSize; i++)
+                    addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
+            }
+
             controlCode = battleLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+
+            if (controlCode != 3)  //if we are ending the battle for good, quitting or just returning to the overworld
+            {  //clean up the sprites for the player's squad and the enemy squad
+                for(int i = 1; i < playerTeam.unitsSize; i++)
+                    removeSpriteFromCScene(&gameScene, playerTeam.units[i]->sprite, -1, false);
+
+                for(int i = 1; i < enemyTeam.unitsSize; i++)
+                    removeSpriteFromCScene(&gameScene, enemyTeam.units[i]->sprite, -1, false);
+            }
+        }
 
         if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
             controlCode = -1;  //if pause menu returns that we want to quit then quit
@@ -450,7 +468,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         input = cGetInputState(true);
 
         if (input.quitInput)
-            pauseBox->selection = 6;  //quit
+            pauseBox->selection = -2;  //quit
 
         if (input.isClick)
         {
@@ -460,62 +478,67 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         }
         drawCScene(gameScene, true, true, &fps, WARPER_FRAME_LIMIT);
 
-        if (menuId == WMENU_PAUSE && (pauseBox->selection > 2 && pauseBox->selection < 6))
+        if (menuId == WMENU_PAUSE)
         {
-            menuLevel++;
-            if (pauseBox->selection == 3)
+            if (pauseBox->selection > 2 && pauseBox->selection < 6)
             {
-                //party menu
-                menuId = WMENU_PARTY;
-                char** partyArray = calloc(4 + playerTeam->unitsSize, sizeof(char*));
-                partyArray[0] = "PARTY";
-                partyArray[1] = calloc(9 + digits(playerTeam->money), sizeof(char));
-                snprintf(partyArray[1], 8 + digits(playerTeam->money), "Money: %d", playerTeam->money);
-                partyArray[2] = " ";
-                for(int i = 0; i < playerTeam->unitsSize; i++)
+                menuLevel++;
+                if (pauseBox->selection == 3)
                 {
-                    partyArray[3 + i] = calloc(strlen(playerTeam->units[i]->name) + 1, sizeof(char));
-                    strcpy(partyArray[3 + i], playerTeam->units[i]->name);
-                }
-                partyArray[3 + playerTeam->unitsSize] = "Back";
+                    //party menu
+                    menuId = WMENU_PARTY;
+                    char** partyArray = calloc(4 + playerTeam->unitsSize, sizeof(char*));
+                    partyArray[0] = "PARTY";
+                    partyArray[1] = calloc(9 + digits(playerTeam->money), sizeof(char));
+                    snprintf(partyArray[1], 8 + digits(playerTeam->money), "Money: %d", playerTeam->money);
+                    partyArray[2] = " ";
+                    for(int i = 0; i < playerTeam->unitsSize; i++)
+                    {
+                        partyArray[3 + i] = calloc(strlen(playerTeam->units[i]->name) + 1, sizeof(char));
+                        strcpy(partyArray[3 + i], playerTeam->units[i]->name);
+                    }
+                    partyArray[3 + playerTeam->unitsSize] = "Back";
 
-                bool* partyIsOptions = calloc(4 + playerTeam->unitsSize, sizeof(bool));
-                partyIsOptions[0] = false;
-                partyIsOptions[1] = false;
-                partyIsOptions[2] = false;
-                for(int i = 0; i < playerTeam->unitsSize; i++)
+                    bool* partyIsOptions = calloc(4 + playerTeam->unitsSize, sizeof(bool));
+                    partyIsOptions[0] = false;
+                    partyIsOptions[1] = false;
+                    partyIsOptions[2] = false;
+                    for(int i = 0; i < playerTeam->unitsSize; i++)
+                    {
+                        partyIsOptions[3 + i] = true;
+                    }
+                    partyIsOptions[3 + playerTeam->unitsSize] = true;
+
+                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
+                    for(int i = 0; i < 4 + playerTeam->unitsSize; i++)
+                    {
+                        if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
+                            free(partyArray[i]);
+                    }
+
+                    pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                    pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+                }
+
+                if (pauseBox->selection == 4)
                 {
-                    partyIsOptions[3 + i] = true;
-                }
-                partyIsOptions[3 + playerTeam->unitsSize] = true;
+                    //items menu
 
-                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
-                for(int i = 0; i < 4 + playerTeam->unitsSize; i++)
+                    //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                    //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+                }
+
+                if (pauseBox->selection == 5)
                 {
-                    if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
-                        free(partyArray[i]);
+                    //options menu
+
+                    //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                    //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
                 }
-
-                pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
-                pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+                pauseBox->selection = -1;  //do not leave the loop
             }
-
-            if (pauseBox->selection == 4)
-            {
-                //items menu
-
-                //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
-                //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
-            }
-
-            if (pauseBox->selection == 5)
-            {
-                //options menu
-
-                //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
-                //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
-            }
-            pauseBox->selection = -1;  //do not leave the loop
+            if (pauseBox->selection == 6)
+                pauseBox->selection = -2; //quit the game
         }
 
         if (menuId == WMENU_PARTY && pauseBox->selection > 2)
@@ -567,7 +590,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 
     removeResourceFromCScene(gameScene, &pauseBoxResource, -1, true);  //this will destroy pauseBox so we need to save its selection value
 
-    return (selection == 6);
+    return (selection == -2);
 }
 
 int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
@@ -595,7 +618,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
     warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
     warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
-    int selectedEnemyIndex = -1;
+    int selectedEnemyIndex = -1;  //keeps track of which enemy we are checking movement radius for
 
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 1);
     initCResource(&movePathRes, (void*) &movePath, drawWarperPath, destroyWarperPath, 0);
@@ -658,6 +681,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                                       input.click.y > battleTextBox.rect.y && input.click.y < battleTextBox.rect.y + battleTextBox.rect.h))
             {  // if we clicked the text box
                 checkWarperTextBoxClick(&battleTextBox, input.click.x, input.click.y);  //saves the selection to the battleTextBox
+
+                pathToCursor = false;
 
                 if (battleTextBox.selection == 1 && !confirmMode)
                 {  //we clicked the first element (move or DEBUG force enemy pass turn)
@@ -755,6 +780,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                 if (battleTextBox.selection == 5 && !confirmMode)
                 {  //end turn
                     playerTurn = false;
+
+                    //clean up movePath so the enemy can path correctly
+                    destroyWarperPath((void*) &movePath);
+                    movePathRes.renderLayer = 0;
+                    pathIndex = -1;
+                    pathfinderUnit = NULL;
 
                     //restore each enemy unit's battle stats (stamina, etc)
                     for(int i = 0; i < enemyTeam->unitsSize; i++)
@@ -1031,6 +1062,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
                             }
                             free(questionStr);
+                            questionStr = NULL;
                         //}
                     }
                     if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
@@ -1179,13 +1211,19 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             //calculate best move based on AI type, enemy difficulty, each unit's class, remaining health, etc
             //AI Types: Lone wolves each fight one unit, Pack wolves use 2-3 units to fight one of your units
 
-            //SIMPLE TEST AI - just repositions on top of you (you must teleport to escape)
+            //SIMPLE TEST AI - just repositions next to you
             if (!movePath.path)  //if we aren't currently following a path
             {
                 if (turnEnemy >= enemyTeam->unitsSize)
-                {
+                {  //we have already iterated through every enemy
                     turnEnemy = 0;
                     playerTurn = true;
+
+                    //clean up movePath
+                    destroyWarperPath((void*) &movePath);
+                    movePathRes.renderLayer = 0;
+                    pathIndex = -1;
+                    pathfinderUnit = NULL;
 
                     //restore each player unit's battle stats (stamina, etc)
                     for(int i = 0; i < playerTeam->unitsSize; i++)
@@ -1202,14 +1240,16 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     destroyWarperTextBox((void*) &backupTextBox);
                 }
                 else
-                {
-                    if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the unit is alive
+                {  //we still have to process the enemy turn
+                    if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the enemy unit is alive
                     {
+                        //TODO: Fix bug where sometimes enemy unit will target a position that is slightly inside the opposing unit
+                        //This can be seen when the customCollisions array is initalized (after player clicks the "Move" options) and then the turn is ended
                         //printf("entered enemy pathfinding\n");
                         pathfinderUnit = enemyTeam->units[turnEnemy];
 
                         movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
-                        movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.w;
+                        movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.h;
 
                         //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
                         for(int targetUnit = 0; targetUnit < playerTeam->unitsSize; targetUnit++)
@@ -1218,44 +1258,47 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                             double targetUnitX = playerTeam->units[targetUnit]->sprite->drawRect.x, targetUnitY = playerTeam->units[targetUnit]->sprite->drawRect.y;
 
                             if (targetUnitX - pathfinderUnit->sprite->drawRect.x > pathfinderUnit->sprite->drawRect.w)
-                                targetUnitX -= pathfinderUnit->sprite->drawRect.w;  //move to the closest position on the left
+                                targetUnitX -= pathfinderUnit->sprite->drawRect.w;  //aim to move to the closest position on the left
                             if (targetUnitX - pathfinderUnit->sprite->drawRect.x < pathfinderUnit->sprite->drawRect.w)
-                                targetUnitX += playerTeam->units[targetUnit]->sprite->drawRect.w;  //move to the closest position on the right
+                                targetUnitX += playerTeam->units[targetUnit]->sprite->drawRect.w;  //aim to move to the closest position on the right
 
                             if (fabs(playerTeam->units[targetUnit]->sprite->drawRect.x - targetUnitX) < 0.001)  //if we didn't adjust on the X direction
                             {
                                 if (targetUnitY > pathfinderUnit->sprite->drawRect.y)
-                                    targetUnitY -= pathfinderUnit->sprite->drawRect.h;  //move to the closest position above
+                                    targetUnitY -= pathfinderUnit->sprite->drawRect.h;  //aim to move to the closest position above
                                 if (targetUnitY < pathfinderUnit->sprite->drawRect.y)
-                                    targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //move to the closest position below
+                                    targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //aim to move to the closest position below
                             }
                             node* path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
-                                                            targetUnitX, targetUnitY,
-                                                            pathfinderUnit->sprite->drawRect.w, pathfinderUnit->sprite->drawRect.h,
+                                                            targetUnitX, targetUnitY,  //use our adjusted target position here
+                                                            movePath.pathfinderWidth, movePath.pathfinderHeight,
                                                             customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);
+                            /*
+                            if (path)
+                                printf("path distance = %f", path[0].distance);
+                            //*/
 
-                            if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest enemy and path to them
+                            if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest opposing unit and path to them
                             {
-                                //printf("found a better path\n");
+                                //printf(" (this a is better path)\n");
                                 if (movePath.path)
                                     free(movePath.path);
 
                                 movePath.path = path;
                                 movePath.pathLength = pathLength;
                             }
-
+                            //printf(".\n");
                         }
-                        //printf("path distance = %f\n", movePath.path[0].distance);
                     }
                     turnEnemy++;
                 }
             }
+
             if (selectedEnemyIndex > -1)
             {  //update circle after movement proceeds
                 enemyCircle.center.x = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.x + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.w / 2;
                 enemyCircle.center.y = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.y + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.h / 2;
             }
-
         }
 
         if (movePath.path != NULL && !confirmMode && pathfinderUnit && !pathToCursor)  //we don't want to continuously move to cursor so we ignore when we try
