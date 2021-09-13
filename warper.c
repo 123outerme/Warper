@@ -24,7 +24,7 @@ void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionm
  * \param tilemap warperTilemap* - expects tilemap->width and ->height to be filled in
  * \param importedData char* - your map data
  */
-void importTilemap(warperTilemap* tilemap, char* importedData)
+void loadTilemap(warperTilemap* tilemap, char* importedData)
 {
     char* tileData = calloc(4, sizeof(char));
 
@@ -32,7 +32,7 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
     tilemap->spritemap_layer2 = calloc(tilemap->width, sizeof(int*));
     tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
 
-    int x = -1, y = tilemap->height + 1; //triggers if statement
+    int x = -1, y = tilemap->height + 1; //triggers if statement upon first execution to start the wraparound code (allocating new memory for each horizontal line of tiles)
 
     while(x <= tilemap->width)
     {
@@ -47,9 +47,10 @@ void importTilemap(warperTilemap* tilemap, char* importedData)
                 tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
             }
             else
-                break;
+                break;  //we have loaded all of the data
         }
 
+        //start importing tilemap data AFTER the width/height 'bytes' (6 characters in total), then iterate through for every x/y position
         strncpy(tileData, (importedData + 6 + (x * tilemap->height + y) * 3 * 3), 3);  //starts at importedData + 6 + (pos * 3 digits * 3 different maps)
         tilemap->spritemap_layer1[x][y] = strtol(tileData, NULL, 16);
         strncpy(tileData, (importedData + 9 + (x * tilemap->height + y) * 3 * 3), 3);

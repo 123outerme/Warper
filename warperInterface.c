@@ -286,18 +286,24 @@ void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** 
  * \param textBox warperTextBox* - text box pointer to fill in
  * \param dimensions cDoubleRect - dimensions of the textbox
  * \param margins cDoublePt - margins between textbox and text, {.x = left, .y = top}
+ * \param verticalPadding double - padding between individual text items (lines)
+ * \param justify bool - set to justify menu text vertically (overrides margins.x)
  * \param bgOpacity Uint8 - percent opacity off of default, where 255 is 100%
  * \param strings char** - array of char*s with your lines of text
  * \param isOptions bool* - array of bools with true = clickable/actable, false = not actable
  * \param stringsLength int - length of strings = length of isOptions
  * \param font cFont* - font you want to use
  */
-void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font)
+void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalPadding, bool justify, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font)
 {
     cText* texts = calloc(stringsLength, sizeof(cText));
     for(int i = 0; i < stringsLength; i++)
     {
-        initCText(&(texts[i]), strings[i], (cDoubleRect) {dimensions.x + margins.x, dimensions.y + i * font->fontSize + margins.y, 30 * font->fontSize, font->fontSize}, 30 * font->fontSize,
+        int xPos = dimensions.x + margins.x;
+        if (justify)
+            xPos = dimensions.w / 2 - (strlen(strings[i]) * font->fontSize / 2) + dimensions.x;
+
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {xPos, dimensions.y + i * font->fontSize + margins.y + verticalPadding * i, 30 * font->fontSize, font->fontSize}, 30 * font->fontSize,
                   (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, font, 1.0, SDL_FLIP_NONE, 0, true, 5);
     }
 

@@ -3,9 +3,13 @@
 #include "mapMaker.h"
 #include "warperInterface.h"
 
+//test/debug functions
 int gameDevMenu();
 void createTestMap(warperTilemap* tilemap);
 void debugPrintStatProgression();
+
+//game control/state functions
+void importWarperTilemap(warperTilemap* tilemap, char* filepath);
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam);
 int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
@@ -48,35 +52,13 @@ int main(int argc, char** argv)
         int selection = gameDevMenu();
 
         if (selection == 2)
-        {  //create map
+        {  //create new map
             if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
                 selection = 3;  //treat it as a quit
         }
         if (selection == 1)
-        {  //load map
-            char* importedMap = calloc(7, sizeof(char));
-            readLine("maps/testMap.txt", 0, 7, &importedMap);
-            //printf("%s\n", importedMap);
-
-            char dimData[4] = "\0";
-
-            strncpy(dimData, importedMap, 3);
-            tilemap.width = strtol(dimData, NULL, 16);
-            strncpy(dimData, importedMap + 3, 3);
-            tilemap.height = strtol(dimData, NULL, 16);
-
-            free(importedMap);
-
-            int importedLength = 3 * 3 * tilemap.width * tilemap.height + 3 + 3;  //3 arrays * 3 digits * width * height + width data + height data
-            importedMap = calloc(importedLength + 1, sizeof(char));
-
-            readLine("maps/testMap.txt", 0, importedLength + 1, &importedMap);
-
-            importTilemap(&tilemap, importedMap);
-
-            free(importedMap);
-
-            tilemap.tileSize = TILE_SIZE;
+        {  //load created test map
+            importWarperTilemap(&tilemap, "maps/testMap.txt");
         }
         if (selection == 0)
         {  //create temp map
@@ -85,7 +67,7 @@ int main(int argc, char** argv)
 
         if (selection == 3)
         {
-            quitAll = true;
+            quitAll = true;  //we want to immediately close the window and quit, as the user requests
         }
         else
         {
@@ -187,12 +169,43 @@ int main(int argc, char** argv)
     return error;
 }
 
+void importWarperTilemap(warperTilemap* tilemap, char* filepath)
+{
+    char* importedMap = calloc(7, sizeof(char));
+    readLine(filepath, 0, 7, &importedMap);
+    //printf("%s\n", importedMap);
+
+    char dimData[4] = "\0";
+
+    strncpy(dimData, importedMap, 3); //the first three characters of the map file indicate its width
+    tilemap->width = strtol(dimData, NULL, 16);
+    strncpy(dimData, importedMap + 3, 3);  //the next three characters indicate the map's height
+    tilemap->height = strtol(dimData, NULL, 16);
+
+    free(importedMap);
+
+    int importedLength = 3 * 3 * tilemap->width * tilemap->height + 3 + 3;
+    //this string is long enough to hold data that fills 3 arrays with tiles, using 3-digit tile codes, over the whole width and height of the map
+    //plus the width and height 'bytes' which is how we know how big this map is in the first place
+    //(3 arrays * 3 digits * width * height + width 'bytes' + height 'bytes')
+
+    importedMap = calloc(importedLength + 1, sizeof(char));
+
+    readLine(filepath, 0, importedLength + 1, &importedMap);
+
+    loadTilemap(tilemap, importedMap);
+
+    free(importedMap);
+
+    tilemap->tileSize = TILE_SIZE;
+}
+
 int gameDevMenu()
 {
     cScene menuScene;
     char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Quit"};
     warperTextBox menuBox;
-    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 0xFF, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
 
     cResource menuBoxResource;
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
@@ -475,7 +488,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
     warperTextBox* pauseBox;
     char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
     bool isOptions[] = {false, false, true, true, true, true, true};
-    createMenuTextBox(&menuLayers[0], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
+    createMenuTextBox(&menuLayers[0], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
 
     pauseBox = &menuLayers[0]; //start keeping track of menu layers
 
@@ -533,7 +546,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                     }
                     partyIsOptions[menuOptsLength - 1] = true;
 
-                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, menuOptsLength, &global.mainFont);
+                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, partyArray, partyIsOptions, menuOptsLength, &global.mainFont);
                     for(int i = 0; i < menuOptsLength; i++)
                     {
                         if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
@@ -548,7 +561,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 
                 if (pauseBox->selection == 4)
                 {
-                    //items menu
+                    //inventory menu
                     menuId = WMENU_INVENTORY;
                     menuOptsLength = (3 + playerTeam->inventorySize > 20) ? 20 : 3 + playerTeam->inventorySize;
                     //bool menuOverflow = 3 + playerTeam->inventorySize > 20;
@@ -579,7 +592,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 
                     inventoryIsOptions[menuOptsLength - 1] = true;
 
-                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, inventoryArray, inventoryIsOptions, menuOptsLength, &global.mainFont);
+                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0, false, 0xB0, inventoryArray, inventoryIsOptions, menuOptsLength, &global.mainFont);
 
                     for(int i = 0; i < menuOptsLength - 3; i++)
                     {
@@ -629,7 +642,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 strcpy(memberArray[0], playerTeam->units[subMenuSelection]->name);
 
                 bool memberIsOptions[12] = {false, false, false, false, false, false, false, false, false, false, false, true};
-                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, memberArray, memberIsOptions, 12, &global.mainFont);
+                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, memberArray, memberIsOptions, 12, &global.mainFont);
 
                 free(memberArray[0]);
 

@@ -18,7 +18,7 @@ typedef struct _warperTilemap
 } warperTilemap;
 
 void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height);
-void importTilemap(warperTilemap* tilemap, char* importedData);
+void loadTilemap(warperTilemap* tilemap, char* importedData);
 void exportTilemap(warperTilemap tilemap, char* exportedData);
 void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2);
 void destroyWarperTilemap(warperTilemap* tilemap);
