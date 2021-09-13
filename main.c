@@ -3,6 +3,9 @@
 #include "mapMaker.h"
 #include "warperInterface.h"
 
+int gameDevMenu();
+void createTestMap(warperTilemap* tilemap);
+void debugPrintStatProgression();
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam);
 int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
@@ -13,6 +16,8 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 #define TEST_TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
 
 #define WARPER_FRAME_LIMIT 60
+
+#define TILE_SIZE 32
 
 #define CONFIRM_NONE 0
 #define CONFIRM_MOVEMENT 1
@@ -31,13 +36,159 @@ int main(int argc, char** argv)
     if (argc > 1)
         argv = argv;  //useless, but prevents warning. might actually add a debug option on cmd line or something
 
-    const int TILE_SIZE = 32;
-
     int error = initCoSprite("./assets/cb.bmp", "Warper", 40 * TILE_SIZE, 20 * TILE_SIZE, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
     warperTilemap tilemap;
 
+    bool quitAll = false;
+    while(!quitAll)
+    {
+        //main menu
+        int selection = gameDevMenu();
+
+        if (selection == 2)
+        {  //create map
+            if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
+                selection = 3;  //treat it as a quit
+        }
+        if (selection == 1)
+        {  //load map
+            char* importedMap = calloc(7, sizeof(char));
+            readLine("maps/testMap.txt", 0, 7, &importedMap);
+            //printf("%s\n", importedMap);
+
+            char dimData[4] = "\0";
+
+            strncpy(dimData, importedMap, 3);
+            tilemap.width = strtol(dimData, NULL, 16);
+            strncpy(dimData, importedMap + 3, 3);
+            tilemap.height = strtol(dimData, NULL, 16);
+
+            free(importedMap);
+
+            int importedLength = 3 * 3 * tilemap.width * tilemap.height + 3 + 3;  //3 arrays * 3 digits * width * height + width data + height data
+            importedMap = calloc(importedLength + 1, sizeof(char));
+
+            readLine("maps/testMap.txt", 0, importedLength + 1, &importedMap);
+
+            importTilemap(&tilemap, importedMap);
+
+            free(importedMap);
+
+            tilemap.tileSize = TILE_SIZE;
+        }
+        if (selection == 0)
+        {  //create temp map
+            createTestMap(&tilemap);
+        }
+
+        if (selection == 3)
+        {
+            quitAll = true;
+        }
+        else
+        {
+            cCamera gameCamera;
+            initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //init camera
+
+            c2DModel mapModel_layer1, mapModel_layer2;
+            loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
+
+            cScene gameScene;
+            initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, NULL, 0, NULL, 0);
+
+            warperTeam playerTeam, enemyTeam;
+
+            //TEST squads init
+            cSprite testEnemySprite;
+            warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1};
+
+            warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
+
+            initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
+                        (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
+                        (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
+                        NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+
+            cSprite* testSquadSprites = calloc(5, sizeof(cSprite));
+            cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
+
+            warperUnit testSquadUnits[5];
+            char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
+
+            for(int i = 0; i < 5; i++)
+            {
+                initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
+                            (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
+                            (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                            NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+
+                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
+            }
+
+            initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
+            initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
+            //end TEST squads init
+
+
+            addSpriteToCScene(&gameScene, playerTeam.units[0]->sprite);
+            addSpriteToCScene(&gameScene, enemyTeam.units[0]->sprite);
+
+            bool quit = false;
+            int controlCode = 0;
+
+            while (!quit)
+            {
+                if (controlCode != 3) //if we did not try to pause from the battle loop
+                    controlCode = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+
+                if (controlCode == 2 || controlCode == 3)  //if we are going into a battle, or returning to the battle from the pause menu
+                {
+                    if (controlCode == 2)
+                    {  //add in the player's squad and the enemy's squad
+                        for(int i = 1; i < playerTeam.unitsSize; i++)
+                            addSpriteToCScene(&gameScene, playerTeam.units[i]->sprite);
+
+                        for(int i = 1; i < enemyTeam.unitsSize; i++)
+                            addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
+                    }
+
+                    controlCode = battleLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
+
+                    if (controlCode != 3)  //if we are ending the battle for good, quitting or just returning to the overworld
+                    {  //clean up the sprites for the player's squad and the enemy squad
+                        for(int i = 1; i < playerTeam.unitsSize; i++)
+                            removeSpriteFromCScene(&gameScene, playerTeam.units[i]->sprite, -1, false);
+
+                        for(int i = 1; i < enemyTeam.unitsSize; i++)
+                            removeSpriteFromCScene(&gameScene, enemyTeam.units[i]->sprite, -1, false);
+                    }
+                }
+
+                if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
+                    controlCode = -1;  //if pause menu returns that we want to quit then quit
+
+                if (controlCode == -1)
+                    quit = true;
+            }
+
+            destroyWarperTeam(&playerTeam, false);
+            destroyWarperTeam(&enemyTeam, false);
+
+            destroyCScene(&gameScene);
+
+            destroyWarperTilemap(&tilemap);
+        }
+    }
+
+    closeCoSprite();
+
+    return error;
+}
+
+int gameDevMenu()
+{
     cScene menuScene;
     char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Quit"};
     warperTextBox menuBox;
@@ -69,213 +220,31 @@ int main(int argc, char** argv)
         drawCScene(&menuScene, true, true, &fps, WARPER_FRAME_LIMIT);
     }
 
-    if (menuBox.selection == 2)
-    {
-        //create map
-        if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
-            menuBox.selection = 3;  //treat it as a quit
-    }
-    if (menuBox.selection == 1)
-    {
-        //load map
-        char* importedMap = calloc(7, sizeof(char));
-        readLine("maps/testMap.txt", 0, 7, &importedMap);
-        //printf("%s\n", importedMap);
+    int selection = menuBox.selection;
 
-        char dimData[4] = "\0";
+    destroyCScene(&menuScene);
 
-        strncpy(dimData, importedMap, 3);
-        tilemap.width = strtol(dimData, NULL, 16);
-        strncpy(dimData, importedMap + 3, 3);
-        tilemap.height = strtol(dimData, NULL, 16);
+    return selection;
+}
 
-        free(importedMap);
-
-        int importedLength = 3 * 3 * tilemap.width * tilemap.height + 3 + 3;  //3 arrays * 3 digits * width * height + width data + height data
-        importedMap = calloc(importedLength + 1, sizeof(char));
-
-        readLine("maps/testMap.txt", 0, importedLength + 1, &importedMap);
-
-        importTilemap(&tilemap, importedMap);
-
-        free(importedMap);
-
-        tilemap.tileSize = TILE_SIZE;
-    }
-    if (menuBox.selection == 0)
-    {
-        //create temp map
-        tilemap.width = TEST_TILEMAP_X;
-        tilemap.height = TEST_TILEMAP_Y;
-        tilemap.tileSize = TILE_SIZE;
-
-        tilemap.spritemap_layer1 = calloc(tilemap.width, sizeof(int*));
-        tilemap.spritemap_layer2 = calloc(tilemap.width, sizeof(int*));
-        tilemap.collisionmap = calloc(tilemap.width, sizeof(int*));
-
-        for(int x = 0; x < tilemap.width; x++)
-        {
-            tilemap.spritemap_layer1[x] = calloc(tilemap.height, sizeof(int));
-            tilemap.spritemap_layer2[x] = calloc(tilemap.height, sizeof(int));
-            tilemap.collisionmap[x] = calloc(tilemap.height, sizeof(int));
-
-            for(int y = 0; y < tilemap.height; y++)
-            {
-                tilemap.spritemap_layer1[x][y] = 4;  //normal sprite
-                tilemap.spritemap_layer2[x][y] = 798;  //invisible sprite?
-
-                if (x == 1)  //left row sprite
-                    tilemap.spritemap_layer1[x][y] = 1;
-
-                if (y == 1)  //top row sprite
-                    tilemap.spritemap_layer1[x][y] = 3;
-
-                if (x == tilemap.width - 2)  //right row sprite
-                    tilemap.spritemap_layer1[x][y] = 7;
-
-                if (y == tilemap.height - 2)  //bottom row sprite
-                    tilemap.spritemap_layer1[x][y] = 5;
-
-                if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height || (y == 20 && x > tilemap.width / 2) || (y == 40 && x < tilemap.height / 2))
-                {
-                    if (x == 0 || y == 0 || x + 1 == tilemap.width || y + 1 == tilemap.height)
-                        tilemap.spritemap_layer1[x][y] = 36;  //skyscraper sprite
-                    else
-                        tilemap.spritemap_layer1[x][y] = 13; //collision sprite
-
-                    tilemap.collisionmap[x][y] = 1;
-                }
-                else
-                    tilemap.collisionmap[x][y] = 0;
-
-                if (x == 1 && y == 1)  //top-left corner sprite
-                    tilemap.spritemap_layer1[x][y] = 0;
-
-                if (x == tilemap.width - 2 && y == tilemap.height - 2)  //bottom-right corner sprite
-                    tilemap.spritemap_layer1[x][y] = 8;
-
-                if (x == 1 && y == tilemap.height - 2)  //bottom-left corner sprite
-                    tilemap.spritemap_layer1[x][y] = 2;
-
-                if (x == tilemap.width - 2 && y == 1)  //top-right corner sprite
-                    tilemap.spritemap_layer1[x][y] = 6;
-            }
-        }
-    }
-
-    if (menuBox.selection == 3)
-    {
-        destroyCScene(&menuScene);
-        closeCoSprite();
-        return 0;
-    }
-
-    destroyCScene(&menuScene);  //have to destroy after to preserve selection
-
-    initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //re-init camera
-
-    c2DModel mapModel_layer1, mapModel_layer2;
-    loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
-
-    cScene gameScene;
-    initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, NULL, 0, NULL, 0);
-
-    warperTeam playerTeam, enemyTeam;
-
-    //TEST squads init
-    cSprite testEnemySprite;
-    warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1};
-
-    warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
-
-    initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
-                (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
-                (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
-
-    cSprite* testSquadSprites = calloc(5, sizeof(cSprite));
-    cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
-
-    warperUnit testSquadUnits[5];
-    char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
-
-    for(int i = 0; i < 5; i++)
-    {
-        initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
-                    (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
-                    (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
-
-        testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
-    }
-
-    initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
-    initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
-    //end TEST squads init
-
-
-    addSpriteToCScene(&gameScene, playerTeam.units[0]->sprite);
-    addSpriteToCScene(&gameScene, enemyTeam.units[0]->sprite);
-
-    bool quit = false;
-    int controlCode = 0;
-
-    while (!quit)
-    {
-        if (controlCode != 3) //if we did not try to pause from the battle loop
-            controlCode = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
-
-        if (controlCode == 2 || controlCode == 3)  //if we are going into a battle, or returning to the battle from the pause menu
-        {
-            if (controlCode == 2)
-            {  //add in the player's squad and the enemy's squad
-                for(int i = 1; i < playerTeam.unitsSize; i++)
-                    addSpriteToCScene(&gameScene, playerTeam.units[i]->sprite);
-
-                for(int i = 1; i < enemyTeam.unitsSize; i++)
-                    addSpriteToCScene(&gameScene, enemyTeam.units[i]->sprite);
-            }
-
-            controlCode = battleLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
-
-            if (controlCode != 3)  //if we are ending the battle for good, quitting or just returning to the overworld
-            {  //clean up the sprites for the player's squad and the enemy squad
-                for(int i = 1; i < playerTeam.unitsSize; i++)
-                    removeSpriteFromCScene(&gameScene, playerTeam.units[i]->sprite, -1, false);
-
-                for(int i = 1; i < enemyTeam.unitsSize; i++)
-                    removeSpriteFromCScene(&gameScene, enemyTeam.units[i]->sprite, -1, false);
-            }
-        }
-
-        if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
-            controlCode = -1;  //if pause menu returns that we want to quit then quit
-
-        if (controlCode == -1)
-            quit = true;
-    }
-
-    destroyWarperTeam(&playerTeam, false);
-    destroyWarperTeam(&enemyTeam, false);
-
-    destroyCScene(&gameScene);
-
-    /*/
+void debugPrintStatProgression()
+{
+    //* testing stat progression
     for(int classType = 0; classType < 4; classType++)
     {
         printf("Class id %d\n", classType);
         for(int i = 1; i <= 100; i++)
         {
-            warperUnit testUnit =  (warperUnit) {NULL, i, 0, 0, 0, 0, classType, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            warperUnit testUnit =  (warperUnit) {NULL, "Test Unit", i, 0, 0, 0, 0, classType, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
             calculateStats(&testUnit, true);
             printf("Character with stats level %d: HP %d, Stamina %d, Energy %d\n", i, testUnit.maxHp, testUnit.maxStamina, testUnit.maxEnergy);
 
-            warperUnit attackingUnit = (warperUnit) {NULL, i, 0, 0, 0, 0, classTechnomancer, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+            warperUnit attackingUnit = (warperUnit) {NULL, "Test Attacker", i, 0, 0, 0, 0, classTechnomancer, NULL, (warperStats) {i, i, i, i, i, i, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
             warperAttackCheck checkResult = checkAttack(&attackingUnit, &testUnit, 0);
 
             printf("            >Attacker character dmg %d. ttk: %d\n", checkResult.damage, (int) round((double) testUnit.maxHp / checkResult.damage + 0.45));
 
-            / *
+            /*
             int maxDmgRequired = 0, minDmgRequired = 0;
 
             if (i < 25) //approx. early game
@@ -295,17 +264,71 @@ int main(int argc, char** argv)
             }
 
             //printf("            >max damage to maintain average time to kill at this lv: %d\n            >min damage to maintain average time to kill at this lv: %d\n", maxDmgRequired, minDmgRequired);
-            // * /
+            //*/
         }
         printf("-----------------\n");
     }
     //*/
+}
 
-    destroyWarperTilemap(&tilemap);
+void createTestMap(warperTilemap* tilemap)
+{
+    tilemap->width = TEST_TILEMAP_X;
+    tilemap->height = TEST_TILEMAP_Y;
+    tilemap->tileSize = TILE_SIZE;
 
-    closeCoSprite();
+    tilemap->spritemap_layer1 = calloc(tilemap->width, sizeof(int*));
+    tilemap->spritemap_layer2 = calloc(tilemap->width, sizeof(int*));
+    tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
 
-    return error;
+    for(int x = 0; x < tilemap->width; x++)
+    {
+        tilemap->spritemap_layer1[x] = calloc(tilemap->height, sizeof(int));
+        tilemap->spritemap_layer2[x] = calloc(tilemap->height, sizeof(int));
+        tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
+
+        for(int y = 0; y < tilemap->height; y++)
+        {
+            tilemap->spritemap_layer1[x][y] = 4;  //normal sprite
+            tilemap->spritemap_layer2[x][y] = 798;  //invisible sprite?
+
+            if (x == 1)  //left row sprite
+                tilemap->spritemap_layer1[x][y] = 1;
+
+            if (y == 1)  //top row sprite
+                tilemap->spritemap_layer1[x][y] = 3;
+
+            if (x == tilemap->width - 2)  //right row sprite
+                tilemap->spritemap_layer1[x][y] = 7;
+
+            if (y == tilemap->height - 2)  //bottom row sprite
+                tilemap->spritemap_layer1[x][y] = 5;
+
+            if (x == 0 || y == 0 || x + 1 == tilemap->width || y + 1 == tilemap->height || (y == 20 && x > tilemap->width / 2) || (y == 40 && x < tilemap->height / 2))
+            {
+                if (x == 0 || y == 0 || x + 1 == tilemap->width || y + 1 == tilemap->height)
+                    tilemap->spritemap_layer1[x][y] = 36;  //skyscraper sprite
+                else
+                    tilemap->spritemap_layer1[x][y] = 13; //collision sprite
+
+                tilemap->collisionmap[x][y] = 1;
+            }
+            else
+                tilemap->collisionmap[x][y] = 0;
+
+            if (x == 1 && y == 1)  //top-left corner sprite
+                tilemap->spritemap_layer1[x][y] = 0;
+
+            if (x == tilemap->width - 2 && y == tilemap->height - 2)  //bottom-right corner sprite
+                tilemap->spritemap_layer1[x][y] = 8;
+
+            if (x == 1 && y == tilemap->height - 2)  //bottom-left corner sprite
+                tilemap->spritemap_layer1[x][y] = 2;
+
+            if (x == tilemap->width - 2 && y == 1)  //top-right corner sprite
+                tilemap->spritemap_layer1[x][y] = 6;
+        }
+    }
 }
 
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam)
@@ -601,12 +624,12 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 subMenuSelection = pauseBox->selection - 3;
                 menuId = WMENU_PARTYMEMBER;
                 menuLevel++;
-                char* memberArray[11] = {"Name", " ", "Class", "HP", "Attack", "Speed", "TP Range", "Tech Affinity", "Luck", "Stat Pts", "Back"};
+                char* memberArray[12] = {"Name", " ", "Class", "HP", "Attack", "Speed", "TP Range", "Tech Affinity", "Luck", "Stat Pts", "Gear", "Back"};
                 memberArray[0] = calloc(strlen(playerTeam->units[subMenuSelection]->name), sizeof(char));
                 strcpy(memberArray[0], playerTeam->units[subMenuSelection]->name);
 
-                bool memberIsOptions[11] = {false, false, false, false, false, false, false, false, false, false, true};
-                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, memberArray, memberIsOptions, 11, &global.mainFont);
+                bool memberIsOptions[12] = {false, false, false, false, false, false, false, false, false, false, false, true};
+                createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, memberArray, memberIsOptions, 12, &global.mainFont);
 
                 free(memberArray[0]);
 
@@ -616,7 +639,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
             pauseBox->selection = -1; //do not leave the loop
         }
 
-        if (menuId == WMENU_PARTYMEMBER && pauseBox->selection == 10)
+        if (menuId == WMENU_PARTYMEMBER && pauseBox->selection == 11)
         {
             //back to party menu
             destroyWarperTextBox((void*) &menuLayers[menuLevel]);
