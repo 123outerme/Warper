@@ -79,6 +79,7 @@ typedef struct _warperItem
 {
     enum warperItemType itemType;
     int id;
+    char* name;
     int count;
 } warperItem;
 

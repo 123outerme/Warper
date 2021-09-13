@@ -184,7 +184,7 @@ int main(int argc, char** argv)
 
     //TEST squads init
     cSprite testEnemySprite;
-    warperItem testWeapon = (warperItem) {itemMelee, 0, 1};
+    warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1};
 
     warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
 
@@ -209,7 +209,7 @@ int main(int argc, char** argv)
         testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
     }
 
-    initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, NULL, 0, 0);
+    initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
     initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
     //end TEST squads init
 
@@ -447,7 +447,7 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
 
 bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 {
-    int menuLevel = 0, menuId = WMENU_PAUSE, subMenuSelection = -1;
+    int menuLevel = 0, menuId = WMENU_PAUSE, subMenuSelection = -1, menuOptsLength = 7;
     warperTextBox menuLayers[3];
     warperTextBox* pauseBox;
     char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
@@ -487,7 +487,8 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 {
                     //party menu
                     menuId = WMENU_PARTY;
-                    char** partyArray = calloc(4 + playerTeam->unitsSize, sizeof(char*));
+                    menuOptsLength = 4 + playerTeam->unitsSize;
+                    char** partyArray = calloc(menuOptsLength, sizeof(char*));
                     partyArray[0] = "PARTY";
                     partyArray[1] = calloc(9 + digits(playerTeam->money), sizeof(char));
                     snprintf(partyArray[1], 8 + digits(playerTeam->money), "Money: %d", playerTeam->money);
@@ -497,9 +498,9 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                         partyArray[3 + i] = calloc(strlen(playerTeam->units[i]->name) + 1, sizeof(char));
                         strcpy(partyArray[3 + i], playerTeam->units[i]->name);
                     }
-                    partyArray[3 + playerTeam->unitsSize] = "Back";
+                    partyArray[menuOptsLength - 1] = "Back";
 
-                    bool* partyIsOptions = calloc(4 + playerTeam->unitsSize, sizeof(bool));
+                    bool* partyIsOptions = calloc(menuOptsLength, sizeof(bool));
                     partyIsOptions[0] = false;
                     partyIsOptions[1] = false;
                     partyIsOptions[2] = false;
@@ -507,14 +508,16 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                     {
                         partyIsOptions[3 + i] = true;
                     }
-                    partyIsOptions[3 + playerTeam->unitsSize] = true;
+                    partyIsOptions[menuOptsLength - 1] = true;
 
-                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, 4 + playerTeam->unitsSize, &global.mainFont);
-                    for(int i = 0; i < 4 + playerTeam->unitsSize; i++)
+                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, partyArray, partyIsOptions, menuOptsLength, &global.mainFont);
+                    for(int i = 0; i < menuOptsLength; i++)
                     {
                         if (i != 0 && i != 2 && i != 3 + playerTeam->unitsSize)
                             free(partyArray[i]);
                     }
+                    free(partyArray);
+                    free(partyIsOptions);
 
                     pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
                     pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
@@ -523,9 +526,48 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 if (pauseBox->selection == 4)
                 {
                     //items menu
+                    menuId = WMENU_INVENTORY;
+                    menuOptsLength = (3 + playerTeam->inventorySize > 20) ? 20 : 3 + playerTeam->inventorySize;
+                    //bool menuOverflow = 3 + playerTeam->inventorySize > 20;
+                    char** inventoryArray = calloc(menuOptsLength, sizeof(char*));
 
-                    //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
-                    //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+                    inventoryArray[0] = "INVENTORY";
+                    inventoryArray[1] = " ";
+
+                    for(int i = 0; i < menuOptsLength - 3; i++)
+                    {
+                        inventoryArray[i + 2] = calloc(strlen(playerTeam->inventory[i].name), sizeof(char));
+                        strcpy(inventoryArray[i + 2], playerTeam->inventory[i].name);
+                    }
+
+                    /* add pagination options
+                    if (menuOverflow)
+                        inventoryArray[menuOptsLength - 1] = "Next;"
+                    //*/
+                    inventoryArray[menuOptsLength - 1] = "Back";
+
+                    bool* inventoryIsOptions = calloc(menuOptsLength, sizeof(bool));
+
+                    inventoryIsOptions[0] = false;
+                    inventoryIsOptions[1] = false;
+
+                    for(int i = 0; i < menuOptsLength - 3; i++)
+                        inventoryIsOptions[i + 2] = true;
+
+                    inventoryIsOptions[menuOptsLength - 1] = true;
+
+                    createMenuTextBox(&menuLayers[menuLevel], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {512, 8}, 0xB0, inventoryArray, inventoryIsOptions, menuOptsLength, &global.mainFont);
+
+                    for(int i = 0; i < menuOptsLength - 3; i++)
+                    {
+                        free(inventoryArray[i + 2]);
+                    }
+
+                    free(inventoryArray);
+                    free(inventoryIsOptions);
+
+                    pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
+                    pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
                 }
 
                 if (pauseBox->selection == 5)
@@ -543,7 +585,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 
         if (menuId == WMENU_PARTY && pauseBox->selection > 2)
         {
-            if (pauseBox->selection == 3 + playerTeam->unitsSize)
+            if (pauseBox->selection == menuOptsLength - 1)
             {
                 //back to pause menu
                 destroyWarperTextBox((void*) &menuLayers[menuLevel]);
@@ -583,6 +625,24 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
             pauseBox = &menuLayers[menuLevel];  //set the previous menu to be what the loop accesses
             pauseBoxResource.subclass = pauseBox;  //set the previous menu to be displayed
             pauseBox->selection = -1;
+        }
+
+        if (menuId == WMENU_INVENTORY && pauseBox->selection > 2)
+        {
+            if (pauseBox->selection == menuOptsLength - 1)
+            {
+                //back to pause menu
+                destroyWarperTextBox((void*) &menuLayers[menuLevel]);
+                menuLevel--;
+                menuId = WMENU_PAUSE;
+                pauseBox = &menuLayers[menuLevel];
+                pauseBoxResource.subclass = pauseBox;
+                pauseBox->selection = -1;
+            }
+            else
+            {
+                //choose the item
+            }
         }
     }
 
