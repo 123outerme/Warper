@@ -252,13 +252,17 @@ void destroyWarperCircle(void* circle)
  * \param stringsLength int - length of strings = length of isOptions
  * \param int tileSize - tilemap's tile size
  */
-void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, char** strings, bool* isOptions, int stringsLength, int tileSize)
+void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalPadding, bool justify, char** strings, bool* isOptions, int stringsLength, int tileSize)
 {
     int textCount = stringsLength + 2;  //3 options + the +/- buttons
     cText* texts = calloc(textCount, sizeof(cText));
     for(int i = 0; i < textCount - 2; i++)
     {
-        initCText(&(texts[i]), strings[i], (cDoubleRect) {dimensions.x, dimensions.y + i * tileSize, dimensions.w - 2 * tileSize, dimensions.h - i * tileSize}, dimensions.w - 2 * tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        int xPos = dimensions.x + margins.x;
+        if (justify)
+            xPos = dimensions.w / 2 - (strlen(strings[i]) * global.mainFont.fontSize / 2) + dimensions.x;
+
+        initCText(&(texts[i]), strings[i], (cDoubleRect) {xPos, dimensions.y + i * tileSize + margins.y + verticalPadding * i, dimensions.w - 2 * tileSize, dimensions.h - i * tileSize}, dimensions.w - 2 * tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     }
 
     initCText(&(texts[textCount - 2]), "-", (cDoubleRect) {dimensions.x + dimensions.w - 2 * tileSize, dimensions.y, tileSize, tileSize}, tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xCF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);

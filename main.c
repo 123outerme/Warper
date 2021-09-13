@@ -704,7 +704,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     warperTextBox battleTextBox, backupTextBox;
     char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Mods", "End Turn"};
     bool isOptions[] = {true, true, true, true, true, true};
-    createBattleTextBox(&battleTextBox, textBoxDims, strings, isOptions, 6, tilemap.tileSize);
+    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
 
     warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
     warperUnit* pathfinderUnit = NULL;
@@ -897,7 +897,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     destroyWarperTextBox((void*) &battleTextBox);
                     char* enemyTurnStrings[] = {"Choose Unit", "End Their Turn (Debug)"};
                     bool enemyTurnIsOptions[] = {true, true};
-                    createBattleTextBox(&battleTextBox, textBoxDims, enemyTurnStrings, enemyTurnIsOptions, 2, tilemap.tileSize);
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, enemyTurnStrings, enemyTurnIsOptions, 2, tilemap.tileSize);
                 }
 
                 if (confirmMode)
@@ -1155,7 +1155,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 //create confirm textbox and backup regular textbox
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
-                                createBattleTextBox(&battleTextBox, textBoxDims, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
+                                createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, false, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
                             }
                             free(questionStr);
                             questionStr = NULL;
@@ -1216,7 +1216,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 destroyWarperTextBox((void*) &battleTextBox);
                                 //createBattleTextBox(&battleTextBox, textBoxDims, (char* [5]) {questionStr, " ", " ", "Yes", "No"}, (bool[5]) {false, false, false, true, true}, 5, tilemap.tileSize);
 
-                                createBattleTextBox(&battleTextBox, (cDoubleRect) {1 * tilemap.tileSize, 1 * tilemap.tileSize, (38) * tilemap.tileSize, (18) * tilemap.tileSize}, (char* [7]) {questionStr, " ", " ", " ", " ", "Yes", "No"}, (bool[7]) {false, false, false, false, false, true, true}, 7, tilemap.tileSize);
+                                createBattleTextBox(&battleTextBox, (cDoubleRect) {1 * tilemap.tileSize, 1 * tilemap.tileSize, (38) * tilemap.tileSize, (18) * tilemap.tileSize}, (cDoublePt) {0, 0}, 0, false, (char* [7]) {questionStr, " ", " ", " ", " ", "Yes", "No"}, (bool[7]) {false, false, false, false, false, true, true}, 7, tilemap.tileSize);
 
                                 /*
                                 cText* tempTexts = calloc(7, sizeof(cText));
