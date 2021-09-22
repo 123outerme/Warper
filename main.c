@@ -27,6 +27,7 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 #define CONFIRM_MOVEMENT 1
 #define CONFIRM_TELEPORT 2
 #define CONFIRM_ATTACK 3
+#define CONFIRM_ENEMY_ATTACK 4
 
 #define WMENU_PAUSE 0
 #define WMENU_PARTY 1
@@ -107,6 +108,8 @@ int main(int argc, char** argv)
 
             cDoublePt squadSprLocations[5] = {(cDoublePt) {0, 0}, (cDoublePt) {0, tilemap.tileSize / 2}, (cDoublePt) {tilemap.tileSize / 2, 0}, (cDoublePt) {tilemap.tileSize, 0}, (cDoublePt) {tilemap.tileSize / 2, tilemap.tileSize / 2}};
 
+            const int testUnitsLevel = 10;
+
             for(int i = 0; i < 5; i++)
             {
                 initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
@@ -114,7 +117,7 @@ int main(int argc, char** argv)
                             (cDoubleRect) {squadSprLocations[i].x, squadSprLocations[i].y, tilemap.tileSize / 2, tilemap.tileSize / 2},
                             NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
-                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], testUnitsLevel, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
                 calculateStats(&testSquadUnits[i], true);  //fill in regular stats and battle stats
             }
 
@@ -720,10 +723,14 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     int confirmMode = CONFIRM_NONE;  //used for confirming selections
     //double speed = 6.0;  //just a good speed value, nothing special. Pixels/frame at 60 FPS
 
+    int turnCount = 1;
+
     const cDoubleRect textBoxDims = (cDoubleRect) {5 * tilemap.tileSize, 14 * tilemap.tileSize, 30 * tilemap.tileSize, 14 * tilemap.tileSize};
 
-    cResource battleTextBoxRes, movePathRes, circleRes, enemyCircleRes;
+    cResource battleTextBoxRes, movePathRes, enemyMoveCircleRes, teleportCircleRes, enemyTeleportCircleRes;
     warperTextBox battleTextBox, backupTextBox;
+    cDoubleRect minimizeBoxSave = {0,0,0,0};
+
     char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Mods", "End Turn"};
     bool isOptions[] = {true, true, true, true, true, true};
     createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
@@ -734,21 +741,25 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     double moveDistance = 0;
     int pathIndex = -1;
 
-    warperCircle circle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
-    warperCircle enemyCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
+    warperCircle enemyMoveCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
+
+    warperCircle teleportCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0, 0, 0, 0x50}, .filled = true};
+    warperCircle enemyTeleportCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
     int selectedEnemyIndex = -1;  //keeps track of which enemy we are checking movement radius for
 
     initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 1);
     initCResource(&movePathRes, (void*) &movePath, drawWarperPath, destroyWarperPath, 0);
-    initCResource(&circleRes, (void*) &circle, drawWarperCircle, destroyWarperCircle, 0);
-    initCResource(&enemyCircleRes, (void*) &enemyCircle, drawWarperCircle, destroyWarperCircle, 0);
+    initCResource(&enemyMoveCircleRes, (void*) &enemyMoveCircle, drawWarperCircle, destroyWarperCircle, 0);
+    initCResource(&teleportCircleRes, (void*) &teleportCircle, drawWarperCircle, destroyWarperCircle, 0);
+    initCResource(&enemyTeleportCircleRes, (void*) &enemyTeleportCircle, drawWarperCircle, destroyWarperCircle, 0);
 
     battleTextBox.selection = 0;
 
     addResourceToCScene(scene, &battleTextBoxRes);
     addResourceToCScene(scene, &movePathRes);
-    addResourceToCScene(scene, &circleRes);
-    addResourceToCScene(scene, &enemyCircleRes);
+    addResourceToCScene(scene, &enemyMoveCircleRes);
+    addResourceToCScene(scene, &teleportCircleRes);
+    addResourceToCScene(scene, &enemyTeleportCircleRes);
 
     cSprite confirmPlayerSprite;
     cSprite unitSelectSprite;
@@ -771,10 +782,11 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     cInputState input;
     int framerate = 60;
     int selectedUnit = 0, selectedEnemy = -1;  //used for selecting a unit or an enemy unit
-    int turnEnemy = 0;  //used for going through enemy turns
+    int turnEnemy = 0, enemyTarget = -1;  //used for going through enemy turns
 
-    const int CUSTOM_COLLISIONS_COUNT = playerTeam->unitsSize - 1 + enemyTeam->unitsSize;
-    cDoubleRect* customCollisions = calloc(CUSTOM_COLLISIONS_COUNT, sizeof(cDoubleRect));
+    const int MAX_CUSTOM_COLLISIONS_COUNT = playerTeam->unitsSize - 1 + enemyTeam->unitsSize;
+    int customCollisionsCount = MAX_CUSTOM_COLLISIONS_COUNT;
+    cDoubleRect* customCollisions = calloc(MAX_CUSTOM_COLLISIONS_COUNT, sizeof(cDoubleRect));
 
     bool playerTurn = true, pathToCursor = false;
 
@@ -802,8 +814,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                 pathToCursor = false;
 
-                if (battleTextBox.selection == 1 && !confirmMode)
-                {  //we clicked the first element (move or DEBUG force enemy pass turn)
+                 if (battleTextBox.selection == 1 && !confirmMode)
+                 {  //we clicked the first element (move or DEBUG force enemy pass turn)
                     if (playerTurn)
                     {  //we want to move
                         pathToCursor = true;  //start pathing non-stop to cursor
@@ -823,8 +835,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                         //restore textbox to regular menu
                         destroyWarperTextBox((void*) &battleTextBox);
-                        initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
-                        destroyWarperTextBox((void*) &backupTextBox);
+                        createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
+
+                        turnCount++;
                     }
                 }
                 else
@@ -845,16 +858,87 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                 if (battleTextBox.selection == 2 && !confirmMode)
                 {
                     //we want to teleport
-                    circle.center.x = playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
-                    circle.center.y = playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
-                    circle.radius = playerTeam->units[selectedUnit]->battleData.energyLeft * tilemap.tileSize;
-                    circleRes.renderLayer = 2;
+                    teleportCircle.center.x = playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
+                    teleportCircle.center.y = playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
+                    teleportCircle.radius = playerTeam->units[selectedUnit]->battleData.energyLeft * tilemap.tileSize;
+                    teleportCircleRes.renderLayer = 2;
                 }
                 else
                 {
                     if (!(battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2))  //if we're not maximizing/minimizing
-                        circleRes.renderLayer = 0;
+                        teleportCircleRes.renderLayer = 0;
                 }
+
+                if (battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2)
+                {
+                    //we clicked on the minimize/maximize button
+                    if (battleTextBox.selection == battleTextBox.textsSize - 2 && battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer == 0)
+                    {
+                        //save previous size and minimize
+                        minimizeBoxSave = battleTextBox.rect;
+                        battleTextBox.rect.y = 19 * tilemap.tileSize;
+                        battleTextBox.rect.h = tilemap.tileSize;
+                        for(int i = 0; i < battleTextBox.textsSize - 1; i++)
+                        {
+                            //hide each regular text
+                            battleTextBox.texts[i].renderLayer = 0;
+                        }
+                        battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer = 5;
+                        battleTextBox.selection = battleTextBox.storedSelection; //reset selection
+                    }
+                    if (battleTextBox.selection == battleTextBox.textsSize - 1)
+                    {
+                        if (battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer == 5)
+                        {
+                            //restore previous size
+                            battleTextBox.rect = minimizeBoxSave;
+                            for(int i = 0; i < battleTextBox.textsSize - 1; i++)
+                            {
+                                //show each regular text
+                                battleTextBox.texts[i].renderLayer = 5;
+                            }
+                            battleTextBox.texts[battleTextBox.textsSize - 1].renderLayer = 0;
+                        }
+                        battleTextBox.selection = battleTextBox.storedSelection; //reset selection to what it was before we minimized either way
+                    }
+                }
+
+                if (battleTextBox.selection == 4 && !confirmMode)
+                {
+                    //open mods menu
+                }
+
+                if (battleTextBox.selection == 5 && !confirmMode)
+                {  //end turn
+                    playerTurn = false;
+
+                    //clean up movePath so the enemy can path correctly
+                    destroyWarperPath((void*) &movePath);
+                    movePathRes.renderLayer = 0;
+                    pathIndex = -1;
+                    pathfinderUnit = NULL;
+
+                    //restore each enemy unit's battle stats (stamina, etc)
+                    for(int i = 0; i < enemyTeam->unitsSize; i++)
+                    {
+                        enemyTeam->units[i]->battleData.staminaLeft = enemyTeam->units[i]->maxStamina;
+                        enemyTeam->units[i]->battleData.energyLeft = enemyTeam->units[i]->maxEnergy;
+                        enemyTeam->units[i]->battleData.teleportedOrAttacked = false;
+                        //iterate on status effects
+                    }
+
+                    for(int i = 0; i < playerTeam->unitsSize; i++)
+                    {
+
+                    }
+
+                    //set text box to be enemy turn textbox (player turn textbox will be re-instantiated from scratch)
+                    destroyWarperTextBox((void*) &battleTextBox);
+                    char* enemyTurnStrings[] = {"Choose Unit", "End Their Turn (Debug)"};
+                    bool enemyTurnIsOptions[] = {true, true};
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, enemyTurnStrings, enemyTurnIsOptions, 2, tilemap.tileSize);
+                }
+
 
                 if (battleTextBox.selection == battleTextBox.textsSize - 1 || battleTextBox.selection == battleTextBox.textsSize - 2)
                 {
@@ -890,38 +974,6 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     }
                 }
 
-                if (battleTextBox.selection == 4 && !confirmMode)
-                {
-                    //open mods menu
-                }
-
-                if (battleTextBox.selection == 5 && !confirmMode)
-                {  //end turn
-                    playerTurn = false;
-
-                    //clean up movePath so the enemy can path correctly
-                    destroyWarperPath((void*) &movePath);
-                    movePathRes.renderLayer = 0;
-                    pathIndex = -1;
-                    pathfinderUnit = NULL;
-
-                    //restore each enemy unit's battle stats (stamina, etc)
-                    for(int i = 0; i < enemyTeam->unitsSize; i++)
-                    {
-                        enemyTeam->units[i]->battleData.staminaLeft = enemyTeam->units[i]->maxStamina;
-                        enemyTeam->units[i]->battleData.energyLeft = enemyTeam->units[i]->maxEnergy;
-                        enemyTeam->units[i]->battleData.teleportedOrAttacked = false;
-                        //iterate on status effects
-                    }
-
-                    //set text box to be enemy turn textbox and back up your turns' textbox
-                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
-                    destroyWarperTextBox((void*) &battleTextBox);
-                    char* enemyTurnStrings[] = {"Choose Unit", "End Their Turn (Debug)"};
-                    bool enemyTurnIsOptions[] = {true, true};
-                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, enemyTurnStrings, enemyTurnIsOptions, 2, tilemap.tileSize);
-                }
-
                 if (confirmMode)
                 {
                     //If we are confirming an action
@@ -945,6 +997,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked = true;
                             }
                         }
+
                         if (battleTextBox.selection == 3)
                         {
                             //if we selected "no"
@@ -956,7 +1009,14 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 pathIndex = -1;
                                 pathfinderUnit = NULL;
                             }
+
+                            if (confirmMode == CONFIRM_ENEMY_ATTACK)
+                            {
+                                turnEnemy++;
+                                //printf("turn enemy on confirm: %d\n", turnEnemy);
+                            }
                         }
+
                         if (battleTextBox.selection == 5)
                         {
                             //if we selected "yes" but only for attack confirm
@@ -1023,7 +1083,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                             }
                         }
 
-                        enemyCircleRes.renderLayer = 0;
+                        enemyTeleportCircleRes.renderLayer = 0;
                         int enemyIndex = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
                         {
@@ -1035,10 +1095,17 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         if (enemyIndex > -1)
                         {
                             //printf("found\n");
-                            enemyCircle.center.x = enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2;
-                            enemyCircle.center.y = enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2;
-                            enemyCircle.radius = enemyTeam->units[enemyIndex]->battleData.energyLeft * tilemap.tileSize;
-                            enemyCircleRes.renderLayer = 2;
+                            if (turnCount > 1) //turn 2 (one of their turns if you're going first) or later
+                            {
+                                enemyTeleportCircle.center.x = enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2;
+                                enemyTeleportCircle.center.y = enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2;
+                                enemyTeleportCircle.radius = enemyTeam->units[enemyIndex]->battleData.energyLeft * tilemap.tileSize;
+                                enemyTeleportCircleRes.renderLayer = 2;
+                            }
+                            enemyMoveCircle.center.x = enemyTeam->units[enemyIndex]->sprite->drawRect.x + enemyTeam->units[enemyIndex]->sprite->drawRect.w / 2;
+                            enemyMoveCircle.center.y = enemyTeam->units[enemyIndex]->sprite->drawRect.y + enemyTeam->units[enemyIndex]->sprite->drawRect.h / 2;
+                            enemyMoveCircle.radius = enemyTeam->units[enemyIndex]->battleData.staminaLeft * tilemap.tileSize;
+                            enemyMoveCircleRes.renderLayer = 2;
                         }
                         selectedEnemyIndex = enemyIndex;  //reset if not found, otherwise will set to the enemy we clicked on
                     }
@@ -1049,7 +1116,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         /*if (movePath.path == NULL)
                         {*/
                             //printf("move\n");
-                            char* questionStr;
+                            char* questionStr = NULL;
                             double prevConfirmX = confirmPlayerSprite.drawRect.x, prevConfirmY = confirmPlayerSprite.drawRect.y;
 
                             confirmPlayerSprite.drawRect.x = worldClickX - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
@@ -1108,19 +1175,24 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                     //if we're moving, do a search for the correct path
                                     //*
                                     int customArrPos = 0;
-                                    for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects (except current)
+                                    for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all living player-team rects (except current)
                                     {
-                                        if (i != selectedUnit)
+                                        if (i != selectedUnit && playerTeam->units[i]->sprite->renderLayer != 0)
                                             customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
                                     }
 
-                                    for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects
-                                        customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+                                    for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all living enemy-team rects
+                                    {
+                                        if (enemyTeam->units[i]->sprite->renderLayer != 0)
+                                            customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+                                    }
+
+                                    customCollisionsCount = customArrPos;
 
                                     movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,
                                                                         (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,
                                                                         (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
-                                                                        customCollisions, CUSTOM_COLLISIONS_COUNT,
+                                                                        customCollisions, customCollisionsCount,
                                                                         &(movePath.pathLength), false, scene->camera);
 
                                     if (movePath.path)
@@ -1178,9 +1250,10 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
                                 destroyWarperTextBox((void*) &battleTextBox);
                                 createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, false, (char* [4]) {questionStr, " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, tilemap.tileSize);
+                                free(questionStr);
+                                questionStr = NULL;
                             }
-                            free(questionStr);
-                            questionStr = NULL;
+
                         //}
                     }
                     if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
@@ -1282,20 +1355,24 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     destroyWarperPath((void*) &movePath);
 
                 int customArrPos = 0;
-                for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects (except current)
+                for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all living player-team rects (except current)
                 {
-                    if (i != selectedUnit)
+                    if (i != selectedUnit && playerTeam->units[i]->sprite->renderLayer != 0)
                         customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
                 }
 
-                for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects
-                    customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+                for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all living enemy-team rects
+                {
+                    if (enemyTeam->units[i]->sprite->renderLayer != 0)
+                        customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+                }
 
+                customArrPos = customCollisionsCount;
 
                 movePath.path = offsetBreadthFirst(tilemap, (int) playerTeam->units[selectedUnit]->sprite->drawRect.x, (int) playerTeam->units[selectedUnit]->sprite->drawRect.y,  //current player position
                                                    (int) confirmPlayerSprite.drawRect.x, (int) confirmPlayerSprite.drawRect.y,  //current mouse position
                                                    (int) playerTeam->units[selectedUnit]->sprite->drawRect.w, (int) playerTeam->units[selectedUnit]->sprite->drawRect.h,
-                                                    customCollisions, CUSTOM_COLLISIONS_COUNT,
+                                                    customCollisions, customCollisionsCount,
                                                    &(movePath.pathLength), false, scene->camera);
 
                 if (movePath.path)
@@ -1330,17 +1407,14 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             //AI Types: Lone wolves each fight one unit, Pack wolves use 2-3 units to fight one of your units
 
             //SIMPLE TEST AI - just repositions next to you and attacks
-            if (!movePath.path)  //if we aren't currently following a path
+            if (!movePath.path && !confirmMode)  //if we aren't currently following a path or waiting for the player to check the attack info
             {
                 if (turnEnemy >= enemyTeam->unitsSize)
                 {  //we have already iterated through every enemy
                     turnEnemy = 0;
                     playerTurn = true;
 
-                    //clean up movePath
-                    destroyWarperPath((void*) &movePath);
-                    movePathRes.renderLayer = 0;
-                    pathIndex = -1;
+                    //clean up movePath pathfinder unit
                     pathfinderUnit = NULL;
 
                     //restore each player unit's battle stats (stamina, etc)
@@ -1354,79 +1428,98 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                     //restore textbox to regular menu
                     destroyWarperTextBox((void*) &battleTextBox);
-                    initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
-                    destroyWarperTextBox((void*) &backupTextBox);
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
+
+                    turnCount++;
                 }
                 else
-                {  //we still have to process the enemy turn
-                    if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the enemy unit is alive
+                {
+                    if (enemyTeam->units[turnEnemy]->sprite->renderLayer == 0)
+                        turnEnemy++;  //if this unit is dead, go to the next
+                    else
                     {
-                        //initialize customCollisions array for the turn enemy to use in finding a path
-                        int customArrPos = 0;
-                        for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects
-                            customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
-
-                        for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects (except current)
+                        //we still have to process the enemy turn
+                        if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the enemy unit is alive
                         {
-                            if (i != turnEnemy)
-                                customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
-                        }
-
-                        //printf("entered enemy pathfinding\n");
-                        pathfinderUnit = enemyTeam->units[turnEnemy];
-
-                        movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
-                        movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.h;
-
-                        //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
-                        for(int targetUnit = 0; targetUnit < playerTeam->unitsSize; targetUnit++)
-                        {
-                            int pathLength = 0;
-                            double targetUnitX = playerTeam->units[targetUnit]->sprite->drawRect.x, targetUnitY = playerTeam->units[targetUnit]->sprite->drawRect.y;
-
-                            if (targetUnitX - pathfinderUnit->sprite->drawRect.x > pathfinderUnit->sprite->drawRect.w)
-                                targetUnitX -= pathfinderUnit->sprite->drawRect.w;  //aim to move to the closest position on the left
-                            if (targetUnitX - pathfinderUnit->sprite->drawRect.x < pathfinderUnit->sprite->drawRect.w)
-                                targetUnitX += playerTeam->units[targetUnit]->sprite->drawRect.w;  //aim to move to the closest position on the right
-
-                            if (fabs(playerTeam->units[targetUnit]->sprite->drawRect.x - targetUnitX) < 0.001)  //if we didn't adjust on the X direction
+                            //initialize customCollisions array for the turn enemy to use in finding a path
+                            int customArrPos = 0;
+                            for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all living player-team rects
                             {
-                                if (targetUnitY > pathfinderUnit->sprite->drawRect.y)
-                                    targetUnitY -= pathfinderUnit->sprite->drawRect.h;  //aim to move to the closest position above
-                                if (targetUnitY < pathfinderUnit->sprite->drawRect.y)
-                                    targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //aim to move to the closest position below
+                                if (playerTeam->units[i]->sprite->renderLayer != 0)
+                                    customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
                             }
-                            node* path = NULL;
-                            //if (targetUnitX > 0 && targetUnitX < tilemap.width * tilemap.tileSize && targetUnitY > 0 && targetUnitY < tilemap.height * tilemap.tileSize)
-                                path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
-                                                            targetUnitX, targetUnitY,  //use our adjusted target position here
-                                                            movePath.pathfinderWidth, movePath.pathfinderHeight,
-                                                            customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);
-                            /*
-                            if (path)
-                                printf("path distance = %f", path[0].distance);
-                            //*/
 
-                            if (path && (!movePath.path || path[0].distance < movePath.path[0].distance))  //find the closest opposing unit and path to them
+                            for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all living enemy-team rects (except current)
                             {
-                                //printf(" (this a is better path)\n");
-                                if (movePath.path)
-                                    free(movePath.path);
-
-                                movePath.path = path;
-                                movePath.pathLength = pathLength;
+                                if (i != turnEnemy && enemyTeam->units[i]->sprite->renderLayer != 0)
+                                    customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
                             }
-                            //printf(".\n");
+
+                            customCollisionsCount = customArrPos;
+
+                            //printf("entered enemy pathfinding\n");
+                            pathfinderUnit = enemyTeam->units[turnEnemy];
+
+                            movePath.pathfinderWidth = pathfinderUnit->sprite->drawRect.w;
+                            movePath.pathfinderHeight = pathfinderUnit->sprite->drawRect.h;
+
+                            //printf("%f, %f\n", pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y);
+                            for(int targetUnit = 0; targetUnit < playerTeam->unitsSize; targetUnit++)
+                            {
+                                if (playerTeam->units[targetUnit]->sprite->renderLayer != 0)  //only target a living unit
+                                {
+                                    int pathLength = 0;
+                                    double targetUnitX = playerTeam->units[targetUnit]->sprite->drawRect.x, targetUnitY = playerTeam->units[targetUnit]->sprite->drawRect.y;
+
+                                    if (targetUnitX - pathfinderUnit->sprite->drawRect.x > pathfinderUnit->sprite->drawRect.w)
+                                        targetUnitX -= pathfinderUnit->sprite->drawRect.w;  //aim to move to the closest position on the left
+                                    if (targetUnitX - pathfinderUnit->sprite->drawRect.x < pathfinderUnit->sprite->drawRect.w)
+                                        targetUnitX += playerTeam->units[targetUnit]->sprite->drawRect.w;  //aim to move to the closest position on the right
+
+                                    if (fabs(playerTeam->units[targetUnit]->sprite->drawRect.x - targetUnitX) < 0.001)  //if we didn't adjust on the X direction
+                                    {
+                                        if (targetUnitY > pathfinderUnit->sprite->drawRect.y)
+                                            targetUnitY -= pathfinderUnit->sprite->drawRect.h;  //aim to move to the closest position above
+                                        if (targetUnitY < pathfinderUnit->sprite->drawRect.y)
+                                            targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //aim to move to the closest position below
+                                    }
+                                    node* path = NULL;
+                                    //if (targetUnitX > 0 && targetUnitX < tilemap.width * tilemap.tileSize && targetUnitY > 0 && targetUnitY < tilemap.height * tilemap.tileSize)
+                                        path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
+                                                                    targetUnitX, targetUnitY,  //use our adjusted target position here
+                                                                    movePath.pathfinderWidth, movePath.pathfinderHeight,
+                                                                    customCollisions, customCollisionsCount, &pathLength, false, scene->camera);
+                                    /*
+                                    if (path)
+                                        printf("path distance = %f", path[0].distance);
+                                    //*/
+
+                                    if (path && (!movePath.path || path[0].distance < movePath.path[0].distance) && path[0].distance <= enemyTeam->units[turnEnemy]->maxStamina)  //find the closest opposing unit and path to them. Also be sure its within enemy's (max, for now) range
+                                    {
+                                        //printf(" (this a is better path)\n");
+                                        if (movePath.path)
+                                            free(movePath.path);
+
+                                        movePath.path = path;
+                                        movePath.pathLength = pathLength;
+                                        enemyTarget = targetUnit;
+                                    }
+                                    //printf(".\n");
+                                }
+                            }
+                            if (!movePath.path)
+                                turnEnemy++;  //this enemy can't move so skip it
                         }
+                        //turnEnemy++;  //start working on the next enemy (no attack)
+                        //printf("turn enemy after move: %d\n", turnEnemy);
                     }
-                    turnEnemy++;
                 }
             }
 
             if (selectedEnemyIndex > -1)
             {  //update circle after movement proceeds
-                enemyCircle.center.x = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.x + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.w / 2;
-                enemyCircle.center.y = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.y + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.h / 2;
+                enemyTeleportCircle.center.x = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.x + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.w / 2;
+                enemyTeleportCircle.center.y = enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.y + enemyTeam->units[selectedEnemyIndex]->sprite->drawRect.h / 2;
             }
         }
 
@@ -1450,6 +1543,62 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                 destroyWarperPath((void*) &movePath);
                 pathIndex = -1;
                 pathfinderUnit = NULL;
+
+                if (!playerTurn && turnEnemy < enemyTeam->unitsSize) //an enemy just moved (and presumably attacked)
+                {  //do enemy attack
+                    //printf("turn enemy on end of path: %d\n", turnEnemy);
+                    double distance = getDistance(playerTeam->units[enemyTarget]->sprite->drawRect.x + playerTeam->units[enemyTarget]->sprite->drawRect.w / 2,
+                                                  playerTeam->units[enemyTarget]->sprite->drawRect.y + playerTeam->units[enemyTarget]->sprite->drawRect.h / 2,
+                                                  enemyTeam->units[turnEnemy]->sprite->drawRect.x + enemyTeam->units[turnEnemy]->sprite->drawRect.w / 2,
+                                                  enemyTeam->units[turnEnemy]->sprite->drawRect.y + enemyTeam->units[turnEnemy]->sprite->drawRect.h / 2) / tilemap.tileSize;  //get the distance in tiles
+
+                    warperAttackCheck enemyCheck = checkAttack(enemyTeam->units[turnEnemy], playerTeam->units[enemyTarget], distance);
+                    warperAttackResult enemyResult = doAttack(enemyTeam->units[turnEnemy], playerTeam->units[enemyTarget], enemyCheck);
+
+                    if (playerTeam->units[enemyTarget]->battleData.curHp <= 0)
+                    {
+                        playerTeam->units[enemyTarget]->sprite->renderLayer = 0;  //your unit has died
+
+                        int deadUnits = 0;
+                        for(int i = 0; i < playerTeam->unitsSize; i++)
+                        {
+                            if (playerTeam->units[i]->sprite->renderLayer == 0)
+                                deadUnits++;
+                        }
+                        if (deadUnits == playerTeam->unitsSize)
+                            quit = true;  //if all units are dead, you lost the battle
+                    }
+
+                    initWarperTextBox(&backupTextBox, battleTextBox.rect, battleTextBox.outlineColor, battleTextBox.bgColor, battleTextBox.highlightColor, battleTextBox.texts, battleTextBox.isOption, battleTextBox.textsSize, true);
+                    destroyWarperTextBox((void*) &battleTextBox); //backup the battle text box
+
+                    char* attackNoticeOptions[4] = {NULL, NULL, (playerTeam->units[enemyTarget]->sprite->renderLayer == 0) ? "(Mortally Wounded)" : " ", "OK"};
+                    attackNoticeOptions[0] = calloc(31, sizeof(char));
+                    snprintf(attackNoticeOptions[0], 31, "Enemy hit for %d damage.", enemyResult.damage);
+
+                    attackNoticeOptions[1] = calloc(20, sizeof(char));  //crit message length + status message length + 1
+                    strncpy(attackNoticeOptions[1], "", 20);
+                    if (enemyResult.miss)
+                        strncpy(attackNoticeOptions[1], "(Missed)", 9);
+                    else
+                    {
+                        if (enemyResult.crit)
+                            strncat(attackNoticeOptions[1], "(Crit) ", 20);
+
+                        if (enemyResult.status != statusNone)
+                        {
+                            char* statusStr = calloc(11, sizeof(char));
+                            char* statusNameArr[] = STATUS_NAME_ARR;
+                            snprintf(statusStr, 11, "(%s) ", statusNameArr[enemyResult.status]);
+                            strncat(attackNoticeOptions[1], statusStr, 20);
+                        }
+                    }
+
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, attackNoticeOptions, (bool[4]) {false, false, false, true}, 4, tilemap.tileSize);
+                    confirmMode = CONFIRM_ENEMY_ATTACK;
+                    free(attackNoticeOptions[0]);
+                    free(attackNoticeOptions[1]);
+                }
             }
             //*/
         }
@@ -1481,8 +1630,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     //local objects/resources must be removed before quitting
     removeResourceFromCScene(scene, &battleTextBoxRes, -1, true);
     removeResourceFromCScene(scene, &movePathRes, -1, true);
-    removeResourceFromCScene(scene, &circleRes, -1, true);
-    removeResourceFromCScene(scene, &enemyCircleRes, -1, true);
+    removeResourceFromCScene(scene, &enemyMoveCircleRes, -1, true);
+    removeResourceFromCScene(scene, &teleportCircleRes, -1, true);
+    removeResourceFromCScene(scene, &enemyTeleportCircleRes, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
     removeSpriteFromCScene(scene, &unitSelectSprite, -1, true);
 

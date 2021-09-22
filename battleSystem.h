@@ -161,6 +161,8 @@ void addExp(warperUnit* unit, int exp);
 
 void initTestWarperTeams(warperTilemap tilemap, warperTeam* playerTeam, warperTeam* enemyTeam);
 
+#define STATUS_NAME_ARR {"None", "Hacked", "Wounded", "Slowed", "Exposed"}
+
 #define MISC_ITEM_NAME_ARR {"Misc Item 1"}
 #define MELEE_ITEM_NAME_ARR {"Training Sword"}
 #define RANGED_ITEM_NAME_ARR {"Training Blaster"}
