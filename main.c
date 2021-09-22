@@ -65,7 +65,7 @@ int main(int argc, char** argv)
             createTestMap(&tilemap);
         }
 
-        if (selection == 3)
+        if (selection == 4)
         {
             quitAll = true;  //we want to immediately close the window and quit, as the user requests
         }
@@ -83,36 +83,44 @@ int main(int argc, char** argv)
             warperTeam playerTeam, enemyTeam;
 
             //TEST squads init
-            cSprite testEnemySprite;
+            cSprite* testEnemySprites = calloc(5, sizeof(cSprite));
             warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1, (warperWeaponStats) {1, 1, 0}};
 
-            warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
-
-            initCSprite(&testEnemySprite, NULL, "assets/characterTilesheet.png", 1,
-                        (cDoubleRect) {(tilemap.width - 3) * tilemap.tileSize, (tilemap.height - 6) * tilemap.tileSize, 44, 96},
+            warperUnit enemyUnits[5];
+            for(int i = 0; i < 5; i++)
+            {
+                initCSprite(&(testEnemySprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
+                        (cDoubleRect) {(tilemap.width - 3 - i) * tilemap.tileSize, (tilemap.height - 6 + 2 * (i % 2)) * tilemap.tileSize, 44, 96},
                         (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
                         NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+
+                enemyUnits[i] = (warperUnit) {&testEnemySprites[i], "Enemy", 1, 0, 0, 0, 0, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+                calculateStats(&enemyUnits[i], true);  //fill in both regular and battle stats
+            }
 
             cSprite* testSquadSprites = calloc(5, sizeof(cSprite));
             cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
 
             warperUnit testSquadUnits[5];
             char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
+            enum warperClass testSquadClasses[5] = {classNone, classAttacker, classAttacker, classShooter, classTechnomancer};
+
+            cDoublePt squadSprLocations[5] = {(cDoublePt) {0, 0}, (cDoublePt) {0, tilemap.tileSize / 2}, (cDoublePt) {tilemap.tileSize / 2, 0}, (cDoublePt) {tilemap.tileSize, 0}, (cDoublePt) {tilemap.tileSize / 2, tilemap.tileSize / 2}};
 
             for(int i = 0; i < 5; i++)
             {
                 initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
                             (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
-                            (cDoubleRect) {0, 0, tilemap.tileSize / 2, tilemap.tileSize / 2},
+                            (cDoubleRect) {squadSprLocations[i].x, squadSprLocations[i].y, tilemap.tileSize / 2, tilemap.tileSize / 2},
                             NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
-                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 150, 35 - 2 * i, 12 + 2 * i, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35 - 2 * i, 12 + 2 * i, false}};
+                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], 1, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+                calculateStats(&testSquadUnits[i], true);  //fill in regular stats and battle stats
             }
 
             initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
-            initWarperTeam(&enemyTeam, (warperUnit*[1]) {&enemyUnit}, 1, NULL, 0, 0);
+            initWarperTeam(&enemyTeam, (warperUnit*[5]) {&(enemyUnits[0]), &(enemyUnits[1]), &(enemyUnits[2]), &(enemyUnits[3]), &(enemyUnits[4])}, 5, NULL, 0, 0);
             //end TEST squads init
-
 
             addSpriteToCScene(&gameScene, playerTeam.units[0]->sprite);
             addSpriteToCScene(&gameScene, enemyTeam.units[0]->sprite);
@@ -149,14 +157,21 @@ int main(int argc, char** argv)
                 }
 
                 if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
-                    controlCode = -1;  //if pause menu returns that we want to quit then quit
+                    controlCode = -1;  //if pause menu returns that we want to quit then quit to main menu
 
-                if (controlCode == -1)
+                if (controlCode < 0)
+                {
                     quit = true;
+                    if (controlCode == -2)
+                        quitAll = true;
+                }
             }
 
             destroyWarperTeam(&playerTeam, false);
             destroyWarperTeam(&enemyTeam, false);
+
+            free(testEnemySprites);
+            free(testSquadSprites);
 
             destroyCScene(&gameScene);
 
@@ -203,9 +218,9 @@ void importWarperTilemap(warperTilemap* tilemap, char* filepath)
 int gameDevMenu()
 {
     cScene menuScene;
-    char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Quit"};
+    char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Print Progression Info", "Quit"};
     warperTextBox menuBox;
-    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[4]) {true, true, true, true}, 4, &(global.mainFont));
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[5]) {true, true, true, true, true}, 5, &(global.mainFont));
 
     cResource menuBoxResource;
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
@@ -222,7 +237,7 @@ int gameDevMenu()
         input = cGetInputState(true);
 
         if (input.quitInput)
-            menuBox.selection = 3;  //quit
+            menuBox.selection = 4;  //quit
 
         if (input.isClick)
         {
@@ -230,6 +245,13 @@ int gameDevMenu()
             if (menuBoxResource.renderLayer != 0)
                 checkWarperTextBoxClick(&menuBox, input.click.x, input.click.y);
         }
+
+        if (menuBox.selection == 3)
+        {
+            debugPrintStatProgression();
+            menuBox.selection = -1;
+        }
+
         drawCScene(&menuScene, true, true, &fps, WARPER_FRAME_LIMIT);
     }
 
@@ -364,7 +386,7 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
         {
             quit = true;
             if (input.quitInput)
-                controlCode = -1;
+                controlCode = -2;  //quit EVERYTHING
             if (input.keyStates[SDL_SCANCODE_ESCAPE])
                 controlCode = 1;
         }
@@ -1375,7 +1397,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                     targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //aim to move to the closest position below
                             }
                             node* path = NULL;
-                            if (targetUnitX > 0 && targetUnitX < tilemap.width * tilemap.tileSize && targetUnitY > 0 && targetUnitY < tilemap.height * tilemap.tileSize)
+                            //if (targetUnitX > 0 && targetUnitX < tilemap.width * tilemap.tileSize && targetUnitY > 0 && targetUnitY < tilemap.height * tilemap.tileSize)
                                 path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
                                                             targetUnitX, targetUnitY,  //use our adjusted target position here
                                                             movePath.pathfinderWidth, movePath.pathfinderHeight,

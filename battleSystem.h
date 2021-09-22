@@ -44,7 +44,6 @@ enum warperItemType
     itemStory
 };
 
-/*
 enum warperWeaponAttribute
 {
     attrNone,
@@ -52,7 +51,6 @@ enum warperWeaponAttribute
     attrOptimized,
     attrLucky
 };
-//*/
 
 //struct definitions
 typedef struct _node
@@ -90,7 +88,7 @@ typedef struct _warperWeaponStats
     int power;
     int weight;
     int reach;
-    //enum warperWeaponAttribute attribute;
+    enum warperWeaponAttribute attribute;
 } warperWeaponStats;
 
 typedef struct _warperItem
@@ -163,17 +161,15 @@ void addExp(warperUnit* unit, int exp);
 
 void initTestWarperTeams(warperTilemap tilemap, warperTeam* playerTeam, warperTeam* enemyTeam);
 
-/*
-const char* miscItemNameArr[] = {"Misc Item 1"};
-const char* meleeItemNameArr[] = {"Training Sword"};
-const char* rangedItemNameArr[] = {"Training Blaster"};
-const char* magicItemNameArr[] = {"Training Crypto- + Grimoire/Tome = Cryptoire/Cryptome"};
-const char* consumableItemNameArr[] = {"Consumable 1"};
-const char* storyItemNameArr[] = {"Story Item 1"};
-//*/
+#define MISC_ITEM_NAME_ARR {"Misc Item 1"}
+#define MELEE_ITEM_NAME_ARR {"Training Sword"}
+#define RANGED_ITEM_NAME_ARR {"Training Blaster"}
+#define MAGIC_ITEM_NAME_ARR {"Training Crypto- + Grimoire/Tome = Cryptoire/Cryptome"}
+#define CONSUMABLE_ITEM_NAME_ARR {"Consumable 1"}
+#define STORY_ITEM_NAME_ARR {"Story Item 1"}
 
-//const warperWeaponStats meleeStatsArr[] = {};
-//const warperWeaponStats rangedStatsArr[] = {};
-//const warperWeaponStats magicStatsArr[] = {};
+#define MELEE_WEAPON_STATS_ARR {}
+#define RANGED_WEAPON_STATS_ARR {}
+#define MAGIC_WEAPON_STATS_ARR {}
 
 #endif // PLAYER_H_INCLUDED
