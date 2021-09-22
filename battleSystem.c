@@ -1,6 +1,6 @@
 #include "battleSystem.h"
 
-/** \brief
+/** \brief Initializes a team
  *
  * \param team warperTeam* - team to initialize
  * \param units warperUnit** - array of warperUnit*s with the team's members
@@ -26,9 +26,10 @@ void initWarperTeam(warperTeam* team, warperUnit** units, int unitsSize, warperI
     team->money = money;
 }
 
-/** \brief
+/** \brief Cleans up memory associated with a team, and frees the units inside if indicated
  *
  * \param team warperTeam* - team to destroy
+ * \param freeUnits bool - free the units inside the team?
  */
 void destroyWarperTeam(warperTeam* team, bool freeUnits)
 {
@@ -46,6 +47,20 @@ void destroyWarperTeam(warperTeam* team, bool freeUnits)
     team->inventorySize = 0;
 
     team->money = 0;
+}
+
+void initWarperItem(warperItem* item, enum warperItemType type, int id, int count)
+{
+    item->itemType = type;
+    item->id = id;
+    //lookup item name based on its type and ID
+    item->count = count;
+    item->weaponStats = (warperWeaponStats) {0, 0, 0};
+
+    if (type == itemMelee || type == itemRanged || type == itemMagic)
+    {
+        //lookup weapon stats
+    }
 }
 
 /** \brief Inits a new node

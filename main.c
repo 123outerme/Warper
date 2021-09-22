@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 
             //TEST squads init
             cSprite testEnemySprite;
-            warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1};
+            warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1, (warperWeaponStats) {1, 1, 0}};
 
             warperUnit enemyUnit = (warperUnit) {&testEnemySprite, "Enemy", 1, 0, 150, 35, 12, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {150, statusNone, 0, 35, 12, false}};
 
@@ -1307,7 +1307,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             //calculate best move based on AI type, enemy difficulty, each unit's class, remaining health, etc
             //AI Types: Lone wolves each fight one unit, Pack wolves use 2-3 units to fight one of your units
 
-            //SIMPLE TEST AI - just repositions next to you
+            //SIMPLE TEST AI - just repositions next to you and attacks
             if (!movePath.path)  //if we aren't currently following a path
             {
                 if (turnEnemy >= enemyTeam->unitsSize)
@@ -1339,8 +1339,17 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                 {  //we still have to process the enemy turn
                     if (enemyTeam->units[turnEnemy]->sprite->renderLayer != 0)  //if the enemy unit is alive
                     {
-                        //TODO: Fix bug where sometimes enemy unit will target a position that is slightly inside the opposing unit
-                        //This can be seen when the customCollisions array is initalized (after player clicks the "Move" options) and then the turn is ended
+                        //initialize customCollisions array for the turn enemy to use in finding a path
+                        int customArrPos = 0;
+                        for(int i = 0; i < playerTeam->unitsSize; i++)  //copy over all player-team rects
+                            customCollisions[customArrPos++] = playerTeam->units[i]->sprite->drawRect;
+
+                        for(int i = 0; i < enemyTeam->unitsSize; i++)  //copy over all enemy-team rects (except current)
+                        {
+                            if (i != turnEnemy)
+                                customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
+                        }
+
                         //printf("entered enemy pathfinding\n");
                         pathfinderUnit = enemyTeam->units[turnEnemy];
 
@@ -1365,7 +1374,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 if (targetUnitY < pathfinderUnit->sprite->drawRect.y)
                                     targetUnitY += playerTeam->units[targetUnit]->sprite->drawRect.h;  //aim to move to the closest position below
                             }
-                            node* path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
+                            node* path = NULL;
+                            if (targetUnitX > 0 && targetUnitX < tilemap.width * tilemap.tileSize && targetUnitY > 0 && targetUnitY < tilemap.height * tilemap.tileSize)
+                                path = offsetBreadthFirst(tilemap, pathfinderUnit->sprite->drawRect.x, pathfinderUnit->sprite->drawRect.y,
                                                             targetUnitX, targetUnitY,  //use our adjusted target position here
                                                             movePath.pathfinderWidth, movePath.pathfinderHeight,
                                                             customCollisions, CUSTOM_COLLISIONS_COUNT, &pathLength, false, scene->camera);

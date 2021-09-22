@@ -48,7 +48,7 @@ void drawWarperCircle(void* circle, cCamera camera);
 void destroyWarperCircle(void* circle);
 
 //text box helper functs:
-void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalPadding, bool justify, char** strings, bool* isOptions, int stringsLength, int tileSize);
-void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalPadding, bool justify, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font);
+void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalSpacing, bool justify, char** strings, bool* isOptions, int stringsLength, int tileSize);
+void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalSpacing, bool justify, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font);
 
 #endif // WARPERINTERFACE_H_INCLUDED
