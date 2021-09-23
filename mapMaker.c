@@ -15,7 +15,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     initCText(&inputText, " ", (cDoubleRect) {0, global.windowH / 2, 4 * global.mainFont.fontSize, global.mainFont.fontSize}, 5 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
     initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, NULL, 0, (cText*[2]) {&promptText, &inputText}, 2);
-    drawCScene(&inputScene, true, true, NULL, 0);
+    drawCScene(&inputScene, true, true, NULL, NULL, 0);
     while(!quit)
     {
         //cInputState keyboardState = cGetInputState(false);
@@ -36,7 +36,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
         if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
             updateCText(&inputText, dimensionInput);
 
-        drawCScene(&inputScene, true, true, NULL, 60);
+        drawCScene(&inputScene, true, true, NULL, NULL, 60);
     }
     if (key == -1)
     {
@@ -56,7 +56,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
     updateCText(&inputText, "   ");
     updateCText(&promptText, "Input height:");
-    drawCScene(&inputScene, true, true, NULL, 0);
+    drawCScene(&inputScene, true, true, NULL, NULL, 60);
     while(!quit)
     {
         key = getKey(false);
@@ -68,7 +68,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
         if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
             updateCText(&inputText, dimensionInput);
 
-        drawCScene(&inputScene, true, true, NULL, 60);
+        drawCScene(&inputScene, true, true, NULL, NULL, 60);
     }
 
     tilemap->height = strtol(dimensionInput, NULL, 10);
@@ -374,7 +374,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                 }
             }
         }
-        drawCScene(&inputScene, true, true, NULL, 60);
+        drawCScene(&inputScene, true, true, NULL, NULL, 60);
     }
 
     char* tileMapData = calloc(3 * 3 * tilemap->width * tilemap->height + 3 + 3 + 1, sizeof(char));  //3 arrays * 3 digits * width * height + width data + height data + 1 to be safe
