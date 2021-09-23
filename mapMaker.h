@@ -23,4 +23,6 @@ void destroyWarperFilter(void* subclass);
 #define WARPER_MULTI_PROPS { (warperMultiProperties) {.tileRect = (SDL_Rect) {2, 0, 4, 5}, .colToRepeat = -1, .rowToRepeat = 2}, \
                              (warperMultiProperties) {.tileRect = (SDL_Rect) {2, 5, 6, 6}, .colToRepeat = 2, .rowToRepeat = 2} };
 
+#define WARPER_MULTI_PROPS_LEN 2
+
 #endif // MAPMAKER_H_INCLUDED
