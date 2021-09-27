@@ -1,2 +1,2 @@
 # Warper
-2D Action RPG based on teleporting abilities.
+Turn-based strategy RPG based on teleporting abilities.

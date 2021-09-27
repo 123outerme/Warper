@@ -21,8 +21,6 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 
 #define WARPER_FRAME_LIMIT 60
 
-#define TILE_SIZE 32
-
 #define CONFIRM_NONE 0
 #define CONFIRM_MOVEMENT 1
 #define CONFIRM_TELEPORT 2
@@ -56,7 +54,7 @@ int main(int argc, char** argv)
         if (selection == 2)
         {  //create new map
             if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
-                selection = 3;  //treat it as a quit
+                selection = 4;  //treat it as a quit
         }
         if (selection == 1)
         {  //load created test map
@@ -85,25 +83,25 @@ int main(int argc, char** argv)
             warperTeam playerTeam, enemyTeam;
 
             //TEST squads init
-            cSprite* testEnemySprites = calloc(5, sizeof(cSprite));
+            cSprite* enemySquadSprites = calloc(5, sizeof(cSprite));
             warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1, (warperWeaponStats) {1, 1, 0}};
 
-            warperUnit enemyUnits[5];
+            warperUnit enemySquad[5];
             for(int i = 0; i < 5; i++)
             {
-                initCSprite(&(testEnemySprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
+                initCSprite(&(enemySquadSprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
                         (cDoubleRect) {(tilemap.width - 3 - 2 * i) * tilemap.tileSize, (tilemap.height - 6 + 2 * (i % 2)) * tilemap.tileSize, 44, 96},
                         (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
                         NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
-                enemyUnits[i] = (warperUnit) {&testEnemySprites[i], "Enemy", 1, 0, 0, 0, 0, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
-                calculateStats(&enemyUnits[i], true);  //fill in both regular and battle stats
+                enemySquad[i] = (warperUnit) {&enemySquadSprites[i], "Enemy", 1, 0, 0, 0, 0, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+                calculateStats(&enemySquad[i], true);  //fill in both regular and battle stats
             }
 
-            cSprite* testSquadSprites = calloc(5, sizeof(cSprite));
+            cSprite* playerSquadSprites = calloc(5, sizeof(cSprite));
             cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
 
-            warperUnit testSquadUnits[5];
+            warperUnit playerSquad[5];
             char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
             enum warperClass testSquadClasses[5] = {classNone, classAttacker, classAttacker, classShooter, classTechnomancer};
 
@@ -113,17 +111,17 @@ int main(int argc, char** argv)
 
             for(int i = 0; i < 5; i++)
             {
-                initCSprite(&(testSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
+                initCSprite(&(playerSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
                             (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                             (cDoubleRect) {squadSprLocations[i].x, squadSprLocations[i].y, tilemap.tileSize / 2, tilemap.tileSize / 2},
                             NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
 
-                testSquadUnits[i] = (warperUnit) {&(testSquadSprites[i]), testSquadNames[i], testUnitsLevel, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
-                calculateStats(&testSquadUnits[i], true);  //fill in regular stats and battle stats
+                playerSquad[i] = (warperUnit) {&(playerSquadSprites[i]), testSquadNames[i], testUnitsLevel, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
+                calculateStats(&playerSquad[i], true);  //fill in regular stats and battle stats
             }
 
-            initWarperTeam(&playerTeam, (warperUnit*[5]) {&(testSquadUnits[0]), &(testSquadUnits[1]), &(testSquadUnits[2]), &(testSquadUnits[3]), &(testSquadUnits[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
-            initWarperTeam(&enemyTeam, (warperUnit*[5]) {&(enemyUnits[0]), &(enemyUnits[1]), &(enemyUnits[2]), &(enemyUnits[3]), &(enemyUnits[4])}, 5, NULL, 0, 0);
+            initWarperTeam(&playerTeam, (warperUnit*[5]) {&(playerSquad[0]), &(playerSquad[1]), &(playerSquad[2]), &(playerSquad[3]), &(playerSquad[4])}, 5, (warperItem[1]) {testWeapon}, 1, 0);
+            initWarperTeam(&enemyTeam, (warperUnit*[5]) {&(enemySquad[0]), &(enemySquad[1]), &(enemySquad[2]), &(enemySquad[3]), &(enemySquad[4])}, 5, NULL, 0, 0);
             //end TEST squads init
 
             addSpriteToCScene(&gameScene, playerTeam.units[0]->sprite);
@@ -177,8 +175,8 @@ int main(int argc, char** argv)
             destroyWarperTeam(&playerTeam, false);
             destroyWarperTeam(&enemyTeam, false);
 
-            free(testEnemySprites);
-            free(testSquadSprites);
+            free(enemySquadSprites);
+            free(playerSquadSprites);
 
             destroyCScene(&gameScene);
 
@@ -191,36 +189,7 @@ int main(int argc, char** argv)
     return error;
 }
 
-void importWarperTilemap(warperTilemap* tilemap, char* filepath)
-{
-    char* importedMap = calloc(7, sizeof(char));
-    readLine(filepath, 0, 7, &importedMap);
-    //printf("%s\n", importedMap);
 
-    char dimData[4] = "\0";
-
-    strncpy(dimData, importedMap, 3); //the first three characters of the map file indicate its width
-    tilemap->width = strtol(dimData, NULL, 16);
-    strncpy(dimData, importedMap + 3, 3);  //the next three characters indicate the map's height
-    tilemap->height = strtol(dimData, NULL, 16);
-
-    free(importedMap);
-
-    int importedLength = 3 * 3 * tilemap->width * tilemap->height + 3 + 3;
-    //this string is long enough to hold data that fills 3 arrays with tiles, using 3-digit tile codes, over the whole width and height of the map
-    //plus the width and height 'bytes' which is how we know how big this map is in the first place
-    //(3 arrays * 3 digits * width * height + width 'bytes' + height 'bytes')
-
-    importedMap = calloc(importedLength + 1, sizeof(char));
-
-    readLine(filepath, 0, importedLength + 1, &importedMap);
-
-    loadTilemap(tilemap, importedMap);
-
-    free(importedMap);
-
-    tilemap->tileSize = TILE_SIZE;
-}
 
 int gameDevMenu()
 {

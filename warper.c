@@ -19,6 +19,37 @@ void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionm
     }
 }
 
+void importWarperTilemap(warperTilemap* tilemap, char* filepath)
+{
+    char* importedMap = calloc(7, sizeof(char));
+    readLine(filepath, 0, 7, &importedMap);
+    //printf("%s\n", importedMap);
+
+    char dimData[4] = "\0";
+
+    strncpy(dimData, importedMap, 3); //the first three characters of the map file indicate its width
+    tilemap->width = strtol(dimData, NULL, 16);
+    strncpy(dimData, importedMap + 3, 3);  //the next three characters indicate the map's height
+    tilemap->height = strtol(dimData, NULL, 16);
+
+    free(importedMap);
+
+    int importedLength = 3 * 3 * tilemap->width * tilemap->height + 3 + 3;
+    //this string is long enough to hold data that fills 3 arrays with tiles, using 3-digit tile codes, over the whole width and height of the map
+    //plus the width and height 'bytes' which is how we know how big this map is in the first place
+    //(3 arrays * 3 digits * width * height + width 'bytes' + height 'bytes')
+
+    importedMap = calloc(importedLength + 1, sizeof(char));
+
+    readLine(filepath, 0, importedLength + 1, &importedMap);
+
+    loadTilemap(tilemap, importedMap);
+
+    free(importedMap);
+
+    tilemap->tileSize = TILE_SIZE;
+}
+
 /** \brief Imports a tilemap from text (hex) data
  *
  * \param tilemap warperTilemap* - expects tilemap->width and ->height to be filled in

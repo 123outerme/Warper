@@ -1,6 +1,7 @@
 #ifndef MAPMAKER_H_INCLUDED
 #define MAPMAKER_H_INCLUDED
 
+#include "warperInterface.h"
 #include "warper.h"
 
 typedef struct _warperFilter

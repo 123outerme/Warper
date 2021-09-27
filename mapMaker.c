@@ -6,98 +6,138 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     bool fullQuit = false;
     SDL_Keycode key;
 
-    char* dimensionInput = calloc(5, sizeof(char));
+    bool loadMap = false;
     cScene inputScene;
     cCamera inputCamera;
-    cText inputText;
-    cText promptText;
-    initCText(&promptText, "Input width:", (cDoubleRect) {0, global.windowH / 4, 12 * global.mainFont.fontSize, global.mainFont.fontSize}, 13 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
-    initCText(&inputText, " ", (cDoubleRect) {0, global.windowH / 2, 4 * global.mainFont.fontSize, global.mainFont.fontSize}, 5 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
-    initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, NULL, 0, (cText*[2]) {&promptText, &inputText}, 2);
-    drawCScene(&inputScene, true, true, NULL, NULL, 0);
-    while(!quit)
     {
-        //cInputState keyboardState = cGetInputState(false);
-        key = getKey(false);
+        warperTextBox loadChoiceBox;
+        cResource loadChoiceBoxRes;
+        createMenuTextBox(&loadChoiceBox, (cDoubleRect) {tileSize, tileSize, global.windowW - 2 * tileSize, global.windowH - 2 * tileSize}, (cDoublePt) {412, 8}, 4, true, 0xFF, (char*[4]) {"Load Map?", " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, &global.mainFont);
+        initCResource(&loadChoiceBoxRes, (void*) &loadChoiceBox, drawWarperTextBox, destroyWarperTextBox, 5);
+        initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, (cResource*[1]) {&loadChoiceBoxRes}, 1, NULL, 0);
 
-        /*
-        if (keyboardState.quitInput || keyboardState.keyStates[SDL_SCANCODE_ESCAPE] || keyboardState.keyStates[SDL_SCANCODE_RETURN])
-            quit = true;
-        //*/
+        loadChoiceBox.selection = -1;
 
-        //*
-        if (key == -1 || key == SDLK_ESCAPE || key == SDLK_RETURN)
-            quit = true;
-        //*/
+        cInputState input;
+        while(loadChoiceBox.selection < 0)
+        {
+            input = cGetInputState(true);
 
-        //handleTextInput(widthInput, keyboardState, 3);
-        handleTextKeycodeInput(dimensionInput, key, 4);
-        if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
-            updateCText(&inputText, dimensionInput);
+            if (input.quitInput)
+                return true; //we are quitting
 
-        drawCScene(&inputScene, true, true, NULL, NULL, 60);
+            if (input.isClick)
+            {
+                if (loadChoiceBoxRes.renderLayer != 0)
+                    checkWarperTextBoxClick(&loadChoiceBox, input.click.x, input.click.y);
+            }
+            drawCScene(&inputScene, true, true, NULL, NULL, 60);
+        }
+        loadMap = (loadChoiceBox.selection == 2);
     }
-    if (key == -1)
+
+    destroyCScene(&inputScene);
+    quit = false;
+
+    if (loadMap)
     {
+        importWarperTilemap(tilemap, "maps/testMap.txt");
+    }
+    else
+    {
+        char* dimensionInput = calloc(5, sizeof(char));
+
+        cText promptText;
+        cText inputText;
+        initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
+        initCText(&promptText, "Input width:", (cDoubleRect) {0, global.windowH / 4, 12 * global.mainFont.fontSize, global.mainFont.fontSize}, 13 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        initCText(&inputText, " ", (cDoubleRect) {0, global.windowH / 2, 4 * global.mainFont.fontSize, global.mainFont.fontSize}, 5 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
+        initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, NULL, 0, (cText*[2]) {&promptText, &inputText}, 2);
+        drawCScene(&inputScene, true, true, NULL, NULL, 0);
+        while(!quit)
+        {
+            //cInputState keyboardState = cGetInputState(false);
+            key = getKey(false);
+
+            /*
+            if (keyboardState.quitInput || keyboardState.keyStates[SDL_SCANCODE_ESCAPE] || keyboardState.keyStates[SDL_SCANCODE_RETURN])
+                quit = true;
+            //*/
+
+            //*
+            if (key == -1 || key == SDLK_ESCAPE || key == SDLK_RETURN)
+                quit = true;
+            //*/
+
+            //handleTextInput(widthInput, keyboardState, 3);
+            handleTextKeycodeInput(dimensionInput, key, 4);
+            if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
+                updateCText(&inputText, dimensionInput);
+
+            drawCScene(&inputScene, true, true, NULL, NULL, 60);
+        }
+        if (key == -1)
+        {
+            free(dimensionInput);
+            destroyCScene(&inputScene);
+            return true;
+        }
+
+        key = SDLK_UNKNOWN;
+
+        tilemap->width = strtol(dimensionInput, NULL, 10);
+        //printf("%d\n", tilemap->width);
+        quit = false;
+        free(dimensionInput);
+
+        dimensionInput = calloc(5, sizeof(char));
+
+        updateCText(&inputText, "   ");
+        updateCText(&promptText, "Input height:");
+        drawCScene(&inputScene, true, true, NULL, NULL, 60);
+        while(!quit)
+        {
+            key = getKey(false);
+            if (key == -1 || key == SDLK_ESCAPE || key == SDLK_RETURN)
+                quit = true;
+
+            handleTextKeycodeInput(dimensionInput, key, 4);
+
+            if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
+                updateCText(&inputText, dimensionInput);
+
+            drawCScene(&inputScene, true, true, NULL, NULL, 60);
+        }
+
+        tilemap->height = strtol(dimensionInput, NULL, 10);
         free(dimensionInput);
         destroyCScene(&inputScene);
-        return true;
-    }
 
-    key = SDLK_UNKNOWN;
+        if (key == -1)
+            return true;
 
-    tilemap->width = strtol(dimensionInput, NULL, 10);
-    //printf("%d\n", tilemap->width);
-    quit = false;
-    free(dimensionInput);
+        tilemap->tileSize = tileSize;
 
-    dimensionInput = calloc(5, sizeof(char));
-
-    updateCText(&inputText, "   ");
-    updateCText(&promptText, "Input height:");
-    drawCScene(&inputScene, true, true, NULL, NULL, 60);
-    while(!quit)
-    {
-        key = getKey(false);
-        if (key == -1 || key == SDLK_ESCAPE || key == SDLK_RETURN)
-            quit = true;
-
-        handleTextKeycodeInput(dimensionInput, key, 4);
-
-        if ((key >= SDLK_0 && key <= SDLK_z) || key == SDLK_SPACE || key == SDLK_BACKSPACE)
-            updateCText(&inputText, dimensionInput);
-
-        drawCScene(&inputScene, true, true, NULL, NULL, 60);
-    }
-
-    tilemap->height = strtol(dimensionInput, NULL, 10);
-    free(dimensionInput);
-    destroyCScene(&inputScene);
-
-    if (key == -1)
-        return true;
-
-    tilemap->tileSize = tileSize;
-
-    tilemap->spritemap_layer1 = calloc(tilemap->width, sizeof(int*));
-    tilemap->spritemap_layer2 = calloc(tilemap->width, sizeof(int*));
-    tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
-    tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
-    for(int x = 0; x < tilemap->width; x++)
-    {
-        tilemap->spritemap_layer1[x] = calloc(tilemap->height, sizeof(int));
-        tilemap->spritemap_layer2[x] = calloc(tilemap->height, sizeof(int));
-        tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
-        for(int y = 0; y < tilemap->height; y++)
+        tilemap->spritemap_layer1 = calloc(tilemap->width, sizeof(int*));
+        tilemap->spritemap_layer2 = calloc(tilemap->width, sizeof(int*));
+        tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
+        tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
+        for(int x = 0; x < tilemap->width; x++)
         {
-            tilemap->spritemap_layer1[x][y] = 4;
-            tilemap->spritemap_layer2[x][y] = 798;  //should be invisible tile
-            tilemap->collisionmap[x][y] = 0;
+            tilemap->spritemap_layer1[x] = calloc(tilemap->height, sizeof(int));
+            tilemap->spritemap_layer2[x] = calloc(tilemap->height, sizeof(int));
+            tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
+            for(int y = 0; y < tilemap->height; y++)
+            {
+                tilemap->spritemap_layer1[x][y] = 4;
+                tilemap->spritemap_layer2[x][y] = 798;  //should be invisible tile
+                tilemap->collisionmap[x][y] = 0;
+            }
         }
-    }
 
-    quit = false;
+        quit = false;
+    }
     bool spriteMode = true, drawLayer1 = true, drawMulti = false, pickMode = false;
 
     c2DModel mapModel_layer1, mapModel_layer2;

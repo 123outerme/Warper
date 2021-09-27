@@ -7,6 +7,8 @@
 #include "CoSprite/csInput.h"
 #include "CoSprite/csUtility.h"
 
+#define TILE_SIZE 32
+
 typedef struct _warperTilemap
 {
     int** spritemap_layer1;
@@ -18,6 +20,7 @@ typedef struct _warperTilemap
 } warperTilemap;
 
 void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height);
+void importWarperTilemap(warperTilemap* tilemap, char* filepath);
 void loadTilemap(warperTilemap* tilemap, char* importedData);
 void exportTilemap(warperTilemap tilemap, char* exportedData);
 void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2);
