@@ -87,6 +87,7 @@ int main(int argc, char** argv)
             warperItem testWeapon = (warperItem) {itemMelee, 0, "Test Weapon", 1, (warperWeaponStats) {1, 1, 0}};
 
             warperUnit enemySquad[5];
+
             for(int i = 0; i < 5; i++)
             {
                 initCSprite(&(enemySquadSprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
@@ -99,8 +100,7 @@ int main(int argc, char** argv)
             }
 
             cSprite* playerSquadSprites = calloc(5, sizeof(cSprite));
-            cDoublePt testSquadPts[5] = {(cDoublePt) {tilemap.tileSize, tilemap.tileSize}, (cDoublePt) {0, 0}, (cDoublePt) {2 * tilemap.tileSize, 0}, (cDoublePt) {0, 2 * tilemap.tileSize}, (cDoublePt) {2 * tilemap.tileSize, 4 * tilemap.tileSize}};
-
+            cDoublePt testSquadPts[5] = {(cDoublePt) {3 * tilemap.tileSize, 3 * tilemap.tileSize}, (cDoublePt) {6 * tilemap.tileSize, 6 * tilemap.tileSize}, (cDoublePt) {6 * tilemap.tileSize, 3 * tilemap.tileSize}, (cDoublePt) {3 * tilemap.tileSize, 6 * tilemap.tileSize}, (cDoublePt) {9 * tilemap.tileSize, 4.5 * tilemap.tileSize}};
             warperUnit playerSquad[5];
             char* testSquadNames[5] = {"You", "Alessia", "Marc", "Samael", "Marie"};
             enum warperClass testSquadClasses[5] = {classNone, classAttacker, classAttacker, classShooter, classTechnomancer};
@@ -773,7 +773,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
         {
             quit = true;
             if (input.quitInput)
-                controlCode = -1;
+                controlCode = -2;
             else
                 controlCode = 3;  //go to pause menu and come back here when finished
         }
@@ -1678,7 +1678,21 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     stop = true;  //stop
             }
             nextTabFrame = frameCount + 5;
+            scene->camera->rect.x = playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 - scene->camera->rect.w / 2;
+            scene->camera->rect.y = playerTeam->units[selectedUnit]->sprite->drawRect.y + playerTeam->units[selectedUnit]->sprite->drawRect.h / 2 - scene->camera->rect.h / 2;
         }
+
+        //camera bounds correction
+        if (scene->camera->rect.x < 0)
+            scene->camera->rect.x = 0;
+        if (scene->camera->rect.x + scene->camera->rect.w > tilemap.width * tilemap.tileSize)
+            scene->camera->rect.x = tilemap.width * tilemap.tileSize - scene->camera->rect.w;
+
+        if (scene->camera->rect.y < 0)
+            scene->camera->rect.y = 0;
+        if (scene->camera->rect.y + scene->camera->rect.h > tilemap.height * tilemap.tileSize)
+            scene->camera->rect.x = tilemap.height * tilemap.tileSize - scene->camera->rect.h;
+        //end camera bounds correction
 
         if (input.keyStates[SDL_SCANCODE_F11])  //DEBUG
             printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);

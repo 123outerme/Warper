@@ -162,7 +162,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                             NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);
             }
         }
-        initC2DModel(&collisionModel, collisionSprites, tilemap->width * tilemap->height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+        initC2DModel(&collisionModel, collisionSprites, tilemap->width * tilemap->height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);
 
         initCSprite(&leftTileSprite, tilesetTexture, "./assets/worldTilesheet.png", 0,
                     (cDoubleRect) {tilemap->tileSize, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize},
@@ -256,7 +256,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     }
 
-                    if (e.key.keysym.sym == SDLK_e && leftTileSprite.id < WARPER_MULTI_PROPS_LEN && drawMulti)
+                    if (e.key.keysym.sym == SDLK_e && leftTileSprite.id < WARPER_MULTI_PROPS_LEN - 1 && drawMulti)
                     {
                         leftTileSprite.id++;
 
