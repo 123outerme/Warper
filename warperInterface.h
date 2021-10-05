@@ -51,4 +51,7 @@ void destroyWarperCircle(void* circle);
 void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalSpacing, bool justify, char** strings, bool* isOptions, int stringsLength, int tileSize);
 void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalSpacing, bool justify, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font);
 
+//Other UI/UX
+void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity);
+
 #endif // WARPERINTERFACE_H_INCLUDED

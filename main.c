@@ -11,7 +11,8 @@ void debugPrintStatProgression();
 //game control/state functions
 void importWarperTilemap(warperTilemap* tilemap, char* filepath);
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
-bool pauseMenu(cScene* gameScene, warperTeam* playerTeam);
+int pauseMenu(cScene* gameScene, warperTeam* playerTeam);
+bool optionsMenu(bool inGame);
 int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam);
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
@@ -43,6 +44,8 @@ int main(int argc, char** argv)
     int error = initCoSprite("./assets/cb.bmp", "Warper", 40 * TILE_SIZE, 20 * TILE_SIZE, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
+    loadWarperOptions();
+
     warperTilemap tilemap;
 
     bool quitAll = false;
@@ -51,21 +54,21 @@ int main(int argc, char** argv)
         //main menu
         int selection = gameDevMenu();
 
-        if (selection == 2)
+        if (selection == 4)
         {  //create new map
             if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
                 selection = 4;  //treat it as a quit
         }
-        if (selection == 1)
+        if (selection == 3)
         {  //load created test map
             importWarperTilemap(&tilemap, "maps/testMap.txt");
         }
-        if (selection == 0)
+        if (selection == 2)
         {  //create temp map
             createTestMap(&tilemap);
         }
 
-        if (selection == 4)
+        if (selection == 7)
         {
             quitAll = true;  //we want to immediately close the window and quit, as the user requests
         }
@@ -74,11 +77,13 @@ int main(int argc, char** argv)
             cCamera gameCamera;
             initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //init camera
 
-            c2DModel mapModel_layer1, mapModel_layer2;
+            c2DModel mapModel_layer1, mapModel_layer2, mapModel_gridLayer;
             loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
 
+            loadGridModel(tilemap, &mapModel_gridLayer, options.gridOpacity);
+
             cScene gameScene;
-            initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[2]) {&mapModel_layer1, &mapModel_layer2}, 2, NULL, 0, NULL, 0);
+            initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &mapModel_gridLayer}, 3, NULL, 0, NULL, 0);
 
             warperTeam playerTeam, enemyTeam;
 
@@ -136,7 +141,7 @@ int main(int argc, char** argv)
                     controlCode = gameLoop(tilemap, &gameScene, &playerTeam, &enemyTeam);
 
                 if (controlCode == 2 || controlCode == 3)  //if we are going into a battle, or returning to the battle from the pause menu
-                {
+                {  //WE WANT TO BATTLE
                     if (controlCode == 2)
                     {  //add in the player's squad and the enemy's squad
                         for(int i = 1; i < playerTeam.unitsSize; i++)
@@ -161,8 +166,12 @@ int main(int argc, char** argv)
                     }
                 }
 
-                if ((controlCode == 1 || controlCode == 3) && pauseMenu(&gameScene, &playerTeam))  //execute pause menu if we are trying to access it from the game or battle loops
-                    controlCode = -1;  //if pause menu returns that we want to quit then quit to main menu
+                if (controlCode == 1 || controlCode == 3)
+                {  //execute pause menu if we are trying to access it from the game or battle loops
+                    int pauseCode = pauseMenu(&gameScene, &playerTeam);
+                    if (pauseCode < 0)
+                        controlCode = pauseCode;  //if pause menu returns that we want to quit then quit to main menu or entirely
+                }
 
                 if (controlCode < 0)
                 {
@@ -172,13 +181,13 @@ int main(int argc, char** argv)
                 }
             }
 
+            destroyCScene(&gameScene);
+
             destroyWarperTeam(&playerTeam, false);
             destroyWarperTeam(&enemyTeam, false);
 
             free(enemySquadSprites);
             free(playerSquadSprites);
-
-            destroyCScene(&gameScene);
 
             destroyWarperTilemap(&tilemap);
         }
@@ -194,9 +203,9 @@ int main(int argc, char** argv)
 int gameDevMenu()
 {
     cScene menuScene;
-    char* optionsArray[] = {"Load Test Map", "Load Created Map", "Create New Map", "Print Progression Info", "Quit"};
+    char* optionsArray[] = {"Alpha Build Menu", " ", "Load Test Map", "Load Created Map", "Create New Map", "Settings", "Print Progression Info", "Quit"};
     warperTextBox menuBox;
-    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[5]) {true, true, true, true, true}, 5, &(global.mainFont));
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[8]) {false, false, true, true, true, true, true, true}, 8, &(global.mainFont));
 
     cResource menuBoxResource;
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
@@ -213,7 +222,7 @@ int gameDevMenu()
         input = cGetInputState(true);
 
         if (input.quitInput)
-            menuBox.selection = 4;  //quit
+            menuBox.selection = 7;  //quit
 
         if (input.isClick)
         {
@@ -222,7 +231,14 @@ int gameDevMenu()
                 checkWarperTextBoxClick(&menuBox, input.click.x, input.click.y);
         }
 
-        if (menuBox.selection == 3)
+        if (menuBox.selection == 5)
+        {
+            bool optionsQuit = optionsMenu(false);
+            menuBox.selection = (optionsQuit) ? 7 : -1;  //if we are trying to force quit, set equal to the quit value, else stay in the menu
+        }
+
+
+        if (menuBox.selection == 6)
         {
             debugPrintStatProgression();
             menuBox.selection = -1;
@@ -479,14 +495,14 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
     return controlCode;
 }
 
-bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
+int pauseMenu(cScene* gameScene, warperTeam* playerTeam)
 {
     int menuLevel = 0, menuId = WMENU_PAUSE, subMenuSelection = -1, menuOptsLength = 7;
     warperTextBox menuLayers[3];
     warperTextBox* pauseBox;
     char* optionsArray[] = {"PAUSE", " ", "Resume", "Party", "Items", "Options", "Quit"};
     bool isOptions[] = {false, false, true, true, true, true, true};
-    createMenuTextBox(&menuLayers[0], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, optionsArray, isOptions, 7, &global.mainFont);
+    createMenuTextBox(&menuLayers[0], (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, optionsArray, isOptions, menuOptsLength, &global.mainFont);
 
     pauseBox = &menuLayers[0]; //start keeping track of menu layers
 
@@ -502,7 +518,7 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         input = cGetInputState(true);
 
         if (input.quitInput)
-            pauseBox->selection = -2;  //quit
+            pauseBox->selection = -3;  //quit
 
         if (input.isClick)
         {
@@ -607,11 +623,11 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
                 if (pauseBox->selection == 5)
                 {
                     //options menu
-
-                    //pauseBox = &menuLayers[menuLevel];  //set the new menu to be what the loop accesses
-                    //pauseBoxResource.subclass = pauseBox;  //set the new menu to be displayed
+                    if(optionsMenu(true))  //run the options menu and if it returns true (a force quit)
+                        pauseBox->selection = -2;  //quit the game
                 }
-                pauseBox->selection = -1;  //do not leave the loop
+                if (pauseBox->selection > -1)  //if we aren't trying to force quit (or, as implied by the if statement encapsulating, leave the pause menu)
+                    pauseBox->selection = -1;  //do not leave the loop
             }
             if (pauseBox->selection == 6)
                 pauseBox->selection = -2; //quit the game
@@ -681,10 +697,77 @@ bool pauseMenu(cScene* gameScene, warperTeam* playerTeam)
     }
 
     int selection = pauseBox->selection;
+    if (selection < -1)
+        selection++;  //-2 -> -1 (return to menu), -3 -> -2 (exit entirely)
+    else
+        selection = 0;
 
     removeResourceFromCScene(gameScene, &pauseBoxResource, -1, true);  //this will destroy pauseBox so we need to save its selection value
 
-    return (selection == -2);
+    return selection;
+}
+
+bool optionsMenu(bool inGame)
+{
+    bool quitGame = false;
+
+    const int menuOptsLength = 7;
+    warperTextBox optionsBox;
+    char* optionsArray[] = {"OPTIONS", " ", NULL, NULL, NULL, NULL, "Back"};
+
+    optionsArray[2] = calloc(17, sizeof(char));
+    snprintf(optionsArray[2], 17, "Difficulty: %s", "TEST");
+
+    optionsArray[3] = calloc(18, sizeof(char));
+    snprintf(optionsArray[3], 18, "Grid Opacity: %d", (int) (options.gridOpacity / (double) GRID_MAX_OPACITY * 100.0));
+
+    optionsArray[4] = calloc(18, sizeof(char));
+    snprintf(optionsArray[4], 18, "Music Volume: %d", (int) (options.musicVolume / (double) MIX_MAX_VOLUME * 100.0));
+
+    optionsArray[5] = calloc(21, sizeof(char));
+    snprintf(optionsArray[5], 21, "Sound FX Volume: %d", (int) (options.soundFxVolume / (double) MIX_MAX_VOLUME * 100.0));
+
+    bool isOptions[] = {false, false, false, false, false, false, true};
+    createMenuTextBox(&optionsBox, (cDoubleRect) {0, 0, global.windowW, global.windowH}, (cDoublePt) {0, 8}, 6, true, 0xB0, optionsArray, isOptions, menuOptsLength, &global.mainFont);
+
+    for(int i = 2; i < 6; i++)
+        free(optionsArray[i]);
+
+    cResource optionsBoxRes;
+    initCResource(&optionsBoxRes, (void*) &optionsBox, drawWarperTextBox, destroyWarperTextBox, 1);
+
+    cCamera optionsCamera;
+    initCCamera(&optionsCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+
+    cScene optionsScene;
+    initCScene(&optionsScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &optionsCamera, NULL, 0, NULL, 0, (cResource*[1]) {&optionsBoxRes}, 1, NULL, 0);
+
+    optionsBox.selection = -1;
+
+    cInputState input;
+    //int fps = 0;
+    while(optionsBox.selection == -1)
+    {
+        input = cGetInputState(true);
+
+        if (input.quitInput)
+            optionsBox.selection = -2;  //quit
+
+        if (input.isClick)
+        {
+            //if we clicked
+            if (optionsBoxRes.renderLayer != 0)
+                checkWarperTextBoxClick(&optionsBox, input.click.x, input.click.y);
+        }
+        drawCScene(&optionsScene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
+    }
+
+    quitGame = (optionsBox.selection == -2);
+
+    destroyCScene(&optionsScene);
+
+    saveWarperOptions();
+    return quitGame;
 }
 
 int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, warperTeam* enemyTeam)
@@ -823,6 +906,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         {
                             pathToCursor = false;
                             confirmPlayerSprite.renderLayer = 0;
+                            movePathRes.renderLayer = 0;
 
                             if (movePath.path)
                                 destroyWarperPath((void*) &movePath);  //free current path
@@ -904,7 +988,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                     for(int i = 0; i < playerTeam->unitsSize; i++)
                     {
-
+                        //what is this?
                     }
 
                     //set text box to be enemy turn textbox (player turn textbox will be re-instantiated from scratch)
@@ -1230,6 +1314,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                         movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
                                         pathfinderUnit = playerTeam->units[selectedUnit];  //set the pathfinder so that we can reference it when the movement is confirmed and the unit starts moving
                                     }
+                                    else
+                                    {
+                                        movePathRes.renderLayer = 0;
+                                        confirmPlayerSprite.renderLayer = 0;
+                                        printf("failed to find path for movement\n");
+                                    }
                                     //*/
 
                                     //playerTeam->units[selectedUnit]->sprite->drawRect = oldRect;
@@ -1244,6 +1334,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                         //set flag to false, reset variables, free movePath
                                         destroyWarperPath((void*) &movePath);
                                         pathIndex = -1;
+                                        confirmPlayerSprite.renderLayer = 0;
+                                        movePathRes.renderLayer = 0;
+                                        printf("failed movement along valid path: %f moveDistance\n", moveDistance);
                                     }
                                 }
                                 else
@@ -1261,6 +1354,10 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                         questionStr = calloc(61, sizeof(char));  //1 line = approx. 30 characters, and we're allowing 2 lines
                                         strncpy(questionStr, "Do you want to teleport? It will use %d energy.", 60);
                                         confirmMode = CONFIRM_TELEPORT;
+                                    }
+                                    else
+                                    {
+                                        printf("failed teleport\n");
                                     }
                                 }
                             }
@@ -1656,16 +1753,16 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
         unitSelectSprite.drawRect = playerTeam->units[selectedUnit]->sprite->drawRect;
 
         //camera movement
-        if (input.keyStates[SDL_SCANCODE_W])
+        if (input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_UP])
             scene->camera->rect.y -= 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_S])
+        if (input.keyStates[SDL_SCANCODE_S] || input.keyStates[SDL_SCANCODE_DOWN])
             scene->camera->rect.y += 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_A])
+        if (input.keyStates[SDL_SCANCODE_A] || input.keyStates[SDL_SCANCODE_LEFT])
             scene->camera->rect.x -= 10 * 60 / framerate;
 
-        if (input.keyStates[SDL_SCANCODE_D])
+        if (input.keyStates[SDL_SCANCODE_D] || input.keyStates[SDL_SCANCODE_RIGHT])
             scene->camera->rect.x += 10 * 60 / framerate;
 
         if (input.keyStates[SDL_SCANCODE_TAB] && playerTurn && nextTabFrame < frameCount)
@@ -1691,7 +1788,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
         if (scene->camera->rect.y < 0)
             scene->camera->rect.y = 0;
         if (scene->camera->rect.y + scene->camera->rect.h > tilemap.height * tilemap.tileSize)
-            scene->camera->rect.x = tilemap.height * tilemap.tileSize - scene->camera->rect.h;
+            scene->camera->rect.y = tilemap.height * tilemap.tileSize - scene->camera->rect.h;
         //end camera bounds correction
 
         if (input.keyStates[SDL_SCANCODE_F11])  //DEBUG

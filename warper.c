@@ -1,5 +1,8 @@
 #include "warper.h"
 
+cLogger warperLogger;
+warperOptions options;
+
 void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height)
 {
     tilemap->width = width;
@@ -170,4 +173,66 @@ void destroyWarperTilemap(warperTilemap* tilemap)
 
     tilemap->width = 0;
     tilemap->height = 0;
+}
+
+/** \brief Loads the Warper options into the global struct. If the options file exist, creates it first
+ */
+void loadWarperOptions()
+{
+    if (checkFile(WARPER_OPTIONS_FILE) <= 0)
+    {
+        //default options
+        options.difficulty = 1; //Beginner. Should it be something more like Medium?
+        options.gridOpacity = 0x20;  //what should the default be here?
+        options.musicVolume = MIX_MAX_VOLUME;
+        options.soundFxVolume = MIX_MAX_VOLUME;
+        saveWarperOptions();
+    }
+    else
+    {
+        char* optionsText = calloc(80, sizeof(char));
+        readLine(WARPER_OPTIONS_FILE, 0, 80, &optionsText);  //difficulty
+        char* savePtr = optionsText;
+        options.difficulty = strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10);
+
+        readLine(WARPER_OPTIONS_FILE, 1, 80, &optionsText);  //grid opacity
+        savePtr = optionsText;
+        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * GRID_MAX_OPACITY;
+
+        readLine(WARPER_OPTIONS_FILE, 2, 80, &optionsText);  //music volume
+        savePtr = optionsText;
+        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * MIX_MAX_VOLUME;
+
+        readLine(WARPER_OPTIONS_FILE, 3, 80, &optionsText);  //sfx volume
+        savePtr = optionsText;
+        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * MIX_MAX_VOLUME;
+
+        //TODO - complete
+
+        free(optionsText);
+    }
+}
+
+/** \brief Writes the Warper options that are in the global struct to the file
+ */
+void saveWarperOptions()
+{
+    createFile(WARPER_OPTIONS_FILE);  //erase existing file
+    char* optionsText = calloc(80, sizeof(char));
+
+    snprintf(optionsText, 80, "difficulty:%d", options.difficulty);
+    appendLine(WARPER_OPTIONS_FILE, optionsText, true);
+
+    snprintf(optionsText, 80, "gridOpacity:%d", (int) (options.gridOpacity / ((double) GRID_MAX_OPACITY) * 100));
+    appendLine(WARPER_OPTIONS_FILE, optionsText, true);
+
+    snprintf(optionsText, 80, "musicVolume:%d", (int) (options.musicVolume / ((double) MIX_MAX_VOLUME) * 100));
+    appendLine(WARPER_OPTIONS_FILE, optionsText, true);
+
+    snprintf(optionsText, 80, "difficulty:%d", (int) (options.soundFxVolume / ((double) MIX_MAX_VOLUME) * 100));
+    appendLine(WARPER_OPTIONS_FILE, optionsText, true);
+
+    //TODO - complete
+
+    free(optionsText);
 }

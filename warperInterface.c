@@ -318,3 +318,32 @@ void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt
 
     free(texts);
 }
+
+/** \brief
+ *
+ * \param tilemap warperTilemap - the tilemap to use
+ * \param gridModel c2DModel* - the model that will hold the grid
+ * \return void
+ *
+ */
+void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity)
+{
+    SDL_Texture* uiTilesetTexture;
+    loadIMG("assets/uiTilesheet.png", &uiTilesetTexture);
+    SDL_SetTextureAlphaMod(uiTilesetTexture, opacity);
+
+    cSprite* gridSprites = calloc(tilemap.width * tilemap.height, sizeof(cSprite));
+    for(int x = 0; x < tilemap.width; x++)
+    {
+        for(int y = 0; y < tilemap.height; y++)
+        {
+            initCSprite(&gridSprites[x * tilemap.height + y], uiTilesetTexture, "assets/uiTilesheet.png", 1,
+                        (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize},
+                        (cDoubleRect) {0, 32, 32, 32},
+                        NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+        }
+    }
+    initC2DModel(gridModel, gridSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);
+
+    free(gridSprites);
+}
