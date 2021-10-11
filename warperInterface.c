@@ -1,5 +1,8 @@
 #include "warperInterface.h"
 
+cSprite cursorSprite;
+cResource cursorResource;
+
 /** \brief
  *
  * \param textBox warperTextBox*
@@ -83,30 +86,6 @@ void drawWarperTextBox(void* textBoxSubclass, cCamera camera)
     }
 
     SDL_SetRenderDrawColor(global.mainRenderer, prevR, prevG, prevB, prevA);
-}
-
-/** \brief Automatically updates storedSelection and selection of a textbox based on what you click
- *
- * \param textBox warperTextBox* - text box you want updated
- * \param xClick int - x coordinate of click (based on text box's text rects)
- * \param yClick int - y coordinate of click (based on text box's text rects)
- */
-void checkWarperTextBoxClick(warperTextBox* textBox, int xClick, int yClick)
-{
-    if (xClick > textBox->rect.x && xClick < textBox->rect.x + textBox->rect.w && yClick > textBox->rect.y && yClick < textBox->rect.y + textBox->rect.h)
-    {
-        textBox->storedSelection = textBox->selection;
-
-        for(int i = 0; i < textBox->textsSize; i++)
-        {
-            if (textBox->isOption[i] && (xClick > textBox->texts[i].rect.x && xClick < textBox->texts[i].rect.x + textBox->texts[i].rect.w &&
-                yClick > textBox->texts[i].rect.y && yClick < textBox->texts[i].rect.y + textBox->texts[i].rect.h))
-            {
-                //we clicked on an element
-                textBox->selection = i;
-            }
-        }
-    }
 }
 
 /** \brief CoSprite helper function; if using, cast textBox to a void*
@@ -218,7 +197,7 @@ void drawWarperCircle(void* circle, cCamera camera)
         cSprite cheatCircle;  //init the circle
         initCSprite(&cheatCircle, NULL, "./assets/filledCircleCheat.png", 0,
                     (cDoubleRect) {wCircle->center.x - wCircle->radius, wCircle->center.y - wCircle->radius, 2 * wCircle->radius, 2 * wCircle->radius},
-                    (cDoubleRect) {0, 0, 507, 507}, NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 5);
+                    (cDoubleRect) {0, 0, 507, 507}, NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 5);
 
         //do some color and alpha modding
         SDL_SetTextureColorMod(cheatCircle.texture, wCircle->circleColor.r, wCircle->circleColor.g, wCircle->circleColor.b);
@@ -228,6 +207,18 @@ void drawWarperCircle(void* circle, cCamera camera)
         destroyCSprite(&cheatCircle);
         //*/
     }
+}
+
+void drawCursor(void* cursor, cCamera camera)
+{
+    drawCSprite(cursorSprite, camera, false, false);
+    if (cursorSprite.id == CURSOR_SELECT)
+        updateCursorIcon(CURSOR_NORMAL);  //update the select sprite back to normal
+}
+
+void destroyCursor(void* cursor)
+{
+    //nothing needed so far
 }
 
 /** \brief CoSprite helper function; if using, cast circle to a void*
@@ -319,6 +310,68 @@ void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt
     free(texts);
 }
 
+void checkWarperTextBoxHover(warperTextBox* textBox, SDL_MouseMotionEvent motion)
+{
+    if (motion.x >= 0 && motion.y >= 0 && motion.x <= SCREEN_PX_WIDTH && motion.y <= SCREEN_PX_HEIGHT)
+    {
+        if (motion.x > textBox->rect.x && motion.x < textBox->rect.x + textBox->rect.w && motion.y > textBox->rect.y && motion.y < textBox->rect.y + textBox->rect.h)
+        {
+            for(int i = 0; i < textBox->textsSize; i++)
+            {
+                if (textBox->isOption[i] && (motion.x > textBox->texts[i].rect.x && motion.x < textBox->texts[i].rect.x + textBox->texts[i].rect.w &&
+                    motion.y > textBox->texts[i].rect.y && motion.y < textBox->texts[i].rect.y + textBox->texts[i].rect.h))
+                {
+                    updateCursorIcon(CURSOR_HOVER);
+                }
+            }
+        }
+    }
+}
+
+/** \brief Automatically updates storedSelection and selection of a textbox based on what you click
+ *
+ * \param textBox warperTextBox* - text box you want updated
+ * \param xClick int - x coordinate of click (based on text box's text rects)
+ * \param yClick int - y coordinate of click (based on text box's text rects)
+ */
+void checkWarperTextBoxSelection(warperTextBox* textBox, int xClick, int yClick)
+{
+    if (xClick >= textBox->rect.x && xClick <= textBox->rect.x + textBox->rect.w && yClick >= textBox->rect.y && yClick <= textBox->rect.y + textBox->rect.h)
+    {
+        textBox->storedSelection = textBox->selection;
+
+        for(int i = 0; i < textBox->textsSize; i++)
+        {
+            if (textBox->isOption[i] && (xClick > textBox->texts[i].rect.x && xClick < textBox->texts[i].rect.x + textBox->texts[i].rect.w &&
+                yClick > textBox->texts[i].rect.y && yClick < textBox->texts[i].rect.y + textBox->texts[i].rect.h))
+            {
+                //we clicked on an element
+                textBox->selection = i;
+                updateCursorIcon(CURSOR_SELECT);
+            }
+        }
+    }
+}
+
+void updateCursorPos(SDL_MouseMotionEvent motion, bool debugPrint)
+{
+    if (motion.x > -1 && motion.y > -1 && motion.x <= SCREEN_PX_WIDTH && motion.y <= SCREEN_PX_HEIGHT)
+    {
+        if (debugPrint)
+            printf("%d, %d\n", motion.x, motion.y);
+        cursorSprite.drawRect.x = motion.x;
+        cursorSprite.drawRect.y = motion.y;
+    }
+}
+
+
+void updateCursorIcon(int id)
+{
+    cursorSprite.id = id;
+    cursorSprite.srcClipRect.x = 16 * (id % 2);  //0 if even, 16 if odd
+    cursorSprite.srcClipRect.y = 64 + 16 * (id / 2); //64 if 0-1, 80 if 2-3, etc.
+}
+
 /** \brief
  *
  * \param tilemap warperTilemap - the tilemap to use
@@ -340,7 +393,7 @@ void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity)
             initCSprite(&gridSprites[x * tilemap.height + y], uiTilesetTexture, "assets/uiTilesheet.png", 1,
                         (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize},
                         (cDoubleRect) {0, 32, 32, 32},
-                        NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 5);
+                        NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, NULL, 5);
         }
     }
     initC2DModel(gridModel, gridSprites, tilemap.width * tilemap.height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 2);

@@ -11,6 +11,9 @@
 #define GRID_MAX_OPACITY 0x40
 #define WARPER_OPTIONS_FILE "assets/options.cfg"
 
+#define SCREEN_PX_WIDTH 40 * TILE_SIZE
+#define SCREEN_PX_HEIGHT 20 * TILE_SIZE
+
 typedef struct _warperTilemap
 {
     int** spritemap_layer1;

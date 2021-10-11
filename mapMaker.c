@@ -15,7 +15,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
         cResource loadChoiceBoxRes;
         createMenuTextBox(&loadChoiceBox, (cDoubleRect) {tileSize, tileSize, global.windowW - 2 * tileSize, global.windowH - 2 * tileSize}, (cDoublePt) {412, 8}, 4, true, 0xFF, (char*[4]) {"Load Map?", " ", "Yes", "No"}, (bool[4]) {false, false, true, true}, 4, &global.mainFont);
         initCResource(&loadChoiceBoxRes, (void*) &loadChoiceBox, drawWarperTextBox, destroyWarperTextBox, 5);
-        initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, (cResource*[1]) {&loadChoiceBoxRes}, 1, NULL, 0);
+        initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[1]) {&cursorSprite}, 1, NULL, 0, (cResource*[1]) {&loadChoiceBoxRes}, 1, NULL, 0);
 
         loadChoiceBox.selection = -1;
 
@@ -30,8 +30,11 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
             if (input.isClick)
             {
                 if (loadChoiceBoxRes.renderLayer != 0)
-                    checkWarperTextBoxClick(&loadChoiceBox, input.click.x, input.click.y);
+                    checkWarperTextBoxSelection(&loadChoiceBox, input.click.x, input.click.y);
             }
+
+            updateCursorPos(input.motion, false);
+
             drawCScene(&inputScene, true, true, NULL, NULL, 60);
         }
         loadMap = (loadChoiceBox.selection == 2);
@@ -159,7 +162,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                 initCSprite(&collisionSprites[x * tilemap->height + y], tilesetTexture, "./assets/worldTilesheet.png", tilemap->collisionmap[x][y],
                             (cDoubleRect) {tilemap->tileSize * x, tilemap->tileSize * y, tilemap->tileSize, tilemap->tileSize},
                             (cDoubleRect) {39 * tilemap->tileSize / 2, (tilemap->collisionmap[x][y] + 18) * tilemap->tileSize / 2, tilemap->tileSize / 2, tilemap->tileSize / 2},
-                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 3);
+                            NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, NULL, 3);
             }
         }
         initC2DModel(&collisionModel, collisionSprites, tilemap->width * tilemap->height, (cDoublePt) {0, 0}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, NULL, 0);
@@ -167,17 +170,17 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
         initCSprite(&leftTileSprite, tilesetTexture, "./assets/worldTilesheet.png", 0,
                     (cDoubleRect) {tilemap->tileSize, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize},
                     (cDoubleRect) {0, 0, tilemap->tileSize / 2, tilemap->tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 2);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 2);
 
         initCSprite(&rightTileSprite, tilesetTexture, "./assets/worldTilesheet.png", 0,
                     (cDoubleRect) {tilemap->tileSize, tilemap->tileSize, tilemap->tileSize, tilemap->tileSize},
                     (cDoubleRect) {0, 0, tilemap->tileSize / 2, tilemap->tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 0);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 0);
 
         initCSprite(&tilesetSprite, tilesetTexture, "./assets/worldTileset.png", 0,
                     (cDoubleRect) {0, 0, 640, 320},
                     (cDoubleRect) {0, 0, 640, 320},
-                    NULL, 2.0, SDL_FLIP_NONE, 0, true, NULL, 0);
+                    NULL, 2.0, SDL_FLIP_NONE, 0, true, false, NULL, 0);
     }
 
     cResource shadeResource;
@@ -185,8 +188,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     initCResource(&shadeResource, &filter, drawWarperFilter, destroyWarperFilter, 0);
 
     initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
-    initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[3]) {&tilesetSprite, &leftTileSprite, &rightTileSprite}, 3, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &collisionModel}, 3, (cResource*[1]) {&shadeResource}, 1, NULL, 0);
-
+    initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[4]) {&cursorSprite, &tilesetSprite, &leftTileSprite, &rightTileSprite}, 4, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &collisionModel}, 3, (cResource*[1]) {&shadeResource}, 1, NULL, 0);
 
     int previousIndex = 0;
 
@@ -467,6 +469,8 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                 }
                 if (e.type == SDL_MOUSEMOTION)
                 {
+                    updateCursorPos(e.motion, false);
+
                     leftTileSprite.drawRect.x = e.motion.x + inputCamera.rect.x - tilemap->tileSize / 2;
                     leftTileSprite.drawRect.y = e.motion.y + inputCamera.rect.y - tilemap->tileSize / 2;
 

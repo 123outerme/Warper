@@ -17,6 +17,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
 cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 
+void checkWarperUnitHover(SDL_MouseMotionEvent motion, warperTeam* playerTeam, warperTeam* enemyTeam, cCamera* camera);
+
 #define TEST_TILEMAP_X 80  //(global.windowW / TILE_SIZE)
 #define TEST_TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
 
@@ -28,6 +30,12 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap);
 #define CONFIRM_ATTACK 3
 #define CONFIRM_ATTACK_RESULT 4
 #define CONFIRM_ENEMY_ATTACK 5
+
+#define BATTLE_OPTION_MOVE 0
+#define BATTLE_OPTION_TELEPORT 1
+#define BATTLE_OPTION_ATTACK 2
+#define BATTLE_OPTION_MODS 3
+#define BATTLE_OPTION_PASS 4
 
 #define WMENU_PAUSE 0
 #define WMENU_PARTY 1
@@ -41,12 +49,16 @@ int main(int argc, char** argv)
     if (argc > 1)
         argv = argv;  //useless, but prevents warning. might actually add a debug option on cmd line or something
 
-    int error = initCoSprite("./assets/cb.bmp", "Warper", 40 * TILE_SIZE, 20 * TILE_SIZE, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
     loadWarperOptions();
 
     warperTilemap tilemap;
+
+    initCSprite(&cursorSprite, NULL, "assets/uiTilesheet.png", 0, (cDoubleRect) {0, 0, 16, 16}, (cDoubleRect) {0, 2 * TILE_SIZE, 16, 16}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, true, NULL, 1);
+    initCResource(&cursorResource, NULL, drawCursor, destroyCursor, 1);
+    SDL_ShowCursor(false);
 
     bool quitAll = false;
     while(!quitAll)
@@ -83,7 +95,7 @@ int main(int argc, char** argv)
             loadGridModel(tilemap, &mapModel_gridLayer, options.gridOpacity);
 
             cScene gameScene;
-            initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &mapModel_gridLayer}, 3, NULL, 0, NULL, 0);
+            initCScene(&gameScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, (cSprite*[1]) {&cursorSprite}, 1, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &mapModel_gridLayer}, 3, NULL, 0, NULL, 0);
 
             warperTeam playerTeam, enemyTeam;
 
@@ -98,7 +110,7 @@ int main(int argc, char** argv)
                 initCSprite(&(enemySquadSprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
                         (cDoubleRect) {(tilemap.width - 3 - 2 * i) * tilemap.tileSize, (tilemap.height - 6 + 2 * (i % 2)) * tilemap.tileSize, 44, 96},
                         (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
-                        NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+                        NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 4);
 
                 enemySquad[i] = (warperUnit) {&enemySquadSprites[i], "Enemy", 1, 0, 0, 0, 0, classNone, &testWeapon, (warperStats) {1, 1, 1, 1, 1, 1, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
                 calculateStats(&enemySquad[i], true);  //fill in both regular and battle stats
@@ -119,7 +131,7 @@ int main(int argc, char** argv)
                 initCSprite(&(playerSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
                             (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                             (cDoubleRect) {squadSprLocations[i].x, squadSprLocations[i].y, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                            NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 4);
+                            NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 4);
 
                 playerSquad[i] = (warperUnit) {&(playerSquadSprites[i]), testSquadNames[i], testUnitsLevel, 0, 0, 0, 0, testSquadClasses[i], &testWeapon, (warperStats) {testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, testUnitsLevel, 0}, (warperBattleData) {0, statusNone, 0, 0, 0, false}};
                 calculateStats(&playerSquad[i], true);  //fill in regular stats and battle stats
@@ -193,6 +205,8 @@ int main(int argc, char** argv)
         }
     }
 
+    destroyCSprite(&cursorSprite); //cursorSprite is set to be global, so it won't get destroyed automatically by destroyCScene
+
     closeCoSprite();
 
     return error;
@@ -213,7 +227,7 @@ int gameDevMenu()
     cCamera gameCamera;
     initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
 
-    initCScene(&menuScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, NULL, 0, NULL, 0, (cResource*[1]) {&menuBoxResource}, 1, NULL, 0);
+    initCScene(&menuScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, (cSprite*[1]) {&cursorSprite}, 1, NULL, 0, (cResource*[1]) {&menuBoxResource}, 1, NULL, 0);
 
     cInputState input;
     //int fps = 0;
@@ -224,11 +238,12 @@ int gameDevMenu()
         if (input.quitInput)
             menuBox.selection = 7;  //quit
 
+        checkWarperTextBoxHover(&menuBox, input.motion);
         if (input.isClick)
         {
             //if we clicked
             if (menuBoxResource.renderLayer != 0)
-                checkWarperTextBoxClick(&menuBox, input.click.x, input.click.y);
+                checkWarperTextBoxSelection(&menuBox, input.click.x, input.click.y);
         }
 
         if (menuBox.selection == 5)
@@ -244,12 +259,15 @@ int gameDevMenu()
             menuBox.selection = -1;
         }
 
+        updateCursorPos(input.motion, false);
+
         drawCScene(&menuScene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
     }
 
     int selection = menuBox.selection;
 
     destroyCScene(&menuScene);
+    updateCursorIcon(0);
 
     return selection;
 }
@@ -489,6 +507,8 @@ int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, w
         if (input.keyStates[SDL_SCANCODE_RIGHT])
             gameScene->camera->rect.x += 10 * 60 / framerate;
 
+        updateCursorPos(input.motion, false);
+
         drawCScene(gameScene, true, true, NULL, &framerate, 60);
     }
 
@@ -507,7 +527,7 @@ int pauseMenu(cScene* gameScene, warperTeam* playerTeam)
     pauseBox = &menuLayers[0]; //start keeping track of menu layers
 
     cResource pauseBoxResource;
-    initCResource(&pauseBoxResource, (void*) pauseBox, drawWarperTextBox, destroyWarperTextBox, 1);
+    initCResource(&pauseBoxResource, (void*) pauseBox, drawWarperTextBox, destroyWarperTextBox, 2);
 
     addResourceToCScene(gameScene, &pauseBoxResource);
 
@@ -520,12 +540,16 @@ int pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         if (input.quitInput)
             pauseBox->selection = -3;  //quit
 
+        checkWarperTextBoxHover(pauseBox, input.motion);
         if (input.isClick)
         {
             //if we clicked
             if (pauseBoxResource.renderLayer != 0)
-                checkWarperTextBoxClick(pauseBox, input.click.x, input.click.y);
+                checkWarperTextBoxSelection(pauseBox, input.click.x, input.click.y);
         }
+
+        updateCursorPos(input.motion, false);
+
         drawCScene(gameScene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
 
         if (menuId == WMENU_PAUSE)
@@ -703,6 +727,7 @@ int pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         selection = 0;
 
     removeResourceFromCScene(gameScene, &pauseBoxResource, -1, true);  //this will destroy pauseBox so we need to save its selection value
+    updateCursorIcon(0);
 
     return selection;
 }
@@ -740,7 +765,7 @@ bool optionsMenu(bool inGame)
     initCCamera(&optionsCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
 
     cScene optionsScene;
-    initCScene(&optionsScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &optionsCamera, NULL, 0, NULL, 0, (cResource*[1]) {&optionsBoxRes}, 1, NULL, 0);
+    initCScene(&optionsScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &optionsCamera, (cSprite*[1]) {&cursorSprite}, 1, NULL, 0, (cResource*[1]) {&optionsBoxRes}, 1, NULL, 0);
 
     optionsBox.selection = -1;
 
@@ -753,18 +778,23 @@ bool optionsMenu(bool inGame)
         if (input.quitInput)
             optionsBox.selection = -2;  //quit
 
+        checkWarperTextBoxHover(&optionsBox, input.motion);
         if (input.isClick)
         {
             //if we clicked
             if (optionsBoxRes.renderLayer != 0)
-                checkWarperTextBoxClick(&optionsBox, input.click.x, input.click.y);
+                checkWarperTextBoxSelection(&optionsBox, input.click.x, input.click.y);
         }
+
+        updateCursorPos(input.motion, false);
+
         drawCScene(&optionsScene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
     }
 
     quitGame = (optionsBox.selection == -2);
 
     destroyCScene(&optionsScene);
+    updateCursorIcon(0);
 
     saveWarperOptions();
     return quitGame;
@@ -787,9 +817,10 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     warperTextBox battleTextBox, backupTextBox;
     cDoubleRect minimizeBoxSave = {0,0,0,0};
 
-    char* strings[] = {"Choose Unit", "Move", "Teleport", "Attack", "Mods", "End Turn"};
-    bool isOptions[] = {true, true, true, true, true, true};
-    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
+    const int ROOT_TEXTBOX_LENGTH = 5;
+    char* strings[] = {"Move", "Teleport", "Attack", "Mods", "End Turn"};
+    bool isOptions[] = {true, true, true, true, true};
+    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, ROOT_TEXTBOX_LENGTH, tilemap.tileSize);
 
     warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
     warperUnit* pathfinderUnit = NULL;
@@ -803,13 +834,13 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     warperCircle enemyTeleportCircle = {.radius = 0, .deltaDegrees = 10, .center = (cDoublePt) {0, 0}, .circleColor = (SDL_Color) {0xFF, 0, 0, 0x50}, .filled = true};
     int selectedEnemyIndex = -1;  //keeps track of which enemy we are checking movement radius for
 
-    initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 1);
+    initCResource(&battleTextBoxRes, (void*) &battleTextBox, drawWarperTextBox, destroyWarperTextBox, 0);
     initCResource(&movePathRes, (void*) &movePath, drawWarperPath, destroyWarperPath, 0);
     initCResource(&enemyMoveCircleRes, (void*) &enemyMoveCircle, drawWarperCircle, destroyWarperCircle, 0);
     initCResource(&teleportCircleRes, (void*) &teleportCircle, drawWarperCircle, destroyWarperCircle, 0);
     initCResource(&enemyTeleportCircleRes, (void*) &enemyTeleportCircle, drawWarperCircle, destroyWarperCircle, 0);
 
-    battleTextBox.selection = 0;
+    battleTextBox.selection = -1;
 
     addResourceToCScene(scene, &battleTextBoxRes);
     addResourceToCScene(scene, &movePathRes);
@@ -823,12 +854,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
                     (cDoubleRect) {-3 * tilemap.tileSize, -3 * tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 2 * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
-                    NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 0);
+                    NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 0);
 
     initCSprite(&unitSelectSprite, NULL, "assets/uiTilesheet.png", 0,
                 playerTeam->units[0]->sprite->drawRect,  //put this over top of the first selected unit
                 (cDoubleRect) {0, 0, tilemap.tileSize, tilemap.tileSize},
-                NULL, 1.0, SDL_FLIP_NONE, 0, false, NULL, 3);
+                NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 0);
 
     addSpriteToCScene(scene, &confirmPlayerSprite);
     addSpriteToCScene(scene, &unitSelectSprite);
@@ -837,7 +868,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
     cInputState input;
     int framerate = 60, frameCount = 0;
-    int selectedUnit = 0, selectedEnemy = -1;  //used for selecting a unit or an enemy unit
+    int selectedUnit = -1, selectedEnemy = -1;  //used for selecting a unit or an enemy unit
     int turnEnemy = 0, enemyTarget = -1;  //used for going through enemy turns
 
     int nextTabFrame = 0;  //used to put a slowdown on the number of tab presses collected per frame
@@ -861,6 +892,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                 controlCode = 3;  //go to pause menu and come back here when finished
         }
 
+        updateCursorPos(input.motion, false);
+        if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
+            updateCursorIcon(CURSOR_NORMAL);
+
+        if (battleTextBoxRes.renderLayer != 0)
+            checkWarperTextBoxHover(&battleTextBox, input.motion);
         if (input.isClick)
         {
             //if we clicked
@@ -868,11 +905,50 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             if (battleTextBoxRes.renderLayer != 0 && (input.click.x > battleTextBox.rect.x && input.click.x < battleTextBox.rect.x + battleTextBox.rect.w &&
                                                       input.click.y > battleTextBox.rect.y && input.click.y < battleTextBox.rect.y + battleTextBox.rect.h))
             {  // if we clicked the text box
-                checkWarperTextBoxClick(&battleTextBox, input.click.x, input.click.y);  //saves the selection to the battleTextBox
+                checkWarperTextBoxSelection(&battleTextBox, input.click.x, input.click.y);  //saves the selection to the battleTextBox
 
                 pathToCursor = false;
 
-                 if (battleTextBox.selection == 1 && !confirmMode)
+                if (input.click.button == SDL_BUTTON_RIGHT)
+                {
+                    battleTextBoxRes.renderLayer = 0;
+                    if (confirmMode == CONFIRM_MOVEMENT || battleTextBox.selection == BATTLE_OPTION_MOVE)
+                    {
+                        destroyWarperPath((void*) &movePath);
+                        movePathRes.renderLayer = 0;
+                        pathIndex = -1;
+                        pathfinderUnit = NULL;
+                        pathToCursor = false;
+                        confirmPlayerSprite.renderLayer = 0;
+                        if (confirmMode == CONFIRM_MOVEMENT)
+                        {
+                            //restore previous text box
+                            destroyWarperTextBox((void*) &battleTextBox);
+                            initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                            destroyWarperTextBox((void*) &backupTextBox);
+                        }
+                    }
+
+                    if (confirmMode == CONFIRM_TELEPORT || battleTextBox.selection == BATTLE_OPTION_TELEPORT)
+                    {
+                        confirmPlayerSprite.renderLayer = 0;
+                        teleportCircleRes.renderLayer = 0;
+                        if (confirmMode == CONFIRM_TELEPORT)
+                            {
+                                //restore previous text box
+                                destroyWarperTextBox((void*) &battleTextBox);
+                                initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                                destroyWarperTextBox((void*) &backupTextBox);
+                            }
+                    }
+
+                    battleTextBox.selection = -1;
+                    confirmMode = CONFIRM_NONE;
+                    selectedUnit = -1;
+                    unitSelectSprite.renderLayer = 0;
+                }
+
+                 if (battleTextBox.selection == BATTLE_OPTION_MOVE && !confirmMode)
                  {  //we clicked the first element (move or DEBUG force enemy pass turn)
                     if (playerTurn)
                     {  //we want to move
@@ -893,7 +969,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                         //restore textbox to regular menu
                         destroyWarperTextBox((void*) &battleTextBox);
-                        createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
+                        createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, ROOT_TEXTBOX_LENGTH, tilemap.tileSize);
 
                         turnCount++;
                     }
@@ -914,7 +990,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     }
                 }
 
-                if (battleTextBox.selection == 2 && !confirmMode)
+                if (battleTextBox.selection == BATTLE_OPTION_TELEPORT && !confirmMode)
                 {
                     //we want to teleport
                     teleportCircle.center.x = playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
@@ -962,12 +1038,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     }
                 }
 
-                if (battleTextBox.selection == 4 && !confirmMode)
+                if (battleTextBox.selection == BATTLE_OPTION_MODS && !confirmMode)
                 {
                     //open mods menu
                 }
 
-                if (battleTextBox.selection == 5 && !confirmMode)
+                if (battleTextBox.selection == BATTLE_OPTION_PASS && !confirmMode)
                 {  //end turn
                     playerTurn = false;
 
@@ -993,9 +1069,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                     //set text box to be enemy turn textbox (player turn textbox will be re-instantiated from scratch)
                     destroyWarperTextBox((void*) &battleTextBox);
-                    char* enemyTurnStrings[] = {"Choose Unit", "End Their Turn (Debug)"};
-                    bool enemyTurnIsOptions[] = {true, true};
-                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, enemyTurnStrings, enemyTurnIsOptions, 2, tilemap.tileSize);
+                    char* enemyTurnStrings[] = {"End Their Turn (Debug)"};
+                    bool enemyTurnIsOptions[] = {true};
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, enemyTurnStrings, enemyTurnIsOptions, 1, tilemap.tileSize);
                 }
 
 
@@ -1156,10 +1232,53 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             }
             else
             {  //if we didn't click on the text box
+
+                if (input.click.button == SDL_BUTTON_RIGHT)
+                {  //if we're trying to close the textbox by right-clicking
+                    //go ahead and reset all the textbox information and close it
+                    battleTextBoxRes.renderLayer = 0;
+                    selectedUnit = -1;
+                    unitSelectSprite.renderLayer = 0;
+
+                    if (confirmMode == CONFIRM_MOVEMENT || battleTextBox.selection == BATTLE_OPTION_MOVE)
+                    {
+                        destroyWarperPath((void*) &movePath);
+                        movePathRes.renderLayer = 0;
+                        pathIndex = -1;
+                        pathfinderUnit = NULL;
+                        pathToCursor = false;
+                        confirmPlayerSprite.renderLayer = 0;
+                        if (confirmMode == CONFIRM_MOVEMENT)
+                        {
+                            //restore previous text box
+                            destroyWarperTextBox((void*) &battleTextBox);
+                            initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                            destroyWarperTextBox((void*) &backupTextBox);
+                        }
+                    }
+
+                    if (confirmMode == CONFIRM_TELEPORT || battleTextBox.selection == BATTLE_OPTION_TELEPORT)
+                    {
+                        teleportCircleRes.renderLayer = 0;
+                        confirmPlayerSprite.renderLayer = 0;
+                        if (confirmMode == CONFIRM_TELEPORT)
+                        {
+                            //restore previous text box
+                            destroyWarperTextBox((void*) &battleTextBox);
+                            initWarperTextBox(&battleTextBox, backupTextBox.rect, backupTextBox.outlineColor, backupTextBox.bgColor, backupTextBox.highlightColor, backupTextBox.texts, backupTextBox.isOption, backupTextBox.textsSize, true);
+                            destroyWarperTextBox((void*) &backupTextBox);
+                        }
+                    }
+
+                    confirmMode = CONFIRM_NONE;
+                    battleTextBox.selection = -1;
+                }
+
                 if (!confirmMode)
                 {
                     //if we aren't currently trying to confirm an action
                     double worldClickX = input.click.x + scene->camera->rect.x, worldClickY = input.click.y + scene->camera->rect.y;  //where we clicked on in the world
+                    bool clickHadResult = false;
 
                     /*
                     double curSpeed = speed * 60.0 / framerate;
@@ -1168,7 +1287,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     //*/
 
                     //if we want to select a unit
-                    if (battleTextBox.selection == 0)
+                    if (input.click.button == SDL_BUTTON_RIGHT || (battleTextBoxRes.renderLayer == 0 && input.click.clicks == 2))
                     {
                         for(int i = 0; i < playerTeam->unitsSize; i++)
                         {
@@ -1180,6 +1299,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                     && worldClickY < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h)
                                 {
                                     selectedUnit = i;
+                                    battleTextBoxRes.renderLayer = 2;
+                                    clickHadResult = true;
+                                    unitSelectSprite.renderLayer = 3;
                                     //printf("found unit %d\n", i);
                                 }
                             }
@@ -1194,7 +1316,10 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                             {
                                 if (worldClickX >= enemyTeam->units[i]->sprite->drawRect.x && worldClickX < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w &&
                                     worldClickY >= enemyTeam->units[i]->sprite->drawRect.y && worldClickY < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h)
+                                {
                                     enemyIndex = i;
+                                    clickHadResult = true;
+                                }
                             }
                         }
 
@@ -1217,15 +1342,16 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     }
 
                     //if we want to move
-                    if ((battleTextBox.selection == 1 || battleTextBox.selection == 2) && playerTurn)
+                    if ((battleTextBox.selection == BATTLE_OPTION_MOVE || battleTextBox.selection == BATTLE_OPTION_TELEPORT) && playerTurn)
                     {  //move or teleport
                         /*if (movePath.path == NULL)
                         {*/
                             //printf("move\n");
+                            clickHadResult = true;
                             char* questionStr = NULL;
                             double prevConfirmX = confirmPlayerSprite.drawRect.x, prevConfirmY = confirmPlayerSprite.drawRect.y;
 
-                            if (battleTextBox.selection == 2)
+                            if (battleTextBox.selection == BATTLE_OPTION_TELEPORT)
                             {
                                 confirmPlayerSprite.drawRect.x = worldClickX - playerTeam->units[selectedUnit]->sprite->drawRect.w / 2;
                                 confirmPlayerSprite.drawRect.y = worldClickY - playerTeam->units[selectedUnit]->sprite->drawRect.h / 2;
@@ -1239,7 +1365,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 confirmPlayerSprite.drawRect.x = prevConfirmX;
                                 confirmPlayerSprite.drawRect.y = prevConfirmY;
 
-                                if (battleTextBox.selection == 1)
+                                if (battleTextBox.selection == BATTLE_OPTION_MOVE)
                                 {  //show the previous valid path if we are walking
                                     pathToCursor = false;
 
@@ -1275,7 +1401,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                 movePath.pathLength = 0;
                                 pathIndex = 0;
 
-                                if (battleTextBox.selection == 1)
+                                if (battleTextBox.selection == BATTLE_OPTION_MOVE)
                                 {
                                     pathToCursor = false;
 
@@ -1316,8 +1442,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                     }
                                     else
                                     {
-                                        movePathRes.renderLayer = 0;
-                                        confirmPlayerSprite.renderLayer = 0;
+                                        //movePathRes.renderLayer = 0;
+                                        //confirmPlayerSprite.renderLayer = 0;
+                                        pathToCursor = true;
                                         printf("failed to find path for movement\n");
                                     }
                                     //*/
@@ -1334,8 +1461,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                                         //set flag to false, reset variables, free movePath
                                         destroyWarperPath((void*) &movePath);
                                         pathIndex = -1;
-                                        confirmPlayerSprite.renderLayer = 0;
-                                        movePathRes.renderLayer = 0;
+                                        //confirmPlayerSprite.renderLayer = 0;
+                                        //movePathRes.renderLayer = 0;
+                                        pathToCursor = true;
                                         printf("failed movement along valid path: %f moveDistance\n", moveDistance);
                                     }
                                 }
@@ -1378,8 +1506,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                         //}
                     }
-                    if (battleTextBox.selection == 3 && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
-                    {  //battle
+                    if (battleTextBox.selection == BATTLE_OPTION_ATTACK && playerTurn && !playerTeam->units[selectedUnit]->battleData.teleportedOrAttacked)
+                    {  //attack
                         //find which enemy we clicked on, if any
                         selectedEnemy = -1;
                         for(int i = 0; i < enemyTeam->unitsSize; i++)
@@ -1391,6 +1519,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         }
                         if (selectedEnemy != -1)
                         {
+                            clickHadResult = true;
                             //printf("found enemy %d\n", enemyIndex);
                             if (playerTeam->units[selectedUnit]->sprite->drawRect.x + playerTeam->units[selectedUnit]->sprite->drawRect.w / 2 < enemyTeam->units[selectedEnemy]->sprite->drawRect.x + enemyTeam->units[selectedEnemy]->sprite->drawRect.w / 2)
                                 playerTeam->units[selectedUnit]->sprite->flip = SDL_FLIP_NONE;  //if the player is more to the left than the enemy, face the enemy
@@ -1455,6 +1584,11 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                             }
                         }
                     }
+                    if (!clickHadResult)
+                    {
+                        battleTextBoxRes.renderLayer = 0;
+                        battleTextBox.selection = -1;
+                    }
                 }
             }
         }
@@ -1486,7 +1620,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         customCollisions[customArrPos++] = enemyTeam->units[i]->sprite->drawRect;
                 }
 
-                customArrPos = customCollisionsCount;
+                //customArrPos = customCollisionsCount;  //this was here before and didn't cause any issues but
+                customCollisionsCount = customArrPos;  //I think this is what this is supposed to be
 
                 int pathLength = 0;
 
@@ -1520,6 +1655,11 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         movePathRes.renderLayer = 2;  //ensure the path is shown
                         confirmPlayerSprite.renderLayer = 2;
                     }
+                }
+                else
+                {
+                    confirmPlayerSprite.drawRect.x = prevConfirmX;
+                    confirmPlayerSprite.drawRect.y = prevConfirmY;
                 }
             }
             else
@@ -1559,7 +1699,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                     //restore textbox to regular menu
                     destroyWarperTextBox((void*) &battleTextBox);
-                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, 6, tilemap.tileSize);
+                    createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, ROOT_TEXTBOX_LENGTH, tilemap.tileSize);
 
                     turnCount++;
                 }
@@ -1750,7 +1890,8 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
         }
 
         //update unit select sprite position
-        unitSelectSprite.drawRect = playerTeam->units[selectedUnit]->sprite->drawRect;
+        if (selectedUnit > -1)
+            unitSelectSprite.drawRect = playerTeam->units[selectedUnit]->sprite->drawRect;
 
         //camera movement
         if (input.keyStates[SDL_SCANCODE_W] || input.keyStates[SDL_SCANCODE_UP])
@@ -1791,7 +1932,9 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
             scene->camera->rect.y = tilemap.height * tilemap.tileSize - scene->camera->rect.h;
         //end camera bounds correction
 
-        if (input.keyStates[SDL_SCANCODE_F11])  //DEBUG
+        checkWarperUnitHover(input.motion, playerTeam, enemyTeam, scene->camera);
+
+        if (input.keyStates[SDL_SCANCODE_F11] && selectedUnit > -1)  //DEBUG
             printf("%f, %f\n", playerTeam->units[selectedUnit]->sprite->drawRect.x, playerTeam->units[selectedUnit]->sprite->drawRect.y);
 
         drawCScene(scene, true, true, &frameCount, &framerate, WARPER_FRAME_LIMIT);
@@ -1843,4 +1986,28 @@ cDoubleVector getTilemapCollision(cSprite playerSprite, warperTilemap tilemap)
     //*/
 
     return mtv;
+}
+
+void checkWarperUnitHover(SDL_MouseMotionEvent motion, warperTeam* playerTeam, warperTeam* enemyTeam, cCamera* camera)
+{
+    if (motion.x >= 0 && motion.y >= 0 && motion.x <= SCREEN_PX_WIDTH && motion.y <= SCREEN_PX_HEIGHT)
+    {
+        for(int i = 0; i < playerTeam->unitsSize; i++)
+        {
+            if (playerTeam->units[i]->sprite->renderLayer != 0 && (motion.x > playerTeam->units[i]->sprite->drawRect.x - camera->rect.x && motion.x < playerTeam->units[i]->sprite->drawRect.x + playerTeam->units[i]->sprite->drawRect.w - camera->rect.x &&
+                motion.y > playerTeam->units[i]->sprite->drawRect.y - camera->rect.y && motion.y < playerTeam->units[i]->sprite->drawRect.y + playerTeam->units[i]->sprite->drawRect.h - camera->rect.y))
+            {
+                updateCursorIcon(CURSOR_ALLY);
+            }
+        }
+
+        for(int i = 0; i < enemyTeam->unitsSize; i++)
+        {
+            if (enemyTeam->units[i]->sprite->renderLayer != 0 && (motion.x > enemyTeam->units[i]->sprite->drawRect.x - camera->rect.x && motion.x < enemyTeam->units[i]->sprite->drawRect.x + enemyTeam->units[i]->sprite->drawRect.w - camera->rect.x &&
+                motion.y > enemyTeam->units[i]->sprite->drawRect.y - camera->rect.y && motion.y < enemyTeam->units[i]->sprite->drawRect.y + enemyTeam->units[i]->sprite->drawRect.h - camera->rect.y))
+            {
+                updateCursorIcon(CURSOR_ENEMY);
+            }
+        }
+    }
 }
