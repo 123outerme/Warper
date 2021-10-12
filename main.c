@@ -49,15 +49,14 @@ int main(int argc, char** argv)
     if (argc > 1)
         argv = argv;  //useless, but prevents warning. might actually add a debug option on cmd line or something
 
-    int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "./assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
     loadWarperOptions();
 
     warperTilemap tilemap;
 
-    initCSprite(&cursorSprite, NULL, "assets/uiTilesheet.png", 0, (cDoubleRect) {0, 0, 16, 16}, (cDoubleRect) {0, 2 * TILE_SIZE, 16, 16}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, true, NULL, 1);
-    initCResource(&cursorResource, NULL, drawCursor, destroyCursor, 1);
+    initCSprite(&cursorSprite, NULL, "./assets/uiTilesheet.png", 0, (cDoubleRect) {0, 0, 16, 16}, (cDoubleRect) {0, 2 * TILE_SIZE, 16, 16}, NULL, 1.0, SDL_FLIP_NONE, 0.0, true, true, NULL, 1);
     SDL_ShowCursor(false);
 
     bool quitAll = false;
@@ -73,7 +72,7 @@ int main(int argc, char** argv)
         }
         if (selection == 3)
         {  //load created test map
-            importWarperTilemap(&tilemap, "maps/testMap.txt");
+            importWarperTilemap(&tilemap, "./maps/testMap.txt");
         }
         if (selection == 2)
         {  //create temp map
@@ -107,7 +106,7 @@ int main(int argc, char** argv)
 
             for(int i = 0; i < 5; i++)
             {
-                initCSprite(&(enemySquadSprites[i]), NULL, "assets/characterTilesheet.png", 6 + i,
+                initCSprite(&(enemySquadSprites[i]), NULL, "./assets/characterTilesheet.png", 6 + i,
                         (cDoubleRect) {(tilemap.width - 3 - 2 * i) * tilemap.tileSize, (tilemap.height - 6 + 2 * (i % 2)) * tilemap.tileSize, 44, 96},
                         (cDoubleRect) {0, 3 * tilemap.tileSize / 2, 44, 96},
                         NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 4);
@@ -128,7 +127,7 @@ int main(int argc, char** argv)
 
             for(int i = 0; i < 5; i++)
             {
-                initCSprite(&(playerSquadSprites[i]), NULL, "assets/characterTilesheet.png", 1 + i,
+                initCSprite(&(playerSquadSprites[i]), NULL, "./assets/characterTilesheet.png", 1 + i,
                             (cDoubleRect) {testSquadPts[i].x, testSquadPts[i].y, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                             (cDoubleRect) {squadSprLocations[i].x, squadSprLocations[i].y, tilemap.tileSize / 2, tilemap.tileSize / 2},
                             NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 4);
@@ -205,6 +204,8 @@ int main(int argc, char** argv)
         }
     }
 
+    saveWarperOptions();
+
     destroyCSprite(&cursorSprite); //cursorSprite is set to be global, so it won't get destroyed automatically by destroyCScene
 
     closeCoSprite();
@@ -237,6 +238,9 @@ int gameDevMenu()
 
         if (input.quitInput)
             menuBox.selection = 7;  //quit
+
+        if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
+            updateCursorIcon(CURSOR_NORMAL);
 
         checkWarperTextBoxHover(&menuBox, input.motion);
         if (input.isClick)
@@ -540,6 +544,9 @@ int pauseMenu(cScene* gameScene, warperTeam* playerTeam)
         if (input.quitInput)
             pauseBox->selection = -3;  //quit
 
+        if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
+            updateCursorIcon(CURSOR_NORMAL);
+
         checkWarperTextBoxHover(pauseBox, input.motion);
         if (input.isClick)
         {
@@ -778,6 +785,9 @@ bool optionsMenu(bool inGame)
         if (input.quitInput)
             optionsBox.selection = -2;  //quit
 
+        if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
+            updateCursorIcon(CURSOR_NORMAL);
+
         checkWarperTextBoxHover(&optionsBox, input.motion);
         if (input.isClick)
         {
@@ -851,12 +861,12 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     cSprite confirmPlayerSprite;
     cSprite unitSelectSprite;
 
-    initCSprite(&confirmPlayerSprite, NULL, "assets/characterTilesheet.png", 0,
+    initCSprite(&confirmPlayerSprite, NULL, "./assets/characterTilesheet.png", 0,
                     (cDoubleRect) {-3 * tilemap.tileSize, -3 * tilemap.tileSize, 2 * tilemap.tileSize, 2 * tilemap.tileSize},
                     (cDoubleRect) {0, 2 * tilemap.tileSize / 2, tilemap.tileSize / 2, tilemap.tileSize / 2},
                     NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 0);
 
-    initCSprite(&unitSelectSprite, NULL, "assets/uiTilesheet.png", 0,
+    initCSprite(&unitSelectSprite, NULL, "./assets/uiTilesheet.png", 0,
                 playerTeam->units[0]->sprite->drawRect,  //put this over top of the first selected unit
                 (cDoubleRect) {0, 0, tilemap.tileSize, tilemap.tileSize},
                 NULL, 1.0, SDL_FLIP_NONE, 0, false, false, NULL, 0);

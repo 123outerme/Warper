@@ -75,6 +75,5 @@ void updateCursorIcon(int id);
 void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity);
 
 extern cSprite cursorSprite;  //global cursor sprite
-extern cResource cursorResource;
 
 #endif // WARPERINTERFACE_H_INCLUDED

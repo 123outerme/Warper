@@ -183,7 +183,7 @@ void loadWarperOptions()
     {
         //default options
         options.difficulty = 1; //Beginner. Should it be something more like Medium?
-        options.gridOpacity = 0x20;  //what should the default be here?
+        options.gridOpacity = 0x00;  //what should the default be here?
         options.musicVolume = MIX_MAX_VOLUME;
         options.soundFxVolume = MIX_MAX_VOLUME;
         saveWarperOptions();
@@ -191,21 +191,26 @@ void loadWarperOptions()
     else
     {
         char* optionsText = calloc(80, sizeof(char));
+
         readLine(WARPER_OPTIONS_FILE, 0, 80, &optionsText);  //difficulty
         char* savePtr = optionsText;
-        options.difficulty = strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10);
+        strtok_r(savePtr, ":", &savePtr);
+        options.difficulty = strtol(savePtr, NULL, 10);
 
         readLine(WARPER_OPTIONS_FILE, 1, 80, &optionsText);  //grid opacity
         savePtr = optionsText;
-        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * GRID_MAX_OPACITY;
+        strtok_r(savePtr, ":", &savePtr);
+        options.gridOpacity = (Uint8) strtol(savePtr, NULL, 10) / 100.0 * GRID_MAX_OPACITY;
 
         readLine(WARPER_OPTIONS_FILE, 2, 80, &optionsText);  //music volume
         savePtr = optionsText;
-        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * MIX_MAX_VOLUME;
+        strtok_r(savePtr, ":", &savePtr);
+        options.musicVolume = (int) strtol(savePtr, NULL, 10) / 100.0 * MIX_MAX_VOLUME;
 
         readLine(WARPER_OPTIONS_FILE, 3, 80, &optionsText);  //sfx volume
         savePtr = optionsText;
-        options.gridOpacity = (int) strtol(strtok_r(savePtr, ":", &savePtr), NULL, 10) / 100.0 * MIX_MAX_VOLUME;
+        strtok_r(savePtr, ":", &savePtr);
+        options.soundFxVolume = (int) strtol(savePtr, NULL, 10) / 100.0 * MIX_MAX_VOLUME;
 
         //TODO - complete
 
@@ -229,7 +234,7 @@ void saveWarperOptions()
     snprintf(optionsText, 80, "musicVolume:%d", (int) (options.musicVolume / ((double) MIX_MAX_VOLUME) * 100));
     appendLine(WARPER_OPTIONS_FILE, optionsText, true);
 
-    snprintf(optionsText, 80, "difficulty:%d", (int) (options.soundFxVolume / ((double) MIX_MAX_VOLUME) * 100));
+    snprintf(optionsText, 80, "soundFxVolume:%d", (int) (options.soundFxVolume / ((double) MIX_MAX_VOLUME) * 100));
     appendLine(WARPER_OPTIONS_FILE, optionsText, true);
 
     //TODO - complete

@@ -26,6 +26,10 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
             if (input.quitInput)
                 return true; //we are quitting
+            if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
+                updateCursorIcon(CURSOR_NORMAL);
+
+            checkWarperTextBoxHover(&loadChoiceBox, input.motion);
 
             if (input.isClick)
             {

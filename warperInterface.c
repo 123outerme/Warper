@@ -1,7 +1,6 @@
 #include "warperInterface.h"
 
 cSprite cursorSprite;
-cResource cursorResource;
 
 /** \brief
  *
@@ -382,7 +381,7 @@ void updateCursorIcon(int id)
 void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity)
 {
     SDL_Texture* uiTilesetTexture;
-    loadIMG("assets/uiTilesheet.png", &uiTilesetTexture);
+    loadIMG("./assets/uiTilesheet.png", &uiTilesetTexture);
     SDL_SetTextureAlphaMod(uiTilesetTexture, opacity);
 
     cSprite* gridSprites = calloc(tilemap.width * tilemap.height, sizeof(cSprite));
@@ -390,7 +389,7 @@ void loadGridModel(warperTilemap tilemap, c2DModel* gridModel, Uint8 opacity)
     {
         for(int y = 0; y < tilemap.height; y++)
         {
-            initCSprite(&gridSprites[x * tilemap.height + y], uiTilesetTexture, "assets/uiTilesheet.png", 1,
+            initCSprite(&gridSprites[x * tilemap.height + y], uiTilesetTexture, "./assets/uiTilesheet.png", 1,
                         (cDoubleRect) {tilemap.tileSize * x, tilemap.tileSize * y, tilemap.tileSize, tilemap.tileSize},
                         (cDoubleRect) {0, 32, 32, 32},
                         NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, NULL, 5);
