@@ -3,6 +3,81 @@
 cLogger warperLogger;
 warperOptions options;
 
+/** \brief Initializes an animated sprite based on a cSprite.
+ *
+ * \param animatedSpr warperAnimatedSprite* - animated sprite struct pointer you want filled in
+ * \param spr cSprite* - pointer to the base sprite information
+ * \param srcRectDiffs cDoubleRect* - array of `cDoubleRect`s that provide coordinate differences between positions of source image frames
+ * \param diffsLength int - length of `srcRectDiffs`
+ * \param loops int - if != 0, the animation will continually play (MUST provide one extra diff that resets coordinates back to beginning). Negative loops forever
+ */
+void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, int diffsLength, int loops)
+{
+    animatedSpr->sprite = spr;
+    animatedSpr->srcRectDiffs = calloc(diffsLength, sizeof(cDoubleRect));
+
+    if (!animatedSpr->srcRectDiffs)
+    {
+        //printf("Warper error: cannot initialize animated sprite");
+        cLogEvent(warperLogger, "WARNING", "WARPER: Animated Sprite", "Cannot initialize draw deltas");
+        animatedSpr->numDiffs = 0;
+        return;
+    }
+    for(int i = 0; i < diffsLength; i++)
+        animatedSpr->srcRectDiffs[i] = srcRectDiffs[i];
+
+    animatedSpr->numDiffs = diffsLength;
+    animatedSpr->loops = loops;
+    animatedSpr->curFrame = 0;
+
+}
+
+void iterateWarperAnimatedSprite(warperAnimatedSprite* animatedSpr)
+{
+    if (animatedSpr->curFrame < animatedSpr->numDiffs || animatedSpr->loops != 0)
+    {
+        animatedSpr->sprite->srcClipRect.x += animatedSpr->srcRectDiffs[animatedSpr->curFrame].x;  //go to next source frame
+        animatedSpr->sprite->srcClipRect.y += animatedSpr->srcRectDiffs[animatedSpr->curFrame].y;
+        animatedSpr->sprite->srcClipRect.w += animatedSpr->srcRectDiffs[animatedSpr->curFrame].w;
+        animatedSpr->sprite->srcClipRect.h += animatedSpr->srcRectDiffs[animatedSpr->curFrame].h;
+
+        animatedSpr->curFrame++;
+
+        if (animatedSpr->curFrame >= animatedSpr->numDiffs && animatedSpr->loops != 0)
+        {
+            animatedSpr->curFrame = 0;
+            if (animatedSpr->loops > 0)
+                animatedSpr->loops--;
+        }
+    }
+}
+
+void drawWarperAnimatedSpr(void* spr, cCamera camera)
+{
+    warperAnimatedSprite* animatedSpr = (warperAnimatedSprite*) spr;
+
+    drawCSprite(*animatedSpr->sprite, camera, false, false);
+    iterateWarperAnimatedSprite(animatedSpr);
+}
+
+void cleanupWarperAnimatedSpr(void* spr)
+{
+    warperAnimatedSprite* animatedSpr = (warperAnimatedSprite*) spr;
+
+    destroyWarperAnimatedSprite(animatedSpr, true);
+}
+
+void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroySprite)
+{
+    if (destroySprite)
+        destroyCSprite(animatedSpr->sprite);
+
+    animatedSpr->sprite = NULL;
+    free(animatedSpr->srcRectDiffs);
+    animatedSpr->numDiffs = 0;
+}
+
+/* Not really used anymore
 void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height)
 {
     tilemap->width = width;
@@ -21,10 +96,28 @@ void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionm
         }
     }
 }
+//*/
 
+/** \brief Imports a tilemap from a file
+ *
+ * \param tilemap warperTilemap* - tilemap pointer to be filled in
+ * \param filepath char* - filepath to map data
+ */
 void importWarperTilemap(warperTilemap* tilemap, char* filepath)
 {
     char* importedMap = calloc(7, sizeof(char));
+
+    if (!importedMap)
+    {
+        cLogEvent(warperLogger, "ERROR", "WARPER: Tilemap", "Cannot initialize tilemap's size buffer");
+        tilemap->height = -1;
+        tilemap->width = -1;
+        tilemap->spritemap_layer1 = NULL;
+        tilemap->spritemap_layer2 = NULL;
+        tilemap->collisionmap = NULL;
+        return;
+    }
+
     readLine(filepath, 0, 7, &importedMap);
     //printf("%s\n", importedMap);
 
@@ -43,6 +136,17 @@ void importWarperTilemap(warperTilemap* tilemap, char* filepath)
     //(3 arrays * 3 digits * width * height + width 'bytes' + height 'bytes')
 
     importedMap = calloc(importedLength + 1, sizeof(char));
+
+    if (!importedMap)
+    {
+        cLogEvent(warperLogger, "ERROR", "WARPER: Tilemap", "Cannot initialize tilemap data buffer");
+        tilemap->height = -1;
+        tilemap->width = -1;
+        tilemap->spritemap_layer1 = NULL;
+        tilemap->spritemap_layer2 = NULL;
+        tilemap->collisionmap = NULL;
+        return;
+    }
 
     readLine(filepath, 0, importedLength + 1, &importedMap);
 
@@ -66,6 +170,17 @@ void loadTilemap(warperTilemap* tilemap, char* importedData)
     tilemap->spritemap_layer2 = calloc(tilemap->width, sizeof(int*));
     tilemap->collisionmap = calloc(tilemap->width, sizeof(int*));
 
+    if (!tilemap->spritemap_layer1 || !tilemap->spritemap_layer2 || !tilemap->collisionmap)
+    {
+        cLogEvent(warperLogger, "ERROR", "WARPER: Tilemap", "Cannot initialize tilemap column memory");
+        tilemap->height = -1;
+        tilemap->width = -1;
+        tilemap->spritemap_layer1 = NULL;
+        tilemap->spritemap_layer2 = NULL;
+        tilemap->collisionmap = NULL;
+        return;
+    }
+
     int x = -1, y = tilemap->height + 1; //triggers if statement upon first execution to start the wraparound code (allocating new memory for each horizontal line of tiles)
 
     while(x <= tilemap->width)
@@ -79,6 +194,17 @@ void loadTilemap(warperTilemap* tilemap, char* importedData)
                 tilemap->spritemap_layer1[x] = calloc(tilemap->height, sizeof(int));
                 tilemap->spritemap_layer2[x] = calloc(tilemap->height, sizeof(int));
                 tilemap->collisionmap[x] = calloc(tilemap->height, sizeof(int));
+
+                if (!tilemap->spritemap_layer1[x] || !tilemap->spritemap_layer2[x] || !tilemap->collisionmap[x])
+                {
+                    cLogEvent(warperLogger, "ERROR", "WARPER: Tilemap", "Cannot initialize tilemap row memory");
+                    tilemap->height = -1;
+                    tilemap->width = -1;
+                    tilemap->spritemap_layer1 = NULL;
+                    tilemap->spritemap_layer2 = NULL;
+                    tilemap->collisionmap = NULL;
+                    return;
+                }
             }
             else
                 break;  //we have loaded all of the data
@@ -107,6 +233,15 @@ void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2
         SDL_Texture* tilesetTexture;
         loadIMG("assets/worldTilesheet.png", &tilesetTexture);
         cSprite* tileSprites_layer1 = calloc(tilemap.width * tilemap.height, sizeof(cSprite)), * tileSprites_layer2 = calloc(tilemap.width * tilemap.height, sizeof(cSprite));
+
+        if (!tileSprites_layer1 || !tileSprites_layer2)
+        {
+            cLogEvent(warperLogger, "ERROR", "WARPER: Tilemap", "Cannot initialize tilemap sprites");
+            layer1->numSprites = 0;
+            layer2->numSprites = 0;
+            return;
+        }
+
         for(int x = 0; x < tilemap.width; x++)
         {
             for(int y = 0; y < tilemap.height; y++)

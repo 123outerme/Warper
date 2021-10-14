@@ -2,11 +2,13 @@
 #include "battleSystem.h"
 #include "mapMaker.h"
 #include "warperInterface.h"
+#include "warperCutscene.h"
 
 //test/debug functions
 int gameDevMenu();
 void createTestMap(warperTilemap* tilemap);
 void debugPrintStatProgression();
+void playTestAnimation();
 
 //game control/state functions
 void importWarperTilemap(warperTilemap* tilemap, char* filepath);
@@ -261,6 +263,7 @@ int gameDevMenu()
         {
             debugPrintStatProgression();
             menuBox.selection = -1;
+            playTestAnimation();
         }
 
         updateCursorPos(input.motion, false);
@@ -318,6 +321,81 @@ void debugPrintStatProgression()
         printf("-----------------\n");
     }
     //*/
+}
+
+void playTestAnimation()
+{
+    cSprite spr;
+    warperAnimatedSprite aSpr;
+    initCSprite(&spr, NULL, "./assets/characterTilesheet.png", 0, (cDoubleRect) {0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE}, (cDoubleRect) {0, 0, 16, 16}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, &aSpr, 5);
+
+    cDoubleRect animationRects[5] = {(cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {-32, 16, 0, 0}, (cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {-16, -16, 0, 0}};
+    cDoubleRect finalAnimations[60];
+    for(int i = 0; i < 60; i++)
+    {
+        if (i % 12 == 0)
+            finalAnimations[i] = animationRects[i / 12];
+        else
+            finalAnimations[i] = (cDoubleRect) {0, 0, 0, 0};
+    }
+
+    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, 60, -1);
+
+    warperActor actors[5];
+    warperAnimation animations[5];
+    cDoubleRect animationPos[5] = {(cDoubleRect) {0, 0, 64, 64}, (cDoubleRect) {64, 0, 64, 64}, (cDoubleRect) {64, 64, 64, 64}, (cDoubleRect) {128, 64, 64, 64}, (cDoubleRect) {128, 128, 64, 64}};
+    warperCutscene cutscene;
+
+    for(int i = 0; i < 5; i++)
+    {
+        initWarperActor(&actors[i], animationPos[i], &aSpr);
+        initWarperAnimation(&animations[i], (warperActor[1]) {actors[i]}, 1, 12);
+    }
+
+    warperCutsceneBox emptyBox;
+    initWarperCutsceneBox(&emptyBox, NULL, NULL, 0);
+    warperCutsceneBox otherBox;
+    warperTextBox box;
+    createBattleTextBox(&box, (cDoubleRect) {0, 0, SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Test", "Box"}, (bool[2]) {false, false}, 2, TILE_SIZE);
+    initWarperCutsceneBox(&otherBox, (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
+    warperCutsceneBox boxes[5] = {emptyBox, otherBox, emptyBox, emptyBox, otherBox};
+    initWarperCutscene(&cutscene, animations, boxes, 5);
+
+
+    cCamera camera;
+    initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+
+    cScene scene;
+    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, &spr}, 2, NULL, 0, (cResource*[1]) {otherBox.boxResources[0]}, 1, NULL, 0);
+
+    bool quit = false;
+    cInputState input;
+    while(!quit)
+    {
+        input = cGetInputState(true);
+        if (input.quitInput)
+            quit = true;
+
+        if (input.isClick)
+        {
+            if (cutscene.waitingForBox)
+                incrementWarperCutsceneBox(&cutscene);
+            else
+                quit = true;
+        }
+
+        if (input.isMotion)
+        {
+            cursorSprite.drawRect.x = input.motion.x;
+            cursorSprite.drawRect.y = input.motion.y;
+        }
+
+        drawCScene(&scene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
+        iterateWarperAnimatedSprite(&aSpr);
+        iterateWarperCutscene(&cutscene);
+    }
+
+    destroyCScene(&scene);
 }
 
 void createTestMap(warperTilemap* tilemap)
