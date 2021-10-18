@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     if (argc > 1)
         argv = argv;  //useless, but prevents warning. might actually add a debug option on cmd line or something
 
-    int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "./assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, 5, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "./assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     initCLogger(&warperLogger, "./logs/log.txt", NULL);
 
     loadWarperOptions();
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
         else
         {
             cCamera gameCamera;
-            initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);  //init camera
+            initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 10);  //init camera
 
             c2DModel mapModel_layer1, mapModel_layer2, mapModel_gridLayer;
             loadTilemapModels(tilemap, &mapModel_layer1, &mapModel_layer2);
@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 int gameDevMenu()
 {
     cScene menuScene;
-    char* optionsArray[] = {"Alpha Build Menu", " ", "Load Test Map", "Load Created Map", "Create New Map", "Settings", "Print Progression Info", "Quit"};
+    char* optionsArray[] = {"Alpha Build Menu", " ", "Load Test Map", "Load Created Map", "Create New Map", "Options", "Print Progression Info", "Quit"};
     warperTextBox menuBox;
     createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[8]) {false, false, true, true, true, true, true, true}, 8, &(global.mainFont));
 
@@ -228,7 +228,7 @@ int gameDevMenu()
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
 
     cCamera gameCamera;
-    initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+    initCCamera(&gameCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     initCScene(&menuScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &gameCamera, (cSprite*[1]) {&cursorSprite}, 1, NULL, 0, (cResource*[1]) {&menuBoxResource}, 1, NULL, 0);
 
@@ -341,15 +341,15 @@ void playTestAnimation()
 
     initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, 60, -1);
 
-    warperActor actors[5];
+    warperActor actorOneAnimations[5];
     warperAnimation animations[5];
     cDoubleRect animationPos[5] = {(cDoubleRect) {0, 0, 64, 64}, (cDoubleRect) {64, 0, 64, 64}, (cDoubleRect) {64, 64, 64, 64}, (cDoubleRect) {128, 64, 64, 64}, (cDoubleRect) {128, 128, 64, 64}};
     warperCutscene cutscene;
 
     for(int i = 0; i < 5; i++)
     {
-        initWarperActor(&actors[i], animationPos[i], &aSpr);
-        initWarperAnimation(&animations[i], (warperActor[1]) {actors[i]}, 1, 12);
+        initWarperActor(&actorOneAnimations[i], animationPos[i], &aSpr);
+        initWarperAnimation(&animations[i], (warperActor[1]) {actorOneAnimations[i]}, 1, 12);
     }
 
     warperCutsceneBox emptyBox;
@@ -363,7 +363,7 @@ void playTestAnimation()
 
 
     cCamera camera;
-    initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+    initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     cScene scene;
     initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, &spr}, 2, NULL, 0, (cResource*[1]) {otherBox.boxResources[0]}, 1, NULL, 0);
@@ -391,7 +391,8 @@ void playTestAnimation()
         }
 
         drawCScene(&scene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
-        iterateWarperAnimatedSprite(&aSpr);
+        if (!cutscene.waitingForBox)
+            iterateWarperAnimatedSprite(&aSpr);
         iterateWarperCutscene(&cutscene);
     }
 
@@ -844,10 +845,10 @@ bool optionsMenu(bool inGame)
         free(optionsArray[i]);
 
     cResource optionsBoxRes;
-    initCResource(&optionsBoxRes, (void*) &optionsBox, drawWarperTextBox, destroyWarperTextBox, 1);
+    initCResource(&optionsBoxRes, (void*) &optionsBox, drawWarperTextBox, destroyWarperTextBox, 3);
 
     cCamera optionsCamera;
-    initCCamera(&optionsCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0);
+    initCCamera(&optionsCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     cScene optionsScene;
     initCScene(&optionsScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &optionsCamera, (cSprite*[1]) {&cursorSprite}, 1, NULL, 0, (cResource*[1]) {&optionsBoxRes}, 1, NULL, 0);

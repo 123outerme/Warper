@@ -9,7 +9,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     bool loadMap = false;
     cScene inputScene;
     cCamera inputCamera;
-    initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
+    initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0, 5);
     {
         warperTextBox loadChoiceBox;
         cResource loadChoiceBoxRes;
@@ -57,7 +57,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
         cText promptText;
         cText inputText;
-        initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
+        initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0, 5);
         initCText(&promptText, "Input width:", (cDoubleRect) {0, global.windowH / 4, 12 * global.mainFont.fontSize, global.mainFont.fontSize}, 13 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
         initCText(&inputText, " ", (cDoubleRect) {0, global.windowH / 2, 4 * global.mainFont.fontSize, global.mainFont.fontSize}, 5 * global.mainFont.fontSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, NULL, 1.0, SDL_FLIP_NONE, 0, true, 5);
         initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &inputCamera, NULL, 0, NULL, 0, NULL, 0, (cText*[2]) {&promptText, &inputText}, 2);
@@ -191,7 +191,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
     warperFilter filter = initWarperFilter(0x00, 0x00, 0x00, 0x58);
     initCResource(&shadeResource, &filter, drawWarperFilter, destroyWarperFilter, 0);
 
-    initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0);
+    initCCamera(&inputCamera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0, 5);
     initCScene(&inputScene, (SDL_Color) {0xFF, 0xFF, 0xFF}, &inputCamera, (cSprite*[4]) {&cursorSprite, &tilesetSprite, &leftTileSprite, &rightTileSprite}, 4, (c2DModel*[3]) {&mapModel_layer1, &mapModel_layer2, &collisionModel}, 3, (cResource*[1]) {&shadeResource}, 1, NULL, 0);
 
     int previousIndex = 0;
