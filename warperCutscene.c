@@ -1,9 +1,10 @@
 #include "warperCutscene.h"
 
-void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr)
+void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr, bool pauseSpriteWhenWaiting)
 {
     actor->position = pos;
     actor->animatedSpr = spr;
+    actor->pauseAnimationWhenWaiting = pauseSpriteWhenWaiting;
 }
 
 void initWarperAnimation(warperAnimation* animation, warperActor* actors, int actorsLength, int frames)
@@ -27,6 +28,10 @@ void initWarperAnimation(warperAnimation* animation, warperActor* actors, int ac
 
 }
 
+/** \brief Destroys animation data, but does not destroy sprite data referenced by animation's actors (this must be cleaned up separately)
+ *
+ * \param animation warperAnimation* - the animation pointer to what needs to be destroyed
+ */
 void destroyWarperAnimation(warperAnimation* animation)
 {
     free(animation->actors);
@@ -83,7 +88,12 @@ void incrementWarperCutsceneBox(warperCutscene* cutscene)
     }
 }
 
-void destroyWarperCutsceneBox(warperCutsceneBox* box)
+/** \brief Destroys cutscene textbox data, but does not destroy warperTextBox data referenced by the cutscene data (this must be cleaned up separately)
+ *
+ * \param box warperCutsceneBox* - pointer to the cutscene box to be destroyed
+ * \param destroyResources bool - if true, will destroy the resources generated upon init. False is the recommended option as the resources will be cleaned up through the cScene handling the textboxes in most cases
+ */
+void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources)
 {
     free(box->boxes);
     free(box->framesAppear);
@@ -91,11 +101,16 @@ void destroyWarperCutsceneBox(warperCutsceneBox* box)
     box->framesAppear = NULL;
     box->currentBox = 0;
 
-    for(int i = 0; i < box->numBoxes; i++)
-    {
-        destroyCResource(box->boxResources[i]);
-        free(box->boxResources[i]);
-        box->boxResources[i] = NULL;
+    if (destroyResources)
+    {  //should be passed as false when box resources are put into the scene drawing the animation
+        for(int i = 0; i < box->numBoxes; i++)
+        {
+            if (box->boxResources[i] != NULL)
+                destroyCResource(box->boxResources[i]);
+
+            free(box->boxResources[i]);
+            box->boxResources[i] = NULL;
+        }
     }
 
     box->numBoxes = 0;
@@ -127,7 +142,7 @@ void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, w
 }
 
 void iterateWarperCutscene(warperCutscene* cutscene)
-{  //TODO: Test
+{
     int curAnimation = cutscene->currentAnimation;
     if (curAnimation < cutscene->numAnimations)
     {
@@ -168,8 +183,24 @@ void iterateWarperCutscene(warperCutscene* cutscene)
     }
 }
 
-void destroyWarperCutscene(warperCutscene* cutscene)
+void destroyWarperCutscene(warperCutscene* cutscene, bool destroyAnimations, bool destroyTextBoxes, bool destroyBoxResources)
 {
+    if (destroyAnimations)
+    {
+        for(int i = 0; i < cutscene->numAnimations; i++)
+        {
+            destroyWarperAnimation(&(cutscene->animations[i]));
+        }
+    }
+
+    if (destroyTextBoxes)
+    {
+        for(int i = 0; i < cutscene->numAnimations; i++)
+        {
+            destroyWarperCutsceneBox(&(cutscene->boxes[i]), destroyBoxResources);
+        }
+    }
+
     free(cutscene->animations);
     free(cutscene->boxes);
     cutscene->animations = NULL;

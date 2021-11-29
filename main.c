@@ -348,17 +348,18 @@ void playTestAnimation()
 
     for(int i = 0; i < 5; i++)
     {
-        initWarperActor(&actorOneAnimations[i], animationPos[i], &aSpr);
+        initWarperActor(&actorOneAnimations[i], animationPos[i], &aSpr, true);
         initWarperAnimation(&animations[i], (warperActor[1]) {actorOneAnimations[i]}, 1, 12);
     }
 
     warperCutsceneBox emptyBox;
     initWarperCutsceneBox(&emptyBox, NULL, NULL, 0);
-    warperCutsceneBox otherBox;
+    warperCutsceneBox otherBoxes[2];
     warperTextBox box;
     createBattleTextBox(&box, (cDoubleRect) {0, 0, SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Test", "Box"}, (bool[2]) {false, false}, 2, TILE_SIZE);
-    initWarperCutsceneBox(&otherBox, (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
-    warperCutsceneBox boxes[5] = {emptyBox, otherBox, emptyBox, emptyBox, otherBox};
+    initWarperCutsceneBox(&otherBoxes[0], (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
+    initWarperCutsceneBox(&otherBoxes[1], (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
+    warperCutsceneBox boxes[5] = {emptyBox, otherBoxes[0], emptyBox, emptyBox, otherBoxes[1]};
     initWarperCutscene(&cutscene, animations, boxes, 5);
 
 
@@ -366,7 +367,7 @@ void playTestAnimation()
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     cScene scene;
-    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, &spr}, 2, NULL, 0, (cResource*[1]) {otherBox.boxResources[0]}, 1, NULL, 0);
+    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, &spr}, 2, NULL, 0, (cResource*[2]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0]}, 2, NULL, 0);
 
     bool quit = false;
     cInputState input;
@@ -391,10 +392,18 @@ void playTestAnimation()
         }
 
         drawCScene(&scene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
-        if (!cutscene.waitingForBox)
-            iterateWarperAnimatedSprite(&aSpr);
+
+        for(int i = 0; i < cutscene.animations[cutscene.currentAnimation].numActors; i++)
+        {  //iterate through each actor in the current animation step
+            if (!(cutscene.waitingForBox && cutscene.animations[cutscene.currentAnimation].actors[i].pauseAnimationWhenWaiting))  //if we aren't supposed to pause animations for this sprite when the textbox is open and the textbox is indeed open
+                iterateWarperAnimatedSprite(cutscene.animations[cutscene.currentAnimation].actors[i].animatedSpr);  //iterate the animation of the sprite
+        }
+
         iterateWarperCutscene(&cutscene);
     }
+
+    destroyWarperCutscene(&cutscene, true, true, false);
+    destroyWarperAnimatedSprite(&aSpr, false);
 
     destroyCScene(&scene);
 }

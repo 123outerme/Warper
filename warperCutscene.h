@@ -7,11 +7,12 @@
 typedef struct _warperActor {
     cDoubleRect position; /**< actual actor position */
     warperAnimatedSprite* animatedSpr; /**< sprite->drawRect is to be ignored; this is only for render info purposes */
+    bool pauseAnimationWhenWaiting;  /**< true, if this animated sprite should not continue to play while waiting for a textbox to be closed. This flag isn't used internally, and should be read by whatever function is playing the cutscene to block animations when waiting */
 } warperActor;
 
 typedef struct _warperAnimation
 {
-    warperActor* actors;
+    warperActor* actors;  /**< Array of `warperActor*`s */
     int numActors;
     int currentFrame;
     int frameCount;  /**< Number of transition frames between last animation and this one */
@@ -35,17 +36,17 @@ typedef struct _warperCutscene {
     bool waitingForBox;  /**< true if animation should not progress past the current animation */
 } warperCutscene;
 
-void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr);
+void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr, bool pauseSpriteWhenWaiting);
 
 void initWarperAnimation(warperAnimation* animation, warperActor* actors, int actorsLength, int frames);
 void destroyWarperAnimation(warperAnimation* animation);
 
 void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* framesAppear, int boxesLength);
 void incrementWarperCutsceneBox(warperCutscene* cutscene);
-void destroyWarperCutsceneBox(warperCutsceneBox* box);
+void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources);
 
 void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength);
 void iterateWarperCutscene(warperCutscene* cutscene);
-void destroyWarperCutscene(warperCutscene* cutscene);
+void destroyWarperCutscene(warperCutscene* cutscene,  bool destroyAnimations, bool destroyTextBoxes, bool destroyBoxResources);
 
 #endif // WARPERCUTSCENE_H_INCLUDED
