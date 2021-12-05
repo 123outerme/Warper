@@ -49,7 +49,8 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
     if (loadMap)
     {
-        importWarperTilemap(tilemap, "maps/testMap.txt");
+        //TODO: tilemap picker
+        importWarperTilemap(tilemap, "maps/testMap.txt", 0);
     }
     else
     {
@@ -145,7 +146,10 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
         quit = false;
     }
-    bool spriteMode = true, drawLayer1 = true, drawMulti = false, pickMode = false;
+    bool spriteMode = true,  //controls whether we are drawing a sprite/sprites, or collision
+    drawLayer1 = true,  //whether we are drawing on layer 1 (base layer) or layer 2 (layer above player)
+    drawMulti = false,  //controls whether we are drawing one sprite or a multi-sprite object
+    pickMode = false;  //controls whether our clicks should select a new sprite for editing or not
 
     c2DModel mapModel_layer1, mapModel_layer2;
     c2DModel collisionModel;
@@ -214,7 +218,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                 if(e.type == SDL_KEYDOWN)
                 {
                     if (e.key.keysym.sym == SDLK_1)
-                    {
+                    {  //single sprite placing mode
                         drawMulti = false;
 
                         int temp = previousIndex;  //swap previousIndex and tile id
@@ -231,7 +235,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     if (e.key.keysym.sym == SDLK_2)
                     {
-                        //multi (building) placing
+                        //multi-sprite (building) placing
                         drawMulti = true;
 
                         leftTileSprite.renderLayer = 2;
@@ -251,6 +255,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     if (e.key.keysym.sym == SDLK_q && leftTileSprite.id > 0 && drawMulti)
                     {
+                        //go back one tile on the left-mouse sprite
                         leftTileSprite.id--;
 
                         leftTileSprite.srcClipRect.x = multiProperties[leftTileSprite.id].tileRect.x * tileSize / 2;
@@ -264,6 +269,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     if (e.key.keysym.sym == SDLK_e && leftTileSprite.id < WARPER_MULTI_PROPS_LEN - 1 && drawMulti)
                     {
+                        //go forward one tile on the left-mouse sprite
                         leftTileSprite.id++;
 
                         leftTileSprite.srcClipRect.x = multiProperties[leftTileSprite.id].tileRect.x * tileSize / 2;
@@ -276,14 +282,14 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     if (drawMulti && multiProperties[leftTileSprite.id].colToRepeat != -1 && e.key.keysym.sym == SDLK_MINUS)
                     {
-                        //x-
+                        //drawMulti mode: x-
                         if (leftTileSprite.drawRect.w > multiProperties[leftTileSprite.id].tileRect.w * tileSize)
                             leftTileSprite.drawRect.w -= tileSize;
                     }
 
                     if (drawMulti && multiProperties[leftTileSprite.id].colToRepeat != -1 && e.key.keysym.sym == SDLK_EQUALS)
                     {
-                        //x+
+                        //drawMulti mode: x+
                         leftTileSprite.drawRect.w += tileSize;
                     }
 
@@ -295,11 +301,11 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
 
                     if (drawMulti && multiProperties[leftTileSprite.id].rowToRepeat != -1 && e.key.keysym.sym == SDLK_RIGHTBRACKET)
                     {
-                        //y+
+                        //drawMulti mode: y+
                         leftTileSprite.drawRect.h += tileSize;
                     }
 
-                    if (e.key.keysym.sym == SDLK_w)
+                    if (e.key.keysym.sym == SDLK_w)  //move camera
                         inputCamera.rect.y -= 12;
 
                     if (e.key.keysym.sym == SDLK_s)
@@ -312,7 +318,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                         inputCamera.rect.x += 12;
 
                     if (e.key.keysym.sym == SDLK_LSHIFT)
-                    {  //show collision mode
+                    {  //toggle collision mode
                         spriteMode = !spriteMode;
                         pickMode = false;
 
@@ -338,7 +344,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                         quit = true;
 
                     if (e.key.keysym.sym == SDLK_SPACE)
-                    {  //toggle upper and lower layers
+                    {  //toggle upper/lower layer
                         drawLayer1 = !drawLayer1;
                         if (drawLayer1)
                             shadeResource.renderLayer = 0;
@@ -372,7 +378,7 @@ bool createNewMap(warperTilemap* tilemap, int tileSize)
                     if (tileX >= 0 && tileX < tilemap->width && tileY >= 0 && tileY < tilemap->height)
                     {
                         if (spriteMode)
-                        {
+                        {  //if we are going to draw a sprite or sprites
                             int** layer = tilemap->spritemap_layer1;
                             c2DModel* layerModel = &mapModel_layer1;
                             if (!drawLayer1)

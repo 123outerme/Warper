@@ -73,6 +73,13 @@ void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* f
             box->framesAppear[i] = framesAppear[i];
         }
     }
+    else
+    {
+        box->boxes = NULL;
+        box->boxResources = NULL;
+        box->framesAppear = NULL;
+    }
+
     box->numBoxes = boxesLength;
 }
 
@@ -117,7 +124,7 @@ void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources)
 
 }
 
-void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength)
+void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength, char* tilemapFilepath, int tilemapLine)
 {
     cutscene->animations = calloc(animationsLength, sizeof(warperAnimation));
     cutscene->boxes = calloc(animationsLength, sizeof(warperCutsceneBox));
@@ -139,11 +146,23 @@ void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, w
     }
 
     cutscene->numAnimations = animationsLength;
+
+    cutscene->tilemapFilepath = calloc(strlen(tilemapFilepath) + 1, sizeof(char));
+    if (!cutscene->tilemapFilepath)
+    {
+        cLogEvent(warperLogger, "ERROR", "WARPER: Animation", "Cannot initialize tilemap filepath string");
+        return;
+    }
+    else
+        strncpy(cutscene->tilemapFilepath, tilemapFilepath, strlen(tilemapFilepath));
+
+    cutscene->tilemapLine = tilemapLine;
 }
 
 void iterateWarperCutscene(warperCutscene* cutscene)
 {
     int curAnimation = cutscene->currentAnimation;
+
     if (curAnimation < cutscene->numAnimations)
     {
         if (!cutscene->waitingForBox)
@@ -208,4 +227,54 @@ void destroyWarperCutscene(warperCutscene* cutscene, bool destroyAnimations, boo
     cutscene->totalFrames = 0;
     cutscene->currentAnimation = 0;
     cutscene->numAnimations = 0;
+}
+
+void importWarperCutscene(char* filepath)
+{
+    //TODO
+}
+
+void exportWarperCutscene(warperCutscene cutscene, char* filepath)
+{
+    int maxNumAnimatedSprs = 0;
+    for(int i = 0; i < cutscene.numAnimations; i++)
+        maxNumAnimatedSprs += cutscene.animations[i].numActors;  //total up the theoretical maximum number of different animated sprites
+
+    warperAnimatedSprite** animatedSprites = calloc(maxNumAnimatedSprs, sizeof(warperAnimatedSprite*));
+    int numAnimatedSprs = 0;
+    //NOTE: This "find all unique animated sprite pointers" thing would be a great thing to use hash tables for!
+    for(int i = 0; i < cutscene.numAnimations; i++)
+    {  //for each animation
+        for(int j = 0; j < cutscene.animations[i].numActors; j++)
+        {  //for each actor in each animation
+            bool found = false;
+            for(int k = 0; k < numAnimatedSprs; k++)
+            {  //for each sprite pointer already indexed
+                if (animatedSprites[k] == cutscene.animations[i].actors[j].animatedSpr)
+                {  //if it's one we already have indexed
+                    found = true;
+                    break;  //we don't need to add it again
+                }
+            }
+            if (!found)
+            {  //if we haven't indexed it yet, add it
+                animatedSprites[numAnimatedSprs] = cutscene.animations[i].actors[j].animatedSpr;
+                numAnimatedSprs++;
+            }
+        }
+
+    }
+
+    //export each animated sprite
+    for(int i = 0; i < numAnimatedSprs; i++)
+    {
+        char* data = exportWarperAnimatedSprite(*animatedSprites[i]);
+        //export to the file
+        free(data);
+    }
+
+    //export each "key frame" to the file, referencing animated sprites as numbers corresponding to their index in the animated sprite array
+    //>export text boxes and the frames they appear, ignoring empty text boxes
+    //>export animation information
+    //>>export data for each actor, referencing the animated sprites by their index in the previously exported animated sprite array (this will be much easier with hash tables as well)
 }

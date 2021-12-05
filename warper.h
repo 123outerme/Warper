@@ -18,6 +18,10 @@ typedef struct _warperAnimatedSprite
 {
     cSprite* sprite;
     cDoubleRect* srcRectDiffs; /**< An array of deltas from the base srcClipRect */
+    double* rotationDiffs;  /**< Array of deltas from the base rotation value (degrees) */
+    double* scaleDiffs;  /**< Array of diffs from the base scale value */
+    SDL_RendererFlip* flipSettings;  /**< Array of settings (not diffs) to set the flip to */
+    cDoublePt* centerDiffs;  /**< Array of diffs from the base center */
     int numDiffs;
     int curFrame;
     int loops;  /**< if != 0, then the animation will loop (the last diff should offset back to the starting value). Negative value loops forever */
@@ -42,7 +46,7 @@ typedef struct _warperOptions
 } warperOptions;
 
 //animated sprite
-void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, int diffsLength, int loops);
+void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, double* rotationDiffs, double* scaleDiffs, SDL_RendererFlip* flipSettings, cDoublePt* centerDiffs, int diffsLength, int loops);
 //>CoSprite helper functions (for cSprite)
 void iterateWarperAnimatedSprite(warperAnimatedSprite* animatedSpr);
 //>CoSprite helper functions (for cResource)
@@ -50,12 +54,15 @@ void drawWarperAnimatedSpr(void* spr, cCamera camera);
 void cleanupWarperAnimatedSpr(void* spr);
 //>end helper functions
 void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroySprite);
+void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data);
+char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr);
+
 
 
 
 //tilemap
 //void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height);  //not really used anymore
-void importWarperTilemap(warperTilemap* tilemap, char* filepath);
+void importWarperTilemap(warperTilemap* tilemap, char* filepath, int line);
 void loadTilemap(warperTilemap* tilemap, char* importedData);
 void exportTilemap(warperTilemap tilemap, char* exportedData);
 void loadTilemapModels(warperTilemap tilemap, c2DModel* layer1, c2DModel* layer2);

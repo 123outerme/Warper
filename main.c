@@ -1,6 +1,7 @@
 #include "warper.h"
 #include "battleSystem.h"
 #include "mapMaker.h"
+#include "cutsceneMaker.h"
 #include "warperInterface.h"
 #include "warperCutscene.h"
 
@@ -11,7 +12,6 @@ void debugPrintStatProgression();
 void playTestAnimation();
 
 //game control/state functions
-void importWarperTilemap(warperTilemap* tilemap, char* filepath);
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
 int pauseMenu(cScene* gameScene, warperTeam* playerTeam);
 bool optionsMenu(bool inGame);
@@ -46,13 +46,22 @@ void checkWarperUnitHover(SDL_MouseMotionEvent motion, warperTeam* playerTeam, w
 #define WMENU_ITEM 5
 #define WMENU_OPTIONS 3
 
+bool global_debug;  //global debug flag
+
 int main(int argc, char** argv)
 {
-    if (argc > 1)
-        argv = argv;  //useless, but prevents warning. might actually add a debug option on cmd line or something
+    if (argc > 1 && (strcmp(argv[1], "--debug") || strcmp(argv[1], "-d")))
+        global_debug = true;
+    else
+        global_debug = false;
 
     int error = initCoSprite("./assets/cb.bmp", "Warper", SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT, "./assets/Px437_ITT_BIOS_X.ttf", TILE_SIZE, (SDL_Color) {255, 28, 198, 0xFF}, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-    initCLogger(&warperLogger, "./logs/log.txt", NULL);
+    initCLogger(&warperLogger, "./logs/log.txt", NULL, global_debug);
+
+    /*
+    if (global_debug)
+        cLogEvent(warperLogger, "DEBUG", "Warper - Startup", "Started Warper in Debug mode");
+    //*/
 
     loadWarperOptions();
 
@@ -67,23 +76,32 @@ int main(int argc, char** argv)
         //main menu
         int selection = gameDevMenu();
 
+        if (selection == 5)
+        {
+            //create new cutscene
+
+            if (createNewCutscene()) //if it returns 1, aka if we're force quitting
+                selection = 8;  //treat it as a quit
+        }
+
         if (selection == 4)
         {  //create new map
             if (createNewMap(&tilemap, TILE_SIZE)) //if it returns 1, aka if we're force quitting
-                selection = 4;  //treat it as a quit
+                selection = 8;  //treat it as a quit
         }
         if (selection == 3)
         {  //load created test map
-            importWarperTilemap(&tilemap, "./maps/testMap.txt");
+            importWarperTilemap(&tilemap, "./maps/testMap.txt", 0);
         }
         if (selection == 2)
         {  //create temp map
             createTestMap(&tilemap);
         }
 
-        if (selection == 7)
+        if (selection == 8 || selection == 5)  //if we don't want to start playing (completed a cutscene or quitting entirely)
         {
-            quitAll = true;  //we want to immediately close the window and quit, as the user requests
+            if (selection == 8)
+                quitAll = true;  //we want to immediately close the window and quit, as the user requests
         }
         else
         {
@@ -220,9 +238,9 @@ int main(int argc, char** argv)
 int gameDevMenu()
 {
     cScene menuScene;
-    char* optionsArray[] = {"Alpha Build Menu", " ", "Load Test Map", "Load Created Map", "Create New Map", "Options", "Print Progression Info", "Quit"};
+    char* optionsArray[] = {"Alpha Build Menu", " ", "Load Test Map", "Load Created Map", "Create New Map", "Create New Cutscene", "Options", "Print Progression Info", "Quit"};
     warperTextBox menuBox;
-    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[8]) {false, false, true, true, true, true, true, true}, 8, &(global.mainFont));
+    createMenuTextBox(&menuBox, (cDoubleRect) {TILE_SIZE, TILE_SIZE, global.windowW - 2 * TILE_SIZE, global.windowH - 2 * TILE_SIZE}, (cDoublePt) {412, 8}, 4, true, 0xFF, optionsArray, (bool[9]) {false, false, true, true, true, true, true, true, true}, 9, &(global.mainFont));
 
     cResource menuBoxResource;
     initCResource(&menuBoxResource, (void*) &menuBox, drawWarperTextBox, destroyWarperTextBox, 5);
@@ -239,7 +257,7 @@ int gameDevMenu()
         input = cGetInputState(true);
 
         if (input.quitInput)
-            menuBox.selection = 7;  //quit
+            menuBox.selection = 8;  //quit
 
         if (input.motion.x >= 0 && input.motion.x <= SCREEN_PX_WIDTH && input.motion.y >= 0 && input.motion.y <= SCREEN_PX_HEIGHT)
             updateCursorIcon(CURSOR_NORMAL);
@@ -252,14 +270,14 @@ int gameDevMenu()
                 checkWarperTextBoxSelection(&menuBox, input.click.x, input.click.y);
         }
 
-        if (menuBox.selection == 5)
+        if (menuBox.selection == 6)
         {
             bool optionsQuit = optionsMenu(false);
-            menuBox.selection = (optionsQuit) ? 7 : -1;  //if we are trying to force quit, set equal to the quit value, else stay in the menu
+            menuBox.selection = (optionsQuit) ? 8 : -1;  //if we are trying to force quit, set equal to the quit value, else stay in the menu
         }
 
 
-        if (menuBox.selection == 6)
+        if (menuBox.selection == 7)
         {
             debugPrintStatProgression();
             menuBox.selection = -1;
@@ -331,15 +349,39 @@ void playTestAnimation()
 
     cDoubleRect animationRects[5] = {(cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {-32, 16, 0, 0}, (cDoubleRect) {16, 0, 0, 0}, (cDoubleRect) {-16, -16, 0, 0}};
     cDoubleRect finalAnimations[60];
+
+    double rotations[10] = {15, 15, 15, 15, 15, 15, -30, -30, -30, 0};
+    double finalRotations[60];
+
     for(int i = 0; i < 60; i++)
     {
+        finalAnimations[i] = (cDoubleRect) {0, 0, 0, 0};
+        finalRotations[i] = 0;
+
         if (i % 12 == 0)
             finalAnimations[i] = animationRects[i / 12];
-        else
-            finalAnimations[i] = (cDoubleRect) {0, 0, 0, 0};
+
+        if (i % 6 == 0)
+            finalRotations[i] = rotations[i / 6];
     }
 
-    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, 60, -1);
+    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, (double*) finalRotations, NULL, NULL, NULL, 60, -1);
+
+    warperAnimatedSprite anime;
+    cSprite animeSprite;
+    {
+        char* exportedSpr = exportWarperAnimatedSprite(aSpr);
+        char* copiedOver = calloc(strlen(exportedSpr) + 1, sizeof(char));
+        strcpy(copiedOver, exportedSpr);
+        free(exportedSpr);
+        printf("%s\n", copiedOver);
+
+        anime.sprite = &animeSprite;
+        importWarperAnimatedSprite(&anime, copiedOver);
+        free(copiedOver);
+
+        aSpr = anime;
+    }
 
     warperActor actorOneAnimations[5];
     warperAnimation animations[5];
@@ -360,29 +402,27 @@ void playTestAnimation()
     initWarperCutsceneBox(&otherBoxes[0], (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
     initWarperCutsceneBox(&otherBoxes[1], (warperTextBox*[1]) {&box}, (int[1]) {6}, 1);
     warperCutsceneBox boxes[5] = {emptyBox, otherBoxes[0], emptyBox, emptyBox, otherBoxes[1]};
-    initWarperCutscene(&cutscene, animations, boxes, 5);
+    initWarperCutscene(&cutscene, animations, boxes, 5, ".", -1);
 
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     cScene scene;
-    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, &spr}, 2, NULL, 0, (cResource*[2]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0]}, 2, NULL, 0);
+    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, aSpr.sprite}, 2, NULL, 0, (cResource*[2]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0]}, 2, NULL, 0);
 
     bool quit = false;
     cInputState input;
     while(!quit)
     {
         input = cGetInputState(true);
-        if (input.quitInput)
+        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE] || input.keyStates[SDL_SCANCODE_RETURN])
             quit = true;
 
         if (input.isClick)
         {
             if (cutscene.waitingForBox)
                 incrementWarperCutsceneBox(&cutscene);
-            else
-                quit = true;
         }
 
         if (input.isMotion)
@@ -393,10 +433,13 @@ void playTestAnimation()
 
         drawCScene(&scene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
 
-        for(int i = 0; i < cutscene.animations[cutscene.currentAnimation].numActors; i++)
-        {  //iterate through each actor in the current animation step
-            if (!(cutscene.waitingForBox && cutscene.animations[cutscene.currentAnimation].actors[i].pauseAnimationWhenWaiting))  //if we aren't supposed to pause animations for this sprite when the textbox is open and the textbox is indeed open
-                iterateWarperAnimatedSprite(cutscene.animations[cutscene.currentAnimation].actors[i].animatedSpr);  //iterate the animation of the sprite
+        if (cutscene.currentAnimation < cutscene.numAnimations)
+        {
+            for(int i = 0; i < cutscene.animations[cutscene.currentAnimation].numActors; i++)
+            {  //iterate through each actor in the current animation step
+                if (!(cutscene.waitingForBox && cutscene.animations[cutscene.currentAnimation].actors[i].pauseAnimationWhenWaiting))  //if we aren't supposed to pause animations for this sprite when the textbox is open and the textbox is indeed open
+                    iterateWarperAnimatedSprite(cutscene.animations[cutscene.currentAnimation].actors[i].animatedSpr);  //iterate the animation of the sprite
+            }
         }
 
         iterateWarperCutscene(&cutscene);
@@ -404,7 +447,6 @@ void playTestAnimation()
 
     destroyWarperCutscene(&cutscene, true, true, false);
     destroyWarperAnimatedSprite(&aSpr, false);
-
     destroyCScene(&scene);
 }
 

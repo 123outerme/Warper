@@ -116,71 +116,69 @@ void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroy
  */
 void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
 {
-    char* savePtr = data;  //setup for strtok_r()
-    char* nextToken = strtok_r(data, "{}", &savePtr);  //get the cSprite data
-    char* tempData = calloc(strlen(data) + 3, sizeof(char));
-    snprintf(tempData, strlen(data) + 3, "{%s}", nextToken);  //put it back in the {} (which strtok_r() gets rid of)
+    char* savePtr = data;
+    char* nextToken = strtok_r(data, "{}", &savePtr);
+    char* tempData = calloc(2048, sizeof(char));
+    snprintf(tempData, strlen(data) + 3, "{%s}", nextToken);
 
-    //printf("> %s\n", tempData);
-    importCSprite(aSpr->sprite, tempData);  //import the sprite to the (already allocated) cSprite memory space
-    free(tempData);  //free the data surrounded by {} since we have the sprite data imported now
-    //printf("> %s\n", aSpr->sprite->textureFilepath);
+    printf("> %s\n", tempData);
+    importCSprite(aSpr->sprite, tempData);
+    free(tempData);
+    printf("> %s\n", aSpr->sprite->textureFilepath);
 
-    aSpr->numDiffs = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);  //get the number of different frames
-    aSpr->loops = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);  //get the number of loops we will do
+    aSpr->numDiffs = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
+    aSpr->loops = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
     printf("> %d, %d\n", aSpr->numDiffs, aSpr->loops);
 
-    aSpr->srcRectDiffs = calloc(aSpr->numDiffs, sizeof(cDoubleRect));  //allocate each array according to how many frames there will be
+    aSpr->srcRectDiffs = calloc(aSpr->numDiffs, sizeof(cDoubleRect));
     aSpr->rotationDiffs = calloc(aSpr->numDiffs, sizeof(double));
     aSpr->scaleDiffs = calloc(aSpr->numDiffs, sizeof(double));
     aSpr->flipSettings = calloc(aSpr->numDiffs, sizeof(SDL_RendererFlip));
     aSpr->centerDiffs = calloc(aSpr->numDiffs, sizeof(cDoublePt));
 
     //src rect diffs
-    nextToken = strtok_r(savePtr, "[]", &savePtr);  //get the first array (src rects)
-    //strcpy(tempData, nextToken);
-    char* saveArr = nextToken;  //start at the next gotten token (without updating nextToken's address)
+    nextToken = strtok_r(savePtr, "[]", &savePtr);
+    strcpy(tempData, nextToken);
+    char* saveArr = tempData;
     printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
     {
-        aSpr->srcRectDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);  //get the x, then y, then w, then h values
+        aSpr->srcRectDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
         aSpr->srcRectDiffs[i].y = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
         aSpr->srcRectDiffs[i].w = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
         aSpr->srcRectDiffs[i].h = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
     }
 
     //rotation diffs
-    nextToken = strtok_r(savePtr, "[;]", &savePtr);  //do the same for rotation
+    nextToken = strtok_r(savePtr, "[]", &savePtr);
     saveArr = nextToken;
     printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
-        aSpr->rotationDiffs[i] = strtod(strtok_r(saveArr, ",", &saveArr), NULL);
+        aSpr->rotationDiffs[i] = strtod(strtok_r(savePtr, ",", &saveArr), NULL);
 
     //scale diffs
-    nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and scale
+    nextToken = strtok_r(savePtr, "[]", &savePtr);
     saveArr = nextToken;
     printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
-        aSpr->scaleDiffs[i] = strtod(strtok_r(saveArr, ",", &saveArr), NULL);
+        aSpr->scaleDiffs[i] = strtod(strtok_r(savePtr, ",", &saveArr), NULL);
 
     //flip settings
-    nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and flip
+    nextToken = strtok_r(savePtr, "[]", &savePtr);
     saveArr = nextToken;
     printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
-        aSpr->flipSettings[i] = (SDL_RendererFlip) strtol(strtok_r(saveArr, ",", &saveArr), NULL, 10);
+        aSpr->flipSettings[i] = (SDL_RendererFlip) strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
 
     //center diffs
-    nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and center
+    nextToken = strtok_r(savePtr, "[]", &savePtr);
     saveArr = nextToken;
     printf("> %s\n", nextToken);
-    //* dunno why this doesn't work rn
     for(int i = 0; i < aSpr->numDiffs; i++)
     {
         aSpr->centerDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
         aSpr->centerDiffs[i].y = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
     }
-    //*/
 }
 
 /** \brief Export an animated sprite into string form
@@ -191,7 +189,7 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
 char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
 {
     //I've kinda just given up on calculating the expected size of this string
-    char* data = calloc(12289, sizeof(char));  //(2048 * 6) + 1
+    char* data = calloc(65536, sizeof(char));
     char* spriteData = exportCSprite(*animatedSpr.sprite);
 
     char* srcData = calloc(2048, sizeof(char));  //phoning it in at its finest
@@ -241,7 +239,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
     strcat(flipData, "]");
     strcat(centerData, "]");
 
-    snprintf(data, 12289, "%s;%d;%d;%s;%s;%s;%s;%s", spriteData, animatedSpr.numDiffs, animatedSpr.loops, srcData, rotationData, scaleData, flipData, centerData);
+    snprintf(data, 65536, "%s,%d,%d,%s,%s,%s,%s,%s", spriteData, animatedSpr.numDiffs, animatedSpr.loops, srcData, rotationData, scaleData, flipData, centerData);
 
     free(spriteData);
     free(srcData);

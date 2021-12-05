@@ -5,6 +5,6 @@
 #include "warperInterface.h"
 #include "warperCutscene.h"
 
-bool createNewCutscene(warperCutscene* resultCutscene, warperTilemap* tilemap);
+bool createNewCutscene();
 
 #endif // CUTSCENEMAKER_H_INCLUDED

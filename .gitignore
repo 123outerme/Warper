@@ -22,3 +22,4 @@
 *.pem
 *.pdn
 *.cscope_file_list
+*.out

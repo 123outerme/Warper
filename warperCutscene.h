@@ -12,7 +12,7 @@ typedef struct _warperActor {
 
 typedef struct _warperAnimation
 {
-    warperActor* actors;  /**< Array of `warperActor*`s */
+    warperActor* actors;  /**< Array of `warperActor`s */
     int numActors;
     int currentFrame;
     int frameCount;  /**< Number of transition frames between last animation and this one */
@@ -34,6 +34,8 @@ typedef struct _warperCutscene {
     int currentAnimation;
     int totalFrames;  /**< Total number of animations' (transitions') frames */
     bool waitingForBox;  /**< true if animation should not progress past the current animation */
+    char* tilemapFilepath;  /**< holds the filepath to the source of the tilemap we base this cutscene on */
+    int tilemapLine;  /**< holds the line number corresponding to the tilemap we base this cutscene on */
 } warperCutscene;
 
 void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr, bool pauseSpriteWhenWaiting);
@@ -45,8 +47,11 @@ void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* f
 void incrementWarperCutsceneBox(warperCutscene* cutscene);
 void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources);
 
-void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength);
+void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength, char* tilemapFilepath, int tilemapLine);
 void iterateWarperCutscene(warperCutscene* cutscene);
 void destroyWarperCutscene(warperCutscene* cutscene,  bool destroyAnimations, bool destroyTextBoxes, bool destroyBoxResources);
+
+void importWarperCutscene(char* filepath);
+void exportWarperCutscene(warperCutscene cutscene, char* filepath);
 
 #endif // WARPERCUTSCENE_H_INCLUDED
