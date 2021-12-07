@@ -11,7 +11,7 @@ warperOptions options;
  * \param diffsLength int - length of `srcRectDiffs`
  * \param loops int - if != 0, the animation will continually play (MUST provide one extra diff that resets coordinates back to beginning). Negative loops forever
  */
-void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, double* rotationDiffs, double* scaleDiffs, SDL_RendererFlip* flipSettings, cDoublePt* centerDiffs, int diffsLength, int loops)
+void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, double* rotationDiffs, double* scaleDiffs, SDL_RendererFlip* flipSettings, cDoublePt* centerDiffs, int* layerSettings, int diffsLength, int loops)
 {
     animatedSpr->sprite = spr;
     animatedSpr->srcRectDiffs = calloc(diffsLength, sizeof(cDoubleRect));
@@ -19,6 +19,7 @@ void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, c
     animatedSpr->scaleDiffs = calloc(diffsLength, sizeof(double));
     animatedSpr->flipSettings = calloc(diffsLength, sizeof(SDL_RendererFlip));
     animatedSpr->centerDiffs = calloc(diffsLength, sizeof(cDoublePt));
+    animatedSpr->layerSettings = calloc(diffsLength, sizeof(int));
 
     if (!animatedSpr->srcRectDiffs || !animatedSpr->rotationDiffs || !animatedSpr->scaleDiffs || !animatedSpr->flipSettings || !animatedSpr->centerDiffs)
     {
@@ -45,6 +46,11 @@ void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, c
 
         if (centerDiffs)
             animatedSpr->centerDiffs[i] = centerDiffs[i];
+
+        if (layerSettings)
+            animatedSpr->layerSettings[i] = layerSettings[i];
+        else
+            animatedSpr->layerSettings[i] = 1;
     }
 
     animatedSpr->numDiffs = diffsLength;
@@ -68,6 +74,8 @@ void iterateWarperAnimatedSprite(warperAnimatedSprite* animatedSpr)
 
         animatedSpr->sprite->center.x += animatedSpr->centerDiffs[animatedSpr->curFrame].x;
         animatedSpr->sprite->center.y += animatedSpr->centerDiffs[animatedSpr->curFrame].y;
+
+        animatedSpr->sprite->renderLayer = animatedSpr->layerSettings[animatedSpr->curFrame];
 
         animatedSpr->curFrame++;
 
@@ -106,6 +114,7 @@ void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroy
     free(animatedSpr->scaleDiffs);
     free(animatedSpr->flipSettings);
     free(animatedSpr->centerDiffs);
+    free(animatedSpr->layerSettings);
     animatedSpr->numDiffs = 0;
 }
 
@@ -135,6 +144,7 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
     aSpr->scaleDiffs = calloc(aSpr->numDiffs, sizeof(double));
     aSpr->flipSettings = calloc(aSpr->numDiffs, sizeof(SDL_RendererFlip));
     aSpr->centerDiffs = calloc(aSpr->numDiffs, sizeof(cDoublePt));
+    aSpr->layerSettings = calloc(aSpr->numDiffs, sizeof(int));
 
     //src rect diffs
     nextToken = strtok_r(savePtr, "[]", &savePtr);  //get the first array (src rects)
@@ -174,13 +184,18 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and center
     saveArr = nextToken;
     printf("> %s\n", nextToken);
-    //* dunno why this doesn't work rn
     for(int i = 0; i < aSpr->numDiffs; i++)
     {
         aSpr->centerDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
         aSpr->centerDiffs[i].y = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
     }
-    //*/
+
+    //render layer settings
+    nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and layers
+    saveArr = nextToken;
+    printf("> %s\n", nextToken);
+    for(int i = 0; i < aSpr->numDiffs; i++)
+        aSpr->layerSettings[i] = (int) strtol(strtok_r(saveArr, ",", &saveArr), NULL, 10);
 }
 
 /** \brief Export an animated sprite into string form
@@ -191,7 +206,8 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
 char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
 {
     //I've kinda just given up on calculating the expected size of this string
-    char* data = calloc(12289, sizeof(char));  //(2048 * 6) + 1
+    const int dataSize = (2048 * 7) + 1;
+    char* data = calloc(dataSize, sizeof(char));  //(2048 * 6) + 1
     char* spriteData = exportCSprite(*animatedSpr.sprite);
 
     char* srcData = calloc(2048, sizeof(char));  //phoning it in at its finest
@@ -199,6 +215,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
     char* scaleData = calloc(2048, sizeof(char));
     char* flipData = calloc(2048, sizeof(char));
     char* centerData = calloc(2048, sizeof(char));
+    char* layerData = calloc(2048, sizeof(char));
     char* temp = calloc(512, sizeof(char));
 
     strcat(srcData, "[");
@@ -206,6 +223,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
     strcat(scaleData, "[");
     strcat(flipData, "[");
     strcat(centerData, "[");
+    strcat(layerData, "[");
 
     for(int i = 0; i < animatedSpr.numDiffs; i++)
     {
@@ -224,6 +242,9 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
         snprintf(temp, 512, "(%f,%f)", animatedSpr.centerDiffs[i].x, animatedSpr.centerDiffs[i].y);
         strcat(centerData, temp);
 
+        snprintf(temp, 512, "%d", animatedSpr.layerSettings[i]);
+        strcat(layerData, temp);
+
         if (i < animatedSpr.numDiffs - 1)
         {
             strcat(srcData, ",");
@@ -231,6 +252,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
             strcat(scaleData, ",");
             strcat(flipData, ",");
             strcat(centerData, ",");
+            strcat(layerData, ",");
         }
     }
     free(temp);
@@ -240,8 +262,9 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
     strcat(scaleData, "]");
     strcat(flipData, "]");
     strcat(centerData, "]");
+    strcat(layerData, "]");
 
-    snprintf(data, 12289, "%s;%d;%d;%s;%s;%s;%s;%s", spriteData, animatedSpr.numDiffs, animatedSpr.loops, srcData, rotationData, scaleData, flipData, centerData);
+    snprintf(data, dataSize, "%s;%d;%d;%s;%s;%s;%s;%s;%s", spriteData, animatedSpr.numDiffs, animatedSpr.loops, srcData, rotationData, scaleData, flipData, centerData, layerData);
 
     free(spriteData);
     free(srcData);
@@ -249,6 +272,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
     free(scaleData);
     free(flipData);
     free(centerData);
+    free(layerData);
 
     return data;
 }

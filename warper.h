@@ -22,6 +22,7 @@ typedef struct _warperAnimatedSprite
     double* scaleDiffs;  /**< Array of diffs from the base scale value */
     SDL_RendererFlip* flipSettings;  /**< Array of settings (not diffs) to set the flip to */
     cDoublePt* centerDiffs;  /**< Array of diffs from the base center */
+    int* layerSettings;  /**< Array of settings (not diffs) to set the render layer to */
     int numDiffs;
     int curFrame;
     int loops;  /**< if != 0, then the animation will loop (the last diff should offset back to the starting value). Negative value loops forever */
@@ -46,7 +47,7 @@ typedef struct _warperOptions
 } warperOptions;
 
 //animated sprite
-void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, double* rotationDiffs, double* scaleDiffs, SDL_RendererFlip* flipSettings, cDoublePt* centerDiffs, int diffsLength, int loops);
+void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, cDoubleRect* srcRectDiffs, double* rotationDiffs, double* scaleDiffs, SDL_RendererFlip* flipSettings, cDoublePt* centerDiffs, int* layerSettings, int diffsLength, int loops);
 //>CoSprite helper functions (for cSprite)
 void iterateWarperAnimatedSprite(warperAnimatedSprite* animatedSpr);
 //>CoSprite helper functions (for cResource)

@@ -353,10 +353,13 @@ void playTestAnimation()
     double rotations[10] = {15, 15, 15, 15, 15, 15, -30, -30, -30, 0};
     double finalRotations[60];
 
+    int layerSettings[60];
+
     for(int i = 0; i < 60; i++)
     {
         finalAnimations[i] = (cDoubleRect) {0, 0, 0, 0};
         finalRotations[i] = 0;
+        layerSettings[i] = 5;
 
         if (i % 12 == 0)
             finalAnimations[i] = animationRects[i / 12];
@@ -365,7 +368,7 @@ void playTestAnimation()
             finalRotations[i] = rotations[i / 6];
     }
 
-    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, (double*) finalRotations, NULL, NULL, NULL, 60, -1);
+    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, (double*) finalRotations, NULL, NULL, NULL, layerSettings, 60, -1);
 
     warperAnimatedSprite anime;
     cSprite animeSprite;
