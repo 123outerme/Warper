@@ -55,8 +55,8 @@ void drawWarperAnimatedSpr(void* spr, cCamera camera);
 void cleanupWarperAnimatedSpr(void* spr);
 //>end helper functions
 void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroySprite);
-void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data);
-char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr);
+void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data, int* spriteIndex);
+char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex);
 
 
 

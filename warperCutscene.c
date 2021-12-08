@@ -236,6 +236,8 @@ void importWarperCutscene(char* filepath)
 
 void exportWarperCutscene(warperCutscene cutscene, char* filepath)
 {
+    createFile(filepath);
+
     int maxNumAnimatedSprs = 0;
     for(int i = 0; i < cutscene.numAnimations; i++)
         maxNumAnimatedSprs += cutscene.animations[i].numActors;  //total up the theoretical maximum number of different animated sprites
@@ -262,16 +264,64 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
                 numAnimatedSprs++;
             }
         }
-
     }
 
-    //export each animated sprite
+    //find each unique cSprite
+    //max number of cSprites == numAnimatedSprs
+    cSprite** sprites = calloc(numAnimatedSprs, sizeof(numAnimatedSprs));
+    int numSprs = 0;
     for(int i = 0; i < numAnimatedSprs; i++)
     {
-        char* data = exportWarperAnimatedSprite(*animatedSprites[i]);
-        //export to the file
+        bool found = false;
+        for(int j = 0; j < numSprs; j++)
+        {
+            if (animatedSprites[i]->sprite == sprites[j])
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            sprites[numSprs] = animatedSprites[i]->sprite;
+            numSprs++;
+        }
+    }
+
+    appendLine(filepath, "|", false);
+    //export each cSprite
+    for(int i = 0; i < numSprs; i++)
+    {
+        char* data = exportCSprite(*sprites[i]);
+        appendLine(filepath, data, false);
+        free(data);
+        if (i < numSprs - 1)
+            appendLine(filepath, "/", false);
+    }
+    appendLine(filepath, "|", true);
+
+    appendLine(filepath, "|", false);
+    //export each animated sprite, referencing the unique cSprite by its index in the exported cSprite table
+    for(int i = 0; i < numAnimatedSprs; i++)
+    {
+        int sprIndex = -1;  //just in case, this will print the string value. However, this should never occur in practice
+
+        //find index of referenced sprite
+        for(int j = 0; j < numSprs; j++)
+        {
+            if (animatedSprites[i]->sprite == sprites[j])
+            {
+                sprIndex = j;
+                break;
+            }
+        }
+
+        char* data = exportWarperAnimatedSprite(*animatedSprites[i], sprIndex);
+        appendLine(filepath, data, false);
+        appendLine(filepath, "/", false);
         free(data);
     }
+    appendLine(filepath, "|", true);
 
     //export each "key frame" to the file, referencing animated sprites as numbers corresponding to their index in the animated sprite array
     //>export text boxes and the frames they appear, ignoring empty text boxes

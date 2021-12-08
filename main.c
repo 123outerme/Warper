@@ -373,17 +373,19 @@ void playTestAnimation()
     warperAnimatedSprite anime;
     cSprite animeSprite;
     {
-        char* exportedSpr = exportWarperAnimatedSprite(aSpr);
+        char* exportedSpr = exportWarperAnimatedSprite(aSpr, -1);
         char* copiedOver = calloc(strlen(exportedSpr) + 1, sizeof(char));
         strcpy(copiedOver, exportedSpr);
         free(exportedSpr);
         printf("%s\n", copiedOver);
 
         anime.sprite = &animeSprite;
-        importWarperAnimatedSprite(&anime, copiedOver);
+        int index = -1;
+        importWarperAnimatedSprite(&anime, copiedOver, &index);
         free(copiedOver);
+        printf("-- %d\n", index);
 
-        aSpr = anime;
+        //aSpr = anime;
     }
 
     warperActor actorOneAnimations[5];
@@ -407,6 +409,7 @@ void playTestAnimation()
     warperCutsceneBox boxes[5] = {emptyBox, otherBoxes[0], emptyBox, emptyBox, otherBoxes[1]};
     initWarperCutscene(&cutscene, animations, boxes, 5, ".", -1);
 
+    exportWarperCutscene(cutscene, "./assets/testCutscene.txt");
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);

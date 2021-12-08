@@ -21,7 +21,7 @@ void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, c
     animatedSpr->centerDiffs = calloc(diffsLength, sizeof(cDoublePt));
     animatedSpr->layerSettings = calloc(diffsLength, sizeof(int));
 
-    if (!animatedSpr->srcRectDiffs || !animatedSpr->rotationDiffs || !animatedSpr->scaleDiffs || !animatedSpr->flipSettings || !animatedSpr->centerDiffs)
+    if (!animatedSpr->srcRectDiffs || !animatedSpr->rotationDiffs || !animatedSpr->scaleDiffs || !animatedSpr->flipSettings || !animatedSpr->centerDiffs || !animatedSpr->layerSettings)
     {
         //printf("Warper error: cannot initialize animated sprite");
         cLogEvent(warperLogger, "WARNING", "WARPER: Animated Sprite", "Cannot initialize draw deltas");
@@ -120,24 +120,39 @@ void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroy
 
 /** \brief Imports an animated sprite from string data
  *
- * \param aSpr warperAnimatedSprite* - expects aSpr->spr to be filled with an allocated cSprite*
+ * \param aSpr warperAnimatedSprite* - expects aSpr->spr to be filled with an allocated cSprite*, if sprIndex != NULL
+ * \param spriteIndex int* - if not NULL, will be filled in with the index that this sprite occurs at (only for if sprite data wasn't exported and the index was instead)
  * \param data char* - the data you want to import
  */
-void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
+void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data, int* spriteIndex)
 {
     char* savePtr = data;  //setup for strtok_r()
     char* nextToken = strtok_r(data, "{}", &savePtr);  //get the cSprite data
-    char* tempData = calloc(strlen(data) + 3, sizeof(char));
-    snprintf(tempData, strlen(data) + 3, "{%s}", nextToken);  //put it back in the {} (which strtok_r() gets rid of)
 
-    //printf("> %s\n", tempData);
-    importCSprite(aSpr->sprite, tempData);  //import the sprite to the (already allocated) cSprite memory space
-    free(tempData);  //free the data surrounded by {} since we have the sprite data imported now
-    //printf("> %s\n", aSpr->sprite->textureFilepath);
+    if (nextToken[0] == '\"')
+    {  //if our exported sprite data was actual data, and not a referenced index
+        char* tempData = calloc(strlen(nextToken) + 3, sizeof(char));
+        snprintf(tempData, strlen(nextToken) + 3, "{%s}", nextToken);  //put it back in the {} (which strtok_r() gets rid of)
+        //printf("> %s\n", tempData);
+        importCSprite(aSpr->sprite, tempData);  //import the sprite to the (already allocated) cSprite memory space
+        free(tempData);  //free the data surrounded by {} since we have the sprite data imported now
+        //printf("> %s\n", aSpr->sprite->textureFilepath);
+    }
+    else
+    {  //if it was an index
+        if (spriteIndex != NULL)
+        {  //and the caller provided an address for spriteIndex
+            *spriteIndex = strtol(nextToken, NULL, 10);  //write the sprite index
+        }
+        else
+        {   //error occurred
+            cLogEvent(warperLogger, "ERROR", "WARPER: Animated Sprite", "Sprite data stored as ref index not expected");
+        }
+    }
 
     aSpr->numDiffs = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);  //get the number of different frames
     aSpr->loops = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);  //get the number of loops we will do
-    printf("> %d, %d\n", aSpr->numDiffs, aSpr->loops);
+    //printf("> %d, %d\n", aSpr->numDiffs, aSpr->loops);
 
     aSpr->srcRectDiffs = calloc(aSpr->numDiffs, sizeof(cDoubleRect));  //allocate each array according to how many frames there will be
     aSpr->rotationDiffs = calloc(aSpr->numDiffs, sizeof(double));
@@ -150,7 +165,7 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
     nextToken = strtok_r(savePtr, "[]", &savePtr);  //get the first array (src rects)
     //strcpy(tempData, nextToken);
     char* saveArr = nextToken;  //start at the next gotten token (without updating nextToken's address)
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
     {
         aSpr->srcRectDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);  //get the x, then y, then w, then h values
@@ -162,28 +177,28 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
     //rotation diffs
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //do the same for rotation
     saveArr = nextToken;
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
         aSpr->rotationDiffs[i] = strtod(strtok_r(saveArr, ",", &saveArr), NULL);
 
     //scale diffs
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and scale
     saveArr = nextToken;
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
         aSpr->scaleDiffs[i] = strtod(strtok_r(saveArr, ",", &saveArr), NULL);
 
     //flip settings
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and flip
     saveArr = nextToken;
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
         aSpr->flipSettings[i] = (SDL_RendererFlip) strtol(strtok_r(saveArr, ",", &saveArr), NULL, 10);
 
     //center diffs
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and center
     saveArr = nextToken;
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
     {
         aSpr->centerDiffs[i].x = strtod(strtok_r(saveArr, "(,)", &saveArr), NULL);
@@ -193,7 +208,7 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
     //render layer settings
     nextToken = strtok_r(savePtr, "[;]", &savePtr);  //and layers
     saveArr = nextToken;
-    printf("> %s\n", nextToken);
+    //printf("> %s\n", nextToken);
     for(int i = 0; i < aSpr->numDiffs; i++)
         aSpr->layerSettings[i] = (int) strtol(strtok_r(saveArr, ",", &saveArr), NULL, 10);
 }
@@ -201,14 +216,22 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data)
 /** \brief Export an animated sprite into string form
  *
  * \param animatedSpr warperAnimatedSprite - animated sprite to be converted
+ * \param cSprIndex int - if > -1, will replace the cSprite data to be exported with the given value
  * \return char* - allocated string holding the animated sprite data.
  */
-char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr)
+char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex)
 {
     //I've kinda just given up on calculating the expected size of this string
     const int dataSize = (2048 * 7) + 1;
     char* data = calloc(dataSize, sizeof(char));  //(2048 * 6) + 1
-    char* spriteData = exportCSprite(*animatedSpr.sprite);
+    char* spriteData;
+    if (cSprIndex < 0)
+        spriteData = exportCSprite(*animatedSpr.sprite);
+    else
+    {
+        spriteData = calloc(2048, sizeof(char));
+        snprintf(spriteData, 2048, "{%d}", cSprIndex);
+    }
 
     char* srcData = calloc(2048, sizeof(char));  //phoning it in at its finest
     char* rotationData = calloc(2048, sizeof(char));
