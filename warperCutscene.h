@@ -46,6 +46,7 @@ void destroyWarperAnimation(warperAnimation* animation);
 void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* framesAppear, int boxesLength);
 void incrementWarperCutsceneBox(warperCutscene* cutscene);
 void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources);
+char* exportWarperCutsceneBox(warperCutsceneBox box);
 
 void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength, char* tilemapFilepath, int tilemapLine);
 void iterateWarperCutscene(warperCutscene* cutscene);

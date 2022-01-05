@@ -352,6 +352,69 @@ void checkWarperTextBoxSelection(warperTextBox* textBox, int xClick, int yClick)
     }
 }
 
+char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
+{
+    const int colorsSize = 3 * ((3 + 1) * 4 + 3) + 3; //3 characters plus 1 separator per color channel, times 4 channels, plus 2 parentheses and 1 separator per SDL_Color, times 3 colors, plus containing brackets and 1 for good measure
+    const int miscSize = 1 + 4 * min(charsInNum(textBox.textsSize), 2) + (4 * 12) + 5 + 1;  //1 boolean plus 2 selection variables (max characters == textsSize, min. 2 [for case "-1"]) plus 1 size variable + 2 parentheses plus 4 * (11 digits plus 1 separator) for dimensions + 4 separators + 1 for good measure
+    const int boolsSize = textBox.textsSize * 2 + 2 + 1;  //two characters per bool: value and separator, plus 2 containing brackets, plus 1 for good measure
+
+    int* textsSizes = calloc(textBox.textsSize, sizeof(int));
+
+    int dataSize = colorsSize + 1 + miscSize + boolsSize + 1 + 1;  //colors size plus containing '|', plus misc size (and eventually plus strings size) plus bools size plus ending '|', plus 1 for good measure
+
+    for(int i = 0; i < textBox.textsSize; i++)
+    {
+        textsSizes[i] = strlen(textBox.texts[i].str) + 4;  //sizes of each individual text item, plus 2 for quotes and 1 for separator, and 1 for good measure
+        dataSize += textsSizes[i];  //add it to dataSize variable
+    }
+
+    char* boxData = calloc(dataSize, sizeof(char));
+    char* tempData = calloc(miscSize, sizeof(char));
+
+    //colorsSize + 1 for the containing '|' and separator ';'
+    snprintf(boxData, colorsSize + 2, "{[(%d,%d,%d,%d),(%d,%d,%d,%d),(%d,%d,%d,%d)];", textBox.bgColor.r, textBox.bgColor.g, textBox.bgColor.b, textBox.bgColor.a,
+                                                                                        textBox.highlightColor.r, textBox.highlightColor.g, textBox.highlightColor.b, textBox.highlightColor.a,
+                                                                                        textBox.outlineColor.r, textBox.outlineColor.g, textBox.outlineColor.b, textBox.outlineColor.a);
+
+    snprintf(tempData, miscSize, "%d;%d;%d;%d;(%f,%f,%f,%f);", textBox.isMenu, textBox.selection, textBox.storedSelection, textBox.textsSize, textBox.rect.x, textBox.rect.y, textBox.rect.w, textBox.rect.h);
+    strncat(boxData, tempData, dataSize);
+
+    free(tempData);
+
+    strncat(boxData, "[", dataSize);
+    for(int i = 0; i < textBox.textsSize; i++)
+    {
+        tempData = calloc(textsSizes[i] + 3, sizeof(char));
+        snprintf(tempData, textsSizes[i] + 3, "\"%s\"", textBox.texts[i].str);
+        strncat(boxData, tempData, dataSize);
+
+        if (i < textBox.textsSize - 1)
+            strncat(boxData, ",", dataSize);
+
+        free(tempData);
+    }
+    free(textsSizes);
+
+    strncat(boxData, "];[", dataSize);
+
+    for(int i = 0; i < textBox.textsSize; i++)
+    {
+        tempData = calloc(2, sizeof(char));
+        snprintf(tempData, 2, "%d", textBox.isOption[i]);
+        strncat(boxData, tempData, dataSize);
+
+        if (i < textBox.textsSize - 1)
+            strncat(boxData, ",", dataSize);
+
+        free(tempData);
+    }
+    strncat(boxData, "]}", dataSize);
+
+    *exportedLen = dataSize;
+
+    return boxData;
+}
+
 void updateCursorPos(SDL_MouseMotionEvent motion, bool debugPrint)
 {
     if (motion.x > -1 && motion.y > -1 && motion.x <= SCREEN_PX_WIDTH && motion.y <= SCREEN_PX_HEIGHT)

@@ -7,12 +7,15 @@
 #include "CoSprite/csInput.h"
 #include "CoSprite/csUtility.h"
 
+#define WARPER_FRAME_LIMIT 60
 #define TILE_SIZE 32
 #define GRID_MAX_OPACITY 0x40
 #define WARPER_OPTIONS_FILE "assets/options.cfg"
 
 #define SCREEN_PX_WIDTH 40 * TILE_SIZE
 #define SCREEN_PX_HEIGHT 20 * TILE_SIZE
+
+#define min(a,b) (((a) > (b)) ? (a) : (b))
 
 typedef struct _warperAnimatedSprite
 {
@@ -40,6 +43,7 @@ typedef struct _warperTilemap
 
 typedef struct _warperOptions
 {
+    int framerate;
     Uint8 gridOpacity;
     int difficulty;
     int musicVolume;
@@ -57,9 +61,6 @@ void cleanupWarperAnimatedSpr(void* spr);
 void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroySprite);
 void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data, int* spriteIndex);
 char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex);
-
-
-
 
 //tilemap
 //void initWarperTilemap(warperTilemap* tilemap, int** spritemap, int** collisionmap, int width, int height);  //not really used anymore

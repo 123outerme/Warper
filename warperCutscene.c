@@ -89,10 +89,7 @@ void incrementWarperCutsceneBox(warperCutscene* cutscene)
     cutscene->boxes[curAnimation].boxResources[cutscene->boxes[curAnimation].currentBox]->renderLayer = 0;  //hide the old box
     cutscene->boxes[curAnimation].currentBox++;  //increment to the next box
 
-    if (cutscene->boxes[curAnimation].currentBox >= cutscene->boxes[curAnimation].numBoxes)
-    {  //if we've gone beyond the number of boxes we have
-        cutscene->waitingForBox = false;  //unblock the cutscene
-    }
+    cutscene->waitingForBox = false;  //unblock the cutscene (letting another box or the overall cutscene continue)
 }
 
 /** \brief Destroys cutscene textbox data, but does not destroy warperTextBox data referenced by the cutscene data (this must be cleaned up separately)
@@ -121,7 +118,51 @@ void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources)
     }
 
     box->numBoxes = 0;
+}
 
+char* exportWarperCutsceneBox(warperCutsceneBox box)
+{
+    int boxesLen = 2 + charsInNum(box.numBoxes) + 1;  //2 containing '$' characters plus the chars to represent the number of boxes, plus 1 for good measure
+    char** animBoxData = calloc(box.numBoxes, sizeof(char*));
+
+    for(int i = 0; i < box.numBoxes; i++)
+    {
+        int dataLen = 0;
+        animBoxData[i] = exportWarperTextBox(*(box.boxes[i]), &dataLen);  //convert every box's data
+        boxesLen += dataLen + 1 + charsInNum(box.framesAppear[i]) + 1;  //calculate the length of the string we need to allocate: size of box data, plus 1 for separator, plus size of framesAppear int, plus 1 for separator
+    }
+
+    char* boxesData = calloc(boxesLen, sizeof(char));  //allocate the string we will return
+    snprintf(boxesData, boxesLen, "#%d%%", box.numBoxes);  //put the preliminary information in there
+
+    for(int i = 0; i < box.numBoxes; i++)
+    {
+        //iterate through the exported data array, place it into the final string, then deallocate it
+        strncat(boxesData, animBoxData[i], boxesLen);
+        free(animBoxData[i]);
+
+        if (i < box.numBoxes - 1)
+            strncat(boxesData, ":", boxesLen);  //add the separator
+    }
+    free(animBoxData);
+    strncat(boxesData, "%", boxesLen);
+
+    //now convert framesAppear data
+    for(int i = 0; i < box.numBoxes; i++)
+    {
+        int framesSize = charsInNum(box.framesAppear[i]) + 1;
+        char* framesData = calloc(framesSize, sizeof(char));
+        snprintf(framesData, framesSize, "%d", box.framesAppear[i]);
+        strncat(boxesData, framesData, boxesLen);
+        free(framesData);
+
+        if (i < box.numBoxes - 1)
+            strncat(boxesData, ":", boxesLen);  //add the separator
+    }
+
+    strncat(boxesData, "%#", boxesLen);  //close it off
+
+    return boxesData;
 }
 
 void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, warperCutsceneBox* boxes, int animationsLength, char* tilemapFilepath, int tilemapLine)
@@ -325,6 +366,16 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
 
     //export each "key frame" to the file, referencing animated sprites as numbers corresponding to their index in the animated sprite array
     //>export text boxes and the frames they appear, ignoring empty text boxes
+    appendLine(filepath, "|", false);
+    for(int i = 0; i < cutscene.numAnimations; i++)
+    {
+        char* boxesData = exportWarperCutsceneBox(cutscene.boxes[i]);
+        appendLine(filepath, boxesData, false);
+        if (i < cutscene.numAnimations - 1)
+            appendLine(filepath, "/", false);
+    }
+    appendLine(filepath, "|", true);
+
     //>export animation information
     //>>export data for each actor, referencing the animated sprites by their index in the previously exported animated sprite array (this will be much easier with hash tables as well)
 }

@@ -66,6 +66,7 @@ void createBattleTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDouble
 void createMenuTextBox(warperTextBox* textBox, cDoubleRect dimensions, cDoublePt margins, double verticalSpacing, bool justify, Uint8 bgOpacity, char** strings, bool* isOptions, int stringsLength, cFont* font);
 void checkWarperTextBoxHover(warperTextBox* textBox, SDL_MouseMotionEvent motion);
 void checkWarperTextBoxSelection(warperTextBox* textBox, int xClick, int yClick);
+char* exportWarperTextBox(warperTextBox textBox, int* exportedLen);
 
 //cursor
 void updateCursorPos(SDL_MouseMotionEvent motion, bool debugPrint);

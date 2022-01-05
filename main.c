@@ -10,6 +10,7 @@ int gameDevMenu();
 void createTestMap(warperTilemap* tilemap);
 void debugPrintStatProgression();
 void playTestAnimation();
+void playTestWizardAnimation();
 
 //game control/state functions
 int gameLoop(warperTilemap tilemap, cScene* gameScene, warperTeam* playerTeam, warperTeam* enemyTeam);
@@ -23,8 +24,6 @@ void checkWarperUnitHover(SDL_MouseMotionEvent motion, warperTeam* playerTeam, w
 
 #define TEST_TILEMAP_X 80  //(global.windowW / TILE_SIZE)
 #define TEST_TILEMAP_Y 60  //(global.windowH / TILE_SIZE)
-
-#define WARPER_FRAME_LIMIT 60
 
 #define CONFIRM_NONE 0
 #define CONFIRM_MOVEMENT 1
@@ -281,12 +280,12 @@ int gameDevMenu()
         {
             debugPrintStatProgression();
             menuBox.selection = -1;
-            playTestAnimation();
+            playTestWizardAnimation();
         }
 
         updateCursorPos(input.motion, false);
 
-        drawCScene(&menuScene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
+        drawCScene(&menuScene, true, true, NULL, NULL, options.framerate);
     }
 
     int selection = menuBox.selection;
@@ -416,6 +415,107 @@ void playTestAnimation()
 
     cScene scene;
     initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, aSpr.sprite}, 2, NULL, 0, (cResource*[2]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0]}, 2, NULL, 0);
+
+    bool quit = false;
+    cInputState input;
+    while(!quit)
+    {
+        input = cGetInputState(true);
+        if (input.quitInput || input.keyStates[SDL_SCANCODE_ESCAPE] || input.keyStates[SDL_SCANCODE_RETURN])
+            quit = true;
+
+        if (input.isClick)
+        {
+            if (cutscene.waitingForBox)
+                incrementWarperCutsceneBox(&cutscene);
+        }
+
+        if (input.isMotion)
+        {
+            cursorSprite.drawRect.x = input.motion.x;
+            cursorSprite.drawRect.y = input.motion.y;
+        }
+
+        drawCScene(&scene, true, true, NULL, NULL, WARPER_FRAME_LIMIT);
+
+        if (cutscene.currentAnimation < cutscene.numAnimations)
+        {
+            for(int i = 0; i < cutscene.animations[cutscene.currentAnimation].numActors; i++)
+            {  //iterate through each actor in the current animation step
+                if (!(cutscene.waitingForBox && cutscene.animations[cutscene.currentAnimation].actors[i].pauseAnimationWhenWaiting))  //if we aren't supposed to pause animations for this sprite when the textbox is open and the textbox is indeed open
+                    iterateWarperAnimatedSprite(cutscene.animations[cutscene.currentAnimation].actors[i].animatedSpr);  //iterate the animation of the sprite
+            }
+        }
+
+        iterateWarperCutscene(&cutscene);
+    }
+
+    destroyWarperCutscene(&cutscene, true, true, false);
+    destroyWarperAnimatedSprite(&aSpr, false);
+    destroyCScene(&scene);
+}
+
+void playTestWizardAnimation()
+{
+    cSprite spr;
+    warperAnimatedSprite aSpr;
+
+    const int SPR_W = 400;
+    const int SPR_H = 400;
+
+    initCSprite(&spr, NULL, "./assets/mockups/testing/wizard_animated.png", 0, (cDoubleRect) {0, 0, SPR_W, SPR_H}, (cDoubleRect) {0, 0, 100, 100}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, &aSpr, 5);
+
+    cDoubleRect animationRects[5] = {(cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}};
+    cDoubleRect finalAnimations[90];
+
+    double finalRotations[90];
+    int layerSettings[90];
+
+    for(int i = 0; i < 90; i++)
+    {
+        finalAnimations[i] = (cDoubleRect) {0, 0, 0, 0};
+        finalRotations[i] = 0;
+        layerSettings[i] = 5;
+
+        if (i % 18 == 0)
+            finalAnimations[i] = animationRects[i / 18];
+    }
+
+    initWarperAnimatedSprite(&aSpr, &spr, (cDoubleRect*) finalAnimations, (double*) finalRotations, NULL, NULL, NULL, layerSettings, 90, -1);
+
+    warperActor actorOneAnimations[5];
+    warperAnimation animations[5];
+    cDoubleRect animationPos[5] = {(cDoubleRect) {0, 0, SPR_W, SPR_H}, (cDoubleRect) {64, 0, SPR_W, SPR_H}, (cDoubleRect) {64, 64, SPR_W, SPR_H}, (cDoubleRect) {128, 64, SPR_W, SPR_H}, (cDoubleRect) {128, 128, SPR_W, SPR_H}};
+    warperCutscene cutscene;
+
+    for(int i = 0; i < 5; i++)
+    {
+        initWarperActor(&actorOneAnimations[i], animationPos[i], &aSpr, true);
+        initWarperAnimation(&animations[i], (warperActor[1]) {actorOneAnimations[i]}, 1, 18);
+    }
+
+    warperCutsceneBox emptyBox;
+    initWarperCutsceneBox(&emptyBox, NULL, NULL, 0);
+    warperCutsceneBox otherBoxes[2];
+    warperTextBox box1, box2, box3;
+    createBattleTextBox(&box1, (cDoubleRect) {0, 0, SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Wizard:", "Aw hell nah I'mma quit this animation"}, (bool[2]) {false, false}, 2, TILE_SIZE);
+
+    initWarperCutsceneBox(&otherBoxes[0], (warperTextBox*[1]) {&box1}, (int[1]) {6}, 1);
+
+    createBattleTextBox(&box2, (cDoubleRect) {0, 0, SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Wizard:", "Later idiot"}, (bool[2]) {false, false}, 2, TILE_SIZE);
+    createBattleTextBox(&box3, (cDoubleRect) {SCREEN_PX_WIDTH / 4, SCREEN_PX_HEIGHT / 4, SCREEN_PX_WIDTH / 2, SCREEN_PX_HEIGHT / 2}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Wizard:", "*He leaves*"}, (bool[2]) {false, false}, 2, TILE_SIZE);
+    initWarperCutsceneBox(&otherBoxes[1], (warperTextBox*[2]) {&box2, &box3}, (int[2]) {6, 8}, 2);
+
+    warperCutsceneBox boxes[5] = {emptyBox, otherBoxes[0], emptyBox, emptyBox, otherBoxes[1]};
+    initWarperCutscene(&cutscene, animations, boxes, 5, ".", -1);
+
+    exportWarperCutscene(cutscene, "./assets/testWizCutscene.txt");
+
+    cCamera camera;
+    initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
+
+    cScene scene;
+    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, aSpr.sprite}, 2, NULL, 0, (cResource*[3]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0], otherBoxes[1].boxResources[1]}, 3, NULL, 0);
 
     bool quit = false;
     cInputState input;

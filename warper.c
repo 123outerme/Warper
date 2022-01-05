@@ -222,23 +222,38 @@ void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data, int* spr
 char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex)
 {
     //I've kinda just given up on calculating the expected size of this string
-    const int dataSize = (2048 * 7) + 1;
-    char* data = calloc(dataSize, sizeof(char));  //(2048 * 6) + 1
+    int spriteSize = 0;
+    const int rectsSize = ((8 * 4) + 3) * animatedSpr.numDiffs + 3;  //4 nums per rect, 7 characters plus one separator per num. 3 characters for parentheses and separator, and this times how ever many diffs we have, plus 2 characters for the containing brackets, plus 1 for good measure
+    const int rotationsSize = 12 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
+    const int scalesSize = 12 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
+    const int flipsSize = 2 * animatedSpr.numDiffs + 3;  //1 digit + 1 separator per diff, plus 2 for containing brackets, plus 1 for good measure
+    const int centersSize = ((2 * 12) + 3) * animatedSpr.numDiffs + 3; //2 nums per pt, 11 digits + 1 separator character per num, 2 characters for parentheses and 1 for separator, times num diffs, plus 2 for containing brackets, plus 1 for good measure
+    const int layersSize = 4 * animatedSpr.numDiffs + 3;  //3 digits max per item + 1 separator character, times num diffs, plus 2 for parentheses and 1 for good measure
+
+
     char* spriteData;
     if (cSprIndex < 0)
+    {
         spriteData = exportCSprite(*animatedSpr.sprite);
+        spriteSize = strlen(spriteData) + 1;  //plus 1 for good measure
+    }
     else
     {
-        spriteData = calloc(2048, sizeof(char));
-        snprintf(spriteData, 2048, "{%d}", cSprIndex);
+        spriteSize = 2 + digits(cSprIndex) + 1;  //2 chars for brackets, n for digits, 1 for good measure
+        spriteData = calloc(spriteSize, sizeof(char));
+        snprintf(spriteData, spriteSize, "{%d}", cSprIndex);
+
     }
 
-    char* srcData = calloc(2048, sizeof(char));  //phoning it in at its finest
-    char* rotationData = calloc(2048, sizeof(char));
-    char* scaleData = calloc(2048, sizeof(char));
-    char* flipData = calloc(2048, sizeof(char));
-    char* centerData = calloc(2048, sizeof(char));
-    char* layerData = calloc(2048, sizeof(char));
+    const int dataSize = spriteSize + rectsSize + rotationsSize + scalesSize + flipsSize + centersSize + layersSize + 9;  //8 separators plus 1 for good measure
+    char* data = calloc(dataSize, sizeof(char));
+
+    char* srcData = calloc(rectsSize, sizeof(char));  //phoning it in at its finest
+    char* rotationData = calloc(rotationsSize, sizeof(char));
+    char* scaleData = calloc(scalesSize, sizeof(char));
+    char* flipData = calloc(flipsSize, sizeof(char));
+    char* centerData = calloc(centersSize, sizeof(char));
+    char* layerData = calloc(layersSize, sizeof(char));
     char* temp = calloc(512, sizeof(char));
 
     strcat(srcData, "[");
@@ -540,6 +555,7 @@ void loadWarperOptions()
     if (checkFile(WARPER_OPTIONS_FILE) <= 0)
     {
         //default options
+        options.framerate = WARPER_FRAME_LIMIT;
         options.difficulty = 1; //Beginner. Should it be something more like Medium?
         options.gridOpacity = 0x00;  //what should the default be here?
         options.musicVolume = MIX_MAX_VOLUME;
@@ -550,22 +566,27 @@ void loadWarperOptions()
     {
         char* optionsText = calloc(80, sizeof(char));
 
-        readLine(WARPER_OPTIONS_FILE, 0, 80, &optionsText);  //difficulty
+        readLine(WARPER_OPTIONS_FILE, 0, 80, &optionsText);  //framerate
         char* savePtr = optionsText;
+        strtok_r(savePtr, ":", &savePtr);
+        options.framerate = strtol(savePtr, NULL, 10);
+
+        readLine(WARPER_OPTIONS_FILE, 1, 80, &optionsText);  //difficulty
+        savePtr = optionsText;
         strtok_r(savePtr, ":", &savePtr);
         options.difficulty = strtol(savePtr, NULL, 10);
 
-        readLine(WARPER_OPTIONS_FILE, 1, 80, &optionsText);  //grid opacity
+        readLine(WARPER_OPTIONS_FILE, 2, 80, &optionsText);  //grid opacity
         savePtr = optionsText;
         strtok_r(savePtr, ":", &savePtr);
         options.gridOpacity = (Uint8) strtol(savePtr, NULL, 10) / 100.0 * GRID_MAX_OPACITY;
 
-        readLine(WARPER_OPTIONS_FILE, 2, 80, &optionsText);  //music volume
+        readLine(WARPER_OPTIONS_FILE, 3, 80, &optionsText);  //music volume
         savePtr = optionsText;
         strtok_r(savePtr, ":", &savePtr);
         options.musicVolume = (int) strtol(savePtr, NULL, 10) / 100.0 * MIX_MAX_VOLUME;
 
-        readLine(WARPER_OPTIONS_FILE, 3, 80, &optionsText);  //sfx volume
+        readLine(WARPER_OPTIONS_FILE, 4, 80, &optionsText);  //sfx volume
         savePtr = optionsText;
         strtok_r(savePtr, ":", &savePtr);
         options.soundFxVolume = (int) strtol(savePtr, NULL, 10) / 100.0 * MIX_MAX_VOLUME;
@@ -582,6 +603,9 @@ void saveWarperOptions()
 {
     createFile(WARPER_OPTIONS_FILE);  //erase existing file
     char* optionsText = calloc(80, sizeof(char));
+
+    snprintf(optionsText, 80, "framerate:%d", options.framerate);
+    appendLine(WARPER_OPTIONS_FILE, optionsText, true);
 
     snprintf(optionsText, 80, "difficulty:%d", options.difficulty);
     appendLine(WARPER_OPTIONS_FILE, optionsText, true);
