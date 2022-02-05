@@ -308,14 +308,18 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                         }
                     }
                 }
-            }
-
-            for(int c = 0; c < customCollisionLength; c++)
-            {
-                if (quickCDoubleRectCollision((cDoubleRect) {nextX - tilemap.tileSize, nextY - tilemap.tileSize, 3 * tilemap.tileSize, 3 * tilemap.tileSize}, customCollisions[c]))
-                {  //checks for a collision in all of the tiles adjacent to the current node
-                    isThereCollision = true;
+                if (isThereCollision)
                     break;
+            }
+            if (!isThereCollision)
+            {  //we don't need to check custom collisions if we already found a collision
+                for(int c = 0; c < customCollisionLength; c++)
+                {
+                    if (quickCDoubleRectCollision((cDoubleRect) {nextX - tilemap.tileSize, nextY - tilemap.tileSize, 3 * tilemap.tileSize, 3 * tilemap.tileSize}, customCollisions[c]))
+                    {  //checks for a collision in all of the tiles adjacent to the current node
+                        isThereCollision = true;
+                        break;
+                    }
                 }
             }
 
@@ -423,6 +427,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
             {  //check if node is at startX, startY plus or minus half a tile. Stop if is, continue if not
                 checkStartX = nextX / tilemap.tileSize;
                 checkStartY = nextY / tilemap.tileSize;
+
                 quit = true;
                 break;
             }

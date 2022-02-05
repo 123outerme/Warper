@@ -38,6 +38,7 @@ typedef struct _warperPath
     SDL_Color pathColor;
     int pathfinderWidth;
     int pathfinderHeight;
+    double distance;
 } warperPath;
 
 typedef struct _warperCircle

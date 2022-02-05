@@ -1069,7 +1069,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     bool isOptions[] = {true, true, true, true, true};
     createBattleTextBox(&battleTextBox, textBoxDims, (cDoublePt) {0, 0}, 0, true, strings, isOptions, ROOT_TEXTBOX_LENGTH, tilemap.tileSize);
 
-    warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0};
+    warperPath movePath = {.path = NULL, .pathLength = 0, .pathColor = (SDL_Color) {0, 0, 0, 0xF0}, .pathfinderWidth = 0, .pathfinderHeight = 0, .distance = 0};
     warperUnit* pathfinderUnit = NULL;
     //flowNode** movePath = NULL;
     double moveDistance = 0;
@@ -1089,11 +1089,15 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
     battleTextBox.selection = -1;
 
+    cText distanceText;
+    initCText(&distanceText, "0", (cDoubleRect) {0, 0, 0, 0}, 3 * tilemap.tileSize, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &global.mainFont, 1.0, SDL_FLIP_NONE, 0.0, false, 0);
+
     addResourceToCScene(scene, &battleTextBoxRes);
     addResourceToCScene(scene, &movePathRes);
     addResourceToCScene(scene, &enemyMoveCircleRes);
     addResourceToCScene(scene, &teleportCircleRes);
     addResourceToCScene(scene, &enemyTeleportCircleRes);
+    addTextToCScene(scene, &distanceText);
 
     cSprite confirmPlayerSprite;
     cSprite unitSelectSprite;
@@ -1163,6 +1167,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     {
                         destroyWarperPath((void*) &movePath);
                         movePathRes.renderLayer = 0;
+                        distanceText.renderLayer = 0;
                         pathIndex = -1;
                         pathfinderUnit = NULL;
                         pathToCursor = false;
@@ -1230,6 +1235,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                             pathToCursor = false;
                             confirmPlayerSprite.renderLayer = 0;
                             movePathRes.renderLayer = 0;
+                            distanceText.renderLayer = 0;
 
                             if (movePath.path)
                                 destroyWarperPath((void*) &movePath);  //free current path
@@ -1466,6 +1472,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         if (!keepConfirm)
                             confirmMode = CONFIRM_NONE;
                         confirmPlayerSprite.renderLayer = 0;
+                        distanceText.renderLayer = 0;
 
                         //restore textbox to regular menu
                         if (!keepConfirm)
@@ -1495,6 +1502,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                         pathfinderUnit = NULL;
                         pathToCursor = false;
                         confirmPlayerSprite.renderLayer = 0;
+                        distanceText.renderLayer = 0;
                         if (confirmMode == CONFIRM_MOVEMENT)
                         {
                             //restore previous text box
@@ -1508,6 +1516,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
                     {
                         teleportCircleRes.renderLayer = 0;
                         confirmPlayerSprite.renderLayer = 0;
+                        distanceText.renderLayer = 0;
                         if (confirmMode == CONFIRM_TELEPORT)
                         {
                             //restore previous text box
@@ -1896,11 +1905,21 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
 
                         movePath.path = path;
                         movePath.pathLength = pathLength;
+                        movePath.distance = path[0].distance;
                         movePath.pathfinderWidth = (int) playerTeam->units[selectedUnit]->sprite->drawRect.w;  //set the pathfinder's dimensions to be equal to our selected unit's dims
                         movePath.pathfinderHeight = (int) playerTeam->units[selectedUnit]->sprite->drawRect.h;
 
                         movePathRes.renderLayer = 2;  //ensure the path is shown
                         confirmPlayerSprite.renderLayer = 2;
+
+                        int distance = round(movePath.distance);
+                        char* str = calloc(charsInNum(distance) + 2, sizeof(char));
+                        snprintf(str, charsInNum(distance) + 1, "%d", distance);  //distance to string
+                        updateCText(&distanceText, str);
+                        distanceText.rect.x = confirmPlayerSprite.drawRect.x + 2 * tilemap.tileSize;
+                        distanceText.rect.y = confirmPlayerSprite.drawRect.y + tilemap.tileSize;
+                        distanceText.renderLayer = 1;  //ensure the path length is shown
+                        free(str);  //free alloc'd string
                     }
                 }
                 else
@@ -2195,6 +2214,7 @@ int battleLoop(warperTilemap tilemap, cScene* scene, warperTeam* playerTeam, war
     removeResourceFromCScene(scene, &enemyMoveCircleRes, -1, true);
     removeResourceFromCScene(scene, &teleportCircleRes, -1, true);
     removeResourceFromCScene(scene, &enemyTeleportCircleRes, -1, true);
+    removeTextFromCScene(scene, &distanceText, -1, true);
     removeSpriteFromCScene(scene, &confirmPlayerSprite, -1, true);
     removeSpriteFromCScene(scene, &unitSelectSprite, -1, true);
 
