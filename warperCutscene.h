@@ -39,9 +39,11 @@ typedef struct _warperCutscene {
 } warperCutscene;
 
 void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr, bool pauseSpriteWhenWaiting);
+char* exportWarperActor(warperActor actor, warperAnimatedSprite** sprites, int numSprites);
 
 void initWarperAnimation(warperAnimation* animation, warperActor* actors, int actorsLength, int frames);
 void destroyWarperAnimation(warperAnimation* animation);
+char* exportWarperAnimation(warperAnimation animation, warperAnimatedSprite** sprites, int numSprites);
 
 void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* framesAppear, int boxesLength);
 void incrementWarperCutsceneBox(warperCutscene* cutscene);
@@ -52,7 +54,7 @@ void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, w
 void iterateWarperCutscene(warperCutscene* cutscene);
 void destroyWarperCutscene(warperCutscene* cutscene,  bool destroyAnimations, bool destroyTextBoxes, bool destroyBoxResources);
 
-void importWarperCutscene(char* filepath);
+void importWarperCutscene(warperCutscene* cutscene, char* filepath);
 void exportWarperCutscene(warperCutscene cutscene, char* filepath);
 
 #endif // WARPERCUTSCENE_H_INCLUDED

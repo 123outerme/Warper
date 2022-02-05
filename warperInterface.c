@@ -352,6 +352,11 @@ void checkWarperTextBoxSelection(warperTextBox* textBox, int xClick, int yClick)
     }
 }
 
+void importWarperTextBox(warperTextBox* textBox, char* data)
+{
+    //TODO
+}
+
 char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
 {
     const int colorsSize = 3 * ((3 + 1) * 4 + 3) + 3; //3 characters plus 1 separator per color channel, times 4 channels, plus 2 parentheses and 1 separator per SDL_Color, times 3 colors, plus containing brackets and 1 for good measure

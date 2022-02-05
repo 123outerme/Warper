@@ -510,6 +510,7 @@ void playTestWizardAnimation()
     initWarperCutscene(&cutscene, animations, boxes, 5, ".", -1);
 
     exportWarperCutscene(cutscene, "./assets/testWizCutscene.txt");
+    importWarperCutscene(&cutscene, "./assets/testWizCutscene.txt");
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
