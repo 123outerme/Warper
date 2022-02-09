@@ -224,10 +224,10 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex
     //I've kinda just given up on calculating the expected size of this string
     int spriteSize = 0;
     const int rectsSize = ((8 * 4) + 3) * animatedSpr.numDiffs + 3;  //4 nums per rect, 7 characters plus one separator per num. 3 characters for parentheses and separator, and this times how ever many diffs we have, plus 2 characters for the containing brackets, plus 1 for good measure
-    const int rotationsSize = 12 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
-    const int scalesSize = 12 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
+    const int rotationsSize = 8 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
+    const int scalesSize = 8 * animatedSpr.numDiffs + 3;  //11 digits + 1 separator character per diff, plus 2 characters for the containing brackets, plus 1 for good measure
     const int flipsSize = 2 * animatedSpr.numDiffs + 3;  //1 digit + 1 separator per diff, plus 2 for containing brackets, plus 1 for good measure
-    const int centersSize = ((2 * 12) + 3) * animatedSpr.numDiffs + 3; //2 nums per pt, 11 digits + 1 separator character per num, 2 characters for parentheses and 1 for separator, times num diffs, plus 2 for containing brackets, plus 1 for good measure
+    const int centersSize = ((2 * 8) + 3) * animatedSpr.numDiffs + 3; //2 nums per pt, 11 digits + 1 separator character per num, 2 characters for parentheses and 1 for separator, times num diffs, plus 2 for containing brackets, plus 1 for good measure
     const int layersSize = 4 * animatedSpr.numDiffs + 3;  //3 digits max per item + 1 separator character, times num diffs, plus 2 for parentheses and 1 for good measure
 
 
@@ -248,7 +248,7 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex
     const int dataSize = spriteSize + rectsSize + rotationsSize + scalesSize + flipsSize + centersSize + layersSize + 9;  //8 separators plus 1 for good measure
     char* data = calloc(dataSize, sizeof(char));
 
-    char* srcData = calloc(rectsSize, sizeof(char));  //phoning it in at its finest
+    char* srcData = calloc(rectsSize, sizeof(char));
     char* rotationData = calloc(rotationsSize, sizeof(char));
     char* scaleData = calloc(scalesSize, sizeof(char));
     char* flipData = calloc(flipsSize, sizeof(char));
@@ -268,16 +268,16 @@ char* exportWarperAnimatedSprite(warperAnimatedSprite animatedSpr, int cSprIndex
         snprintf(temp, 512, "(%.2f,%.2f,%.2f,%.2f)", animatedSpr.srcRectDiffs[i].x, animatedSpr.srcRectDiffs[i].y, animatedSpr.srcRectDiffs[i].w, animatedSpr.srcRectDiffs[i].h);
         strcat(srcData, temp);
 
-        snprintf(temp, 512, "%f", animatedSpr.rotationDiffs[i]);
+        snprintf(temp, 512, "%.2f", animatedSpr.rotationDiffs[i]);
         strcat(rotationData, temp);
 
-        snprintf(temp, 512, "%f", animatedSpr.scaleDiffs[i]);
+        snprintf(temp, 512, "%.2f", animatedSpr.scaleDiffs[i]);
         strcat(scaleData, temp);
 
         snprintf(temp, 512, "%d", (int) animatedSpr.flipSettings[i]);
         strcat(flipData, temp);
 
-        snprintf(temp, 512, "(%f,%f)", animatedSpr.centerDiffs[i].x, animatedSpr.centerDiffs[i].y);
+        snprintf(temp, 512, "(%.2f,%.2f)", animatedSpr.centerDiffs[i].x, animatedSpr.centerDiffs[i].y);
         strcat(centerData, temp);
 
         snprintf(temp, 512, "%d", animatedSpr.layerSettings[i]);

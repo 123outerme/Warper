@@ -126,6 +126,11 @@ void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* f
     box->numBoxes = boxesLength;
 }
 
+void importWarperAnimation(warperAnimation* animation, char* data)
+{
+    //TODO
+}
+
 /** \brief
  *
  * \param animation warperAnimation - animation to export
@@ -137,10 +142,10 @@ void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* f
 char* exportWarperAnimation(warperAnimation animation, warperAnimatedSprite** sprites, int numSprites)
 {
     int animDataSize = charsInNum(animation.numActors) + charsInNum(animation.frameCount) + 2 + 2 + 1;  //length of numbers plus 2 wrapping characters plus 2 separators plus 1 for good measure
-    char* animData = NULL; //TODO alloc
+    char* animData = NULL;
     char** actorsData = calloc(animation.numActors, sizeof(char*));
 
-    //TODO add array of actors
+    //add array of actors
     for(int i = 0; i < animation.numActors; i++)
     {
         actorsData[i] = exportWarperActor(animation.actors[i], sprites, numSprites);
@@ -153,7 +158,8 @@ char* exportWarperAnimation(warperAnimation animation, warperAnimatedSprite** sp
     for(int i = 0; i < animation.numActors; i++)
     {
         strncat(animData, actorsData[i], animDataSize);
-        strncat(animData, "+", animDataSize);
+        if (i < animation.numActors - 1)
+            strncat(animData, "+", animDataSize);
         free(actorsData[i]);
     }
     free(actorsData);
@@ -198,6 +204,11 @@ void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources)
     }
 
     box->numBoxes = 0;
+}
+
+void importWarperCutsceneBox(warperCutsceneBox* box, char* data)
+{
+    //TODO
 }
 
 char* exportWarperCutsceneBox(warperCutsceneBox box)
@@ -359,6 +370,8 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath)
     3: textbox array
     4: animation data (actors etc)
     */
+    cutscene->currentAnimation = 0;
+
     //start interpreting the lengths of each array
     int dataSize = 2 + 3 * 3 + 1;  //2 digits + 3-char numbers (max expected) * 3 numbers + 1 for good measure
     char* data = calloc(dataSize, sizeof(char));
@@ -367,20 +380,82 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath)
     int spritesLen = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
     int animSpritesLen = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
     cutscene->numAnimations = strtol(savePtr, NULL, 10);
-    printf("%d,%d,%d", spritesLen, animSpritesLen, cutscene->numAnimations);
+    printf("%d,%d,%d\n", spritesLen, animSpritesLen, cutscene->numAnimations);
     free(data);
 
     //start interpreting the cSprite data
     cSprite* sprites = calloc(spritesLen, sizeof(cSprite));
-    dataSize = 0;
-    data = NULL;
-    //readLine(filepath, 1, dataSize, &data);  //read line 2
+    dataSize = 200 * spritesLen + 1; //approx. 200 characters per sprite
+    data = calloc(dataSize, sizeof(char));
+    readLine(filepath, 1, dataSize, &data);  //read line 2
     savePtr = data;
     //get each cSprite
+    for(int i = 0; i < spritesLen; i++)
+    {
+        char* spriteData = strtok_r(savePtr, "|@", &savePtr);
+        //printf("%s\n", spriteData);
+        importCSprite(&(sprites[i]), spriteData);
+    }
+    free(data);
 
     //start interpreting the animatedSprite data
     warperAnimatedSprite* animSprites = calloc(animSpritesLen, sizeof(warperAnimatedSprite));
+    dataSize = 10000 * animSpritesLen;  //approx 10,000 characters per animated sprite TODO REDUCE THIS!!!
+    data = calloc(dataSize, sizeof(char));
+    readLine(filepath, 2, dataSize, &data);
+    if (data == NULL)
+        printf("ERROR: NO SPACE\n");
+    savePtr = data;
     //get each animated sprite
+    for(int i = 0; i < animSpritesLen; i++)
+    {
+        int spriteIndex = -1;
+        char* spriteData = strtok_r(savePtr, "|@", &savePtr);
+        //printf("%s\n", spriteData);
+        importWarperAnimatedSprite(&(animSprites[i]), spriteData, &spriteIndex);
+        if (spriteIndex > -1)
+        {
+            animSprites[i].sprite = &(sprites[spriteIndex]);
+        }
+        else
+        {
+            //ERROR
+            printf("ERROR: imported sprite index not found\n");
+        }
+    }
+    free(data);
+
+    //import textboxes
+    warperCutsceneBox* boxes = calloc(cutscene->numAnimations, sizeof(warperCutsceneBox));
+    dataSize = 500 * cutscene->numAnimations;  //approx 500 characters per box (but usually way less for no box)
+    data = calloc(dataSize, sizeof(char));
+    readLine(filepath, 3, dataSize, &data);
+    savePtr = data;
+    //get each box
+    for(int i = 0; i < cutscene->numAnimations; i++)
+    {
+        char* boxData = strtok_r(savePtr, "|@", &savePtr);
+        printf("%s\n", boxData);
+        importWarperCutsceneBox(&(boxes[i]), boxData);
+    }
+    free(data);
+    cutscene->boxes = boxes;
+
+    //import the rest of the animation data
+    warperAnimation* animations = calloc(cutscene->numAnimations, sizeof(warperAnimation));
+    dataSize = 100 * cutscene->numAnimations;  //approx 100 characters per animation
+    data = calloc(dataSize, sizeof(char));
+    readLine(filepath, 4, dataSize, &data);
+    savePtr = data;
+    //get each animation
+    for(int i = 0; i < cutscene->numAnimations; i++)
+    {
+        char* animationData = strtok_r(savePtr, "|@", &savePtr);
+        printf("%s\n", animationData);
+        importWarperAnimation(&(animations[i]), animationData);
+    }
+    free(data);
+    cutscene->animations = animations;
 }
 
 void exportWarperCutscene(warperCutscene cutscene, char* filepath)
@@ -452,7 +527,7 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
         appendLine(filepath, data, false);
         free(data);
         if (i < numSprs - 1)
-            appendLine(filepath, "/", false);
+            appendLine(filepath, "@", false);
     }
     appendLine(filepath, "|", true);
 
@@ -474,7 +549,7 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
 
         char* data = exportWarperAnimatedSprite(*animatedSprites[i], sprIndex);
         appendLine(filepath, data, false);
-        appendLine(filepath, "/", false);
+        appendLine(filepath, "@", false);
         free(data);
     }
     appendLine(filepath, "|", true);
@@ -487,7 +562,7 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
         char* boxesData = exportWarperCutsceneBox(cutscene.boxes[i]);
         appendLine(filepath, boxesData, false);
         if (i < cutscene.numAnimations - 1)
-            appendLine(filepath, "/", false);
+            appendLine(filepath, "@", false);
         free(boxesData);
     }
     appendLine(filepath, "|", true);
@@ -500,7 +575,7 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
         char* animationData = exportWarperAnimation(cutscene.animations[i], animatedSprites, numAnimatedSprs);
         appendLine(filepath, animationData, false);
         if (i < cutscene.numAnimations - 1)
-            appendLine(filepath, "/", false);
+            appendLine(filepath, "@", false);
         free(animationData);
     }
     appendLine(filepath, "|", true);

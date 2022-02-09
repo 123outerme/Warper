@@ -79,6 +79,7 @@ void initNode(node* nodePtr, int x, int y, node* lastNode, bool visited, double 
     nodePtr->lastNode = lastNode;
     nodePtr->visited = visited;
     nodePtr->distance = distance;
+    nodePtr->initialized = true;
 }
 
 /** \brief Searches for a path between two points on a map with a breadth first search
@@ -211,7 +212,7 @@ node* BreadthFirst(warperTilemap tilemap, const int startX, const int startY, co
  * \param camera cCamera* - debug camera for screen drawing
  * \return node* - NULL if no path found, otherwise will contain path data
  */
-node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, cDoubleRect* customCollisions, int customCollisionLength, int* lengthOfPath, const bool drawDebug, cCamera* camera)
+node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX, int endY, int finderWidth, int finderHeight, cDoubleRect* customCollisions, int customCollisionLength, int* lengthOfPath, bool drawDebug, cCamera* camera)
 {
     /*
     breadth-first based, except nodes are created so that their x's and y's are (at first) offset by the same amount the start (or end?) x and y are from being aligned to the tile-grid
@@ -221,7 +222,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     --if there isn't: find a path from the current node to the nearest node snapped to the tile grid
     -if the end node (or start?) is found in this breadth-first search, then we have finished
     */
-    int queueSize = 2 * tilemap.width * tilemap.height + 1;
+    int queueSize = tilemap.width * tilemap.height + 1;
     node** queue = calloc(queueSize, sizeof(node*));
     node* path = calloc(queueSize, sizeof(node));
     //node* pathFromCollision = NULL;
@@ -254,25 +255,39 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
     curNode = malloc(sizeof(node));
     initNode(curNode, endX, endY, (void*) 1, true, 0);
     //*/
-    //*
-    node searchList[tilemap.height][tilemap.width];
 
+    //node searchList[tilemap.height][tilemap.width];
+    node** searchList = calloc(tilemap.height, sizeof(node*));
+    for(int i = 0; i < tilemap.height; i++)
+    {
+        searchList[i] = calloc(tilemap.width, sizeof(node));
+    }
+
+    /*
     for(int y = 0; y < tilemap.height; y++)
     {
         for(int x = 0; x < tilemap.width; x++)
             initNode(&(searchList[y][x]), x * tilemap.tileSize + deltaEndX, y * tilemap.tileSize + deltaEndY, NULL, false, -1);
     }
+    //*/
 
+    //initNode(&(searchList[startY / tilemap.tileSize][startX / tilemap.tileSize]), startX, startY, NULL, false, -1);
+    initNode(&(searchList[endY / tilemap.tileSize][endX / tilemap.tileSize]), endX, endY, (void*) 1, true, 0);
+
+    curNode = &(searchList[(int) endY / tilemap.tileSize][(int) endX / tilemap.tileSize]);
+    /*
     searchList[startY / tilemap.tileSize][startX / tilemap.tileSize].x = startX;
     searchList[startY / tilemap.tileSize][startX / tilemap.tileSize].y = startY;  //setting our start position to its own offset
 
-    curNode = &(searchList[(int) endY / tilemap.tileSize][(int) endX / tilemap.tileSize]);
     curNode->lastNode = (void*) 1;  //marked as the beginning
     curNode->distance = 0;  //distance is obviously zero
     curNode->visited = true;
     //*/
 
     int checkStartX = -1, checkStartY = -1;
+
+    //TESTING
+    //drawDebug = true;
 
     bool quit = false;
     while(!quit)
@@ -292,6 +307,9 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
 
             int nextX = curNode->x + tilemap.tileSize * xQueueOrder[i];
             int nextY = curNode->y + tilemap.tileSize * yQueueOrder[i];
+
+            if (!searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].initialized)
+                initNode(&(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]), nextX, nextY, NULL, false, -1);
 
             //loop through all of the groups of tiles adjacent to curNode and check for collision
             bool isThereCollision = false;
@@ -315,7 +333,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
             {  //we don't need to check custom collisions if we already found a collision
                 for(int c = 0; c < customCollisionLength; c++)
                 {
-                    if (quickCDoubleRectCollision((cDoubleRect) {nextX - tilemap.tileSize, nextY - tilemap.tileSize, 3 * tilemap.tileSize, 3 * tilemap.tileSize}, customCollisions[c]))
+                    if (quickCDoubleRectCollision((cDoubleRect) {nextX - tilemap.tileSize, nextY - tilemap.tileSize, finderWidth * 1.5, finderHeight * 1.5}, customCollisions[c]))
                     {  //checks for a collision in all of the tiles adjacent to the current node
                         isThereCollision = true;
                         break;
@@ -328,10 +346,15 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                 //we're free to keep moving on
                 if (nextX >= 0 && nextX < tilemap.width * tilemap.tileSize && nextY >= 0 && nextY < tilemap.height * tilemap.tileSize && !searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited)
                 {
+                    //printf("no collision, %d\n", searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].initialized);
+                    //initNode(&(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]), nextX, nextY, curNode, true, curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2)));
+                    //init the next node
+                    //*
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited = true;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2));
 
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
+                    //*/
 
                     queue[queueCount] = &(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]); //malloc(sizeof(node));
                     /*
@@ -359,12 +382,17 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                 //adjust the tile we're checking to align to the tilemap.tileSize grid, but do not add it to the queue
                 if (nextX >= 0 && nextX < tilemap.width * tilemap.tileSize && nextY >= 0 && nextY < tilemap.height * tilemap.tileSize && !searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited)
                 {
+                    //printf("align, %d\n", searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].initialized);
+                    //initNode(&(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]), (nextX / tilemap.tileSize) * tilemap.tileSize, (nextY / tilemap.tileSize) * tilemap.tileSize, curNode, true, curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2)));;
+                    //initialize the node
+                    //*
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x = ((int) searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].x / tilemap.tileSize) * tilemap.tileSize;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y = ((int) searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].y / tilemap.tileSize) * tilemap.tileSize;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].visited = true;
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = curNode->distance + ((i % 2 == 0) ? 1 : sqrt(2));
 
                     searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].lastNode = curNode;
+                    //*/
 
                     bool collision = false;
                     //first check against tilemap collision
@@ -397,6 +425,7 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
 
                     if (!collision)
                     {
+                        //printf("enqueue, %d\n", searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].initialized);
                         //if there is no collision then enqueue it
                         queue[queueCount] = &(searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize]);  //malloc(sizeof(node));
                         /*
@@ -416,8 +445,10 @@ node* offsetBreadthFirst(warperTilemap tilemap, int startX, int startY, int endX
                             //waitForKey(true);
                         }
                     }
+                    /*
                     else
                         searchList[nextY / tilemap.tileSize][nextX / tilemap.tileSize].distance = -1;  //otherwise reset the node's distance count and do not add it to the queue
+                    */
 
 
                 }

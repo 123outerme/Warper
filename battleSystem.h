@@ -60,6 +60,7 @@ typedef struct _node
     void* lastNode;
     bool visited;
     double distance;
+    bool initialized;
 } node;
 
 typedef struct _warperStats
