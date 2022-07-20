@@ -39,10 +39,12 @@ typedef struct _warperCutscene {
 } warperCutscene;
 
 void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* spr, bool pauseSpriteWhenWaiting);
+void importWarperActor(warperActor* actor, char* data, warperAnimatedSprite* sprites, int numSprites);
 char* exportWarperActor(warperActor actor, warperAnimatedSprite** sprites, int numSprites);
 
 void initWarperAnimation(warperAnimation* animation, warperActor* actors, int actorsLength, int frames);
 void destroyWarperAnimation(warperAnimation* animation);
+void importWarperAnimation(warperAnimation* animation, char* data, warperAnimatedSprite* sprites, int numSprites);
 char* exportWarperAnimation(warperAnimation animation, warperAnimatedSprite** sprites, int numSprites);
 
 void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* framesAppear, int boxesLength);

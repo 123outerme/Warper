@@ -15,7 +15,8 @@
 #define SCREEN_PX_WIDTH 40 * TILE_SIZE
 #define SCREEN_PX_HEIGHT 20 * TILE_SIZE
 
-#define min(a,b) (((a) > (b)) ? (a) : (b))
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) > (b)) ? (b) : (a))
 
 typedef struct _warperAnimatedSprite
 {

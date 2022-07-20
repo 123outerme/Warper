@@ -360,7 +360,7 @@ void importWarperTextBox(warperTextBox* textBox, char* data)
 char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
 {
     const int colorsSize = 3 * ((3 + 1) * 4 + 3) + 3; //3 characters plus 1 separator per color channel, times 4 channels, plus 2 parentheses and 1 separator per SDL_Color, times 3 colors, plus containing brackets and 1 for good measure
-    const int miscSize = 1 + 4 * min(charsInNum(textBox.textsSize), 2) + (4 * 12) + 5 + 1;  //1 boolean plus 2 selection variables (max characters == textsSize, min. 2 [for case "-1"]) plus 1 size variable + 2 parentheses plus 4 * (11 digits plus 1 separator) for dimensions + 4 separators + 1 for good measure
+    const int miscSize = 1 + 4 * max(charsInNum(textBox.textsSize), 2) + (4 * 12) + 5 + 1;  //1 boolean plus 2 selection variables (max characters == textsSize, min. 2 [for case "-1"]) plus 1 size variable + 2 parentheses plus 4 * (11 digits plus 1 separator) for dimensions + 4 separators + 1 for good measure
     const int boolsSize = textBox.textsSize * 2 + 2 + 1;  //two characters per bool: value and separator, plus 2 containing brackets, plus 1 for good measure
 
     int* textsSizes = calloc(textBox.textsSize, sizeof(int));
