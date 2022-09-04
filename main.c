@@ -457,13 +457,18 @@ void playTestAnimation()
 
 void playTestWizardAnimation()
 {
+    warperCutscene cutscene;
+
+    /*
     cSprite spr;
     warperAnimatedSprite aSpr;
+    warperCutsceneBox* otherBoxes;
 
     const int SPR_W = 400;
     const int SPR_H = 400;
 
     initCSprite(&spr, NULL, "./assets/mockups/testing/wizard_animated.png", 0, (cDoubleRect) {0, 0, SPR_W, SPR_H}, (cDoubleRect) {0, 0, 100, 100}, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, false, &aSpr, 5);
+
 
     cDoubleRect animationRects[5] = {(cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}, (cDoubleRect) {100, 0, 0, 0}};
     cDoubleRect finalAnimations[90];
@@ -486,7 +491,6 @@ void playTestWizardAnimation()
     warperActor actorOneAnimations[5];
     warperAnimation animations[5];
     cDoubleRect animationPos[5] = {(cDoubleRect) {0, 0, SPR_W, SPR_H}, (cDoubleRect) {64, 0, SPR_W, SPR_H}, (cDoubleRect) {64, 64, SPR_W, SPR_H}, (cDoubleRect) {128, 64, SPR_W, SPR_H}, (cDoubleRect) {128, 128, SPR_W, SPR_H}};
-    warperCutscene cutscene;
 
     for(int i = 0; i < 5; i++)
     {
@@ -496,7 +500,8 @@ void playTestWizardAnimation()
 
     warperCutsceneBox emptyBox;
     initWarperCutsceneBox(&emptyBox, NULL, NULL, 0);
-    warperCutsceneBox otherBoxes[2];
+    otherBoxes = calloc(2, sizeof(warperCutsceneBox));
+
     warperTextBox box1, box2, box3;
     createBattleTextBox(&box1, (cDoubleRect) {0, 0, SCREEN_PX_WIDTH, SCREEN_PX_HEIGHT}, (cDoublePt) {0, 0}, 0, true, (char*[2]) {"Wizard:", "Aw hell nah I'mma quit this animation"}, (bool[2]) {false, false}, 2, TILE_SIZE);
 
@@ -510,13 +515,49 @@ void playTestWizardAnimation()
     initWarperCutscene(&cutscene, animations, boxes, 5, ".", -1);
 
     exportWarperCutscene(cutscene, "./assets/testWizCutscene.txt");
+    //*/
+
     importWarperCutscene(&cutscene, "./assets/testWizCutscene.txt");
+
+    int numSprites = 0;
+    for(int i = 0; i < cutscene.numAnimations; i++)
+    {
+        numSprites += cutscene.animations[i].numActors;
+    }
+
+    cSprite** cutsceneSprites = calloc(numSprites + 1, sizeof(cSprite*));
+    int csIndex = 0;
+    for(int i = 0; i < cutscene.numAnimations; i++)
+    {
+        for(int j = 0; j < cutscene.animations[i].numActors; j++)
+        {
+            cutsceneSprites[csIndex++] = cutscene.animations[i].actors[j].animatedSpr->sprite;
+        }
+    }
+    cutsceneSprites[csIndex++] = &cursorSprite;
+
+    int numResources = 0;
+    for(int i = 0; i < cutscene.numAnimations; i++)
+        numResources += cutscene.boxes[i].numBoxes;  //get number of resources
+
+
+    cResource** cutsceneResources = calloc(numResources, sizeof(cResource*));
+    int crIndex = 0;
+    for(int i = 0; i < cutscene.numAnimations; i++)
+    {
+        //generate array of cResource*'s
+        for(int j = 0; j < cutscene.boxes[i].numBoxes; j++)
+        {
+            cutsceneResources[crIndex++] = cutscene.boxes[i].boxResources[j];
+        }
+    }
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
 
     cScene scene;
-    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, (cSprite*[2]) {&cursorSprite, aSpr.sprite}, 2, NULL, 0, (cResource*[3]) {otherBoxes[0].boxResources[0], otherBoxes[1].boxResources[0], otherBoxes[1].boxResources[1]}, 3, NULL, 0);
+
+    initCScene(&scene, (SDL_Color) {0xFF, 0xFF, 0xFF, 0xFF}, &camera, cutsceneSprites, numSprites, NULL, 0, cutsceneResources, numResources, NULL, 0);
 
     bool quit = false;
     cInputState input;
@@ -553,7 +594,7 @@ void playTestWizardAnimation()
     }
 
     destroyWarperCutscene(&cutscene, true, true, false);
-    destroyWarperAnimatedSprite(&aSpr, false);
+    //destroyWarperAnimatedSprite(&aSpr, false);
     destroyCScene(&scene);
 }
 

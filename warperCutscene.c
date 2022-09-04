@@ -11,11 +11,11 @@ void importWarperActor(warperActor* actor, char* data, warperAnimatedSprite* ani
 {
     char* savePtr = data;
     //printf("\nactor data %s\n", data);
-    actor->position.x = strtol(strtok_r(data, ",", &savePtr), NULL, 10);
-    actor->position.y = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
-    actor->position.w = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
-    actor->position.h = strtol(strtok_r(savePtr, ",;", &savePtr), NULL, 10);
-    actor->pauseAnimationWhenWaiting = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);
+    actor->position.x = strtof(strtok_r(data, "(,", &savePtr), NULL);
+    actor->position.y = strtof(strtok_r(savePtr, ",", &savePtr), NULL);
+    actor->position.w = strtof(strtok_r(savePtr, ",", &savePtr), NULL);
+    actor->position.h = strtof(strtok_r(savePtr, ",;", &savePtr), NULL);
+    actor->pauseAnimationWhenWaiting = strtof(strtok_r(savePtr, ";", &savePtr), NULL);
 
 
     if (savePtr[0] == '\"')
@@ -254,20 +254,40 @@ void importWarperCutsceneBox(warperCutsceneBox* box, char* data)
 
     char* savePtr = data;
     box->numBoxes = strtol(strtok_r(savePtr, "#%", &savePtr), NULL, 10);
-
-    box->boxes = calloc(box->numBoxes, sizeof(warperTextBox*));  //allocate array for boxes
-    box->framesAppear = calloc(box->numBoxes, sizeof(int));  //allocate array for framesAppear
-    box->boxResources = calloc(box->numBoxes, sizeof(cResource*));  //allocate array for resources
-
-    for(int i = 0; i < box->numBoxes; i++)
+    if (box->numBoxes > 0)
     {
-        box->boxes[i] = malloc(sizeof(warperTextBox));  //allocate current box
-        box->boxResources[i] = malloc(sizeof(cResource));  //allocate current box's cResource
+        box->boxes = calloc(box->numBoxes, sizeof(warperTextBox*));  //allocate array for boxes
+        box->framesAppear = calloc(box->numBoxes, sizeof(int));  //allocate array for framesAppear
+        box->boxResources = calloc(box->numBoxes, sizeof(cResource*));  //allocate array for resources
 
-        //parse box data
-        char* boxData = strtok_r(savePtr, "{}$", &savePtr);
-        printf("boxData = %s\n", boxData);
+        for(int i = 0; i < box->numBoxes; i++)
+        {
+            box->boxes[i] = malloc(sizeof(warperTextBox));  //allocate current box
+            //parse box data
+            char* boxData = strtok_r(savePtr, "{}$", &savePtr);
+            //printf("boxData = %s\n", boxData);
+            importWarperTextBox(box->boxes[i], boxData);
+            //printf("import cutscene box %s\n", savePtr);
+        }
+
+        for(int i = 0; i < box->numBoxes; i++)
+        {
+            box->framesAppear[i] = strtol(strtok_r(savePtr, "#$", &savePtr), NULL, 10);
+            //printf("import cutscene frames %s\n", savePtr);
+
+            //init box resource
+            box->boxResources[i] = malloc(sizeof(cResource));
+            printf("box resource %x\n", box->boxResources[i]);
+            initCResource(box->boxResources[i], box->boxes[i], drawWarperTextBox, destroyWarperTextBox, 0);
+        }
     }
+    else
+    {
+        box->boxes = NULL;
+        box->framesAppear = NULL;
+        box->boxResources = NULL;
+    }
+    //
 }
 
 char* exportWarperCutsceneBox(warperCutsceneBox box)
@@ -307,12 +327,12 @@ char* exportWarperCutsceneBox(warperCutsceneBox box)
         free(framesData);
 
         if (i < box.numBoxes - 1)
-            strncat(boxesData, ":", boxesLen);  //add the separator
+            strncat(boxesData, "$", boxesLen);  //add the separator
     }
 
     strncat(boxesData, "%#", boxesLen);  //close it off
 
-    printf("boxesLen = %d for str \"%s\"\n", boxesLen, boxesData);
+    //printf("boxesLen = %d for str \"%s\"\n", boxesLen, boxesData);
 
     return boxesData;
 }

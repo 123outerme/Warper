@@ -354,7 +354,65 @@ void checkWarperTextBoxSelection(warperTextBox* textBox, int xClick, int yClick)
 
 void importWarperTextBox(warperTextBox* textBox, char* data)
 {
-    //TODO
+    char* savePtr = data;
+
+    //colors
+    textBox->bgColor.r = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->bgColor.g = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->bgColor.b = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->bgColor.a = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->highlightColor.r = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->highlightColor.g = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->highlightColor.b = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->highlightColor.a = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->outlineColor.r = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->outlineColor.g = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->outlineColor.b = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+    textBox->outlineColor.a = strtol(strtok_r(savePtr, "{[(,)]}", &savePtr), NULL, 10);
+
+    //is-menu flag, selection/stored selection, text array size
+    textBox->isMenu = strtol(strtok_r(savePtr, "]`", &savePtr), NULL, 10);
+    textBox->selection = strtol(strtok_r(savePtr, "`", &savePtr), NULL, 10);
+    textBox->storedSelection = strtol(strtok_r(savePtr, "`", &savePtr), NULL, 10);
+    textBox->textsSize = strtol(strtok_r(savePtr, "`", &savePtr), NULL, 10);
+
+    //draw rectangle
+    textBox->rect.x = strtof(strtok_r(savePtr, "(,)", &savePtr), NULL);
+    textBox->rect.y = strtof(strtok_r(savePtr, "(,)", &savePtr), NULL);
+    textBox->rect.w = strtof(strtok_r(savePtr, "(,)", &savePtr), NULL);
+    textBox->rect.h = strtof(strtok_r(savePtr, "(,)", &savePtr), NULL);
+
+    //allocating arrays
+    textBox->texts = calloc(textBox->textsSize, sizeof(cText));
+    textBox->isOption = calloc(textBox->textsSize, sizeof(bool));
+
+    //strings
+    for(int i = 0; i < textBox->textsSize; i++)
+    {
+        cDoubleRect textRect = {0, 0, 0, 0};
+        //strtok_r(savePtr, "`[", &savePtr);  //consume separator and opening bracket
+        char* text = strtok_r(savePtr, "`[\",", &savePtr);
+        //printf(">text: \"%s\" ", text);
+
+        textRect.x = strtof(strtok_r(savePtr, "(,", &savePtr), NULL);
+        textRect.y = strtof(strtok_r(savePtr, ",", &savePtr), NULL);
+        textRect.w = strtof(strtok_r(savePtr, ",", &savePtr), NULL);
+        textRect.h = strtof(strtok_r(savePtr, ",", &savePtr), NULL);
+        int renderLayer = strtol(strtok_r(savePtr, ",)", &savePtr), NULL, 10);
+
+        //printf("(%.2f %.2f %.2f %.2f)\n", textRect.x, textRect.y, textRect.w, textRect.h);
+        initCText(&(textBox->texts[i]), text, textRect, textRect.w, (SDL_Color) {0x00, 0x00, 0x00, 0xFF}, textBox->bgColor, NULL, 1.0, SDL_FLIP_NONE, 0.0, false, renderLayer);
+        //TODO: figure out what to do for text color
+    }
+
+    //is-option flags
+    //printf(">isOptions: [");
+    for(int i = 0; i < textBox->textsSize; i++)
+    {
+        textBox->isOption[i] = strtol(strtok_r(savePtr, "`[,]", &savePtr), NULL, 10);
+        //printf("%d ", textBox->isOption[i]);
+    }
+    //printf("]\n");
 }
 
 char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
@@ -369,7 +427,8 @@ char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
 
     for(int i = 0; i < textBox.textsSize; i++)
     {
-        textsSizes[i] = strlen(textBox.texts[i].str) + 4;  //sizes of each individual text item, plus 2 for quotes and 1 for separator, and 1 for good measure
+        textsSizes[i] = strlen(textBox.texts[i].str) + 4 + charsInNum(textBox.texts[i].rect.x) + charsInNum(textBox.texts[i].rect.y) + charsInNum(textBox.texts[i].rect.w) + charsInNum(textBox.texts[i].rect.h) + 12 + 7 + charsInNum(textBox.texts[i].renderLayer);
+        //sizes of each individual text item, plus 2 for quotes and 1 for separator, and 1 for good measure, plus x/y/w/h integer parts, plus 4 * (decimal point plus two places after) plus render layer value plus 5 delimiters plus containing parentheses
         dataSize += textsSizes[i];  //add it to dataSize variable
     }
 
@@ -377,11 +436,11 @@ char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
     char* tempData = calloc(miscSize, sizeof(char));
 
     //colorsSize + 1 for the containing '|' and separator ';'
-    snprintf(boxData, colorsSize + 2, "{[(%d,%d,%d,%d),(%d,%d,%d,%d),(%d,%d,%d,%d)];", textBox.bgColor.r, textBox.bgColor.g, textBox.bgColor.b, textBox.bgColor.a,
+    snprintf(boxData, colorsSize + 2, "{[(%d,%d,%d,%d),(%d,%d,%d,%d),(%d,%d,%d,%d)]`", textBox.bgColor.r, textBox.bgColor.g, textBox.bgColor.b, textBox.bgColor.a,
                                                                                         textBox.highlightColor.r, textBox.highlightColor.g, textBox.highlightColor.b, textBox.highlightColor.a,
                                                                                         textBox.outlineColor.r, textBox.outlineColor.g, textBox.outlineColor.b, textBox.outlineColor.a);
 
-    snprintf(tempData, miscSize, "%d;%d;%d;%d;(%f,%f,%f,%f);", textBox.isMenu, textBox.selection, textBox.storedSelection, textBox.textsSize, textBox.rect.x, textBox.rect.y, textBox.rect.w, textBox.rect.h);
+    snprintf(tempData, miscSize, "%d`%d`%d`%d`(%f,%f,%f,%f)`", textBox.isMenu, textBox.selection, textBox.storedSelection, textBox.textsSize, textBox.rect.x, textBox.rect.y, textBox.rect.w, textBox.rect.h);
     strncat(boxData, tempData, dataSize);
 
     free(tempData);
@@ -390,7 +449,7 @@ char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
     for(int i = 0; i < textBox.textsSize; i++)
     {
         tempData = calloc(textsSizes[i] + 3, sizeof(char));
-        snprintf(tempData, textsSizes[i] + 3, "\"%s\"", textBox.texts[i].str);
+        snprintf(tempData, textsSizes[i] + 3, "\"%s\"(%.2f,%.2f,%.2f,%.2f,%d)", textBox.texts[i].str, textBox.texts[i].rect.x, textBox.texts[i].rect.y, textBox.texts[i].rect.w, textBox.texts[i].rect.h, textBox.texts[i].renderLayer);
         strncat(boxData, tempData, dataSize);
 
         if (i < textBox.textsSize - 1)
@@ -400,7 +459,7 @@ char* exportWarperTextBox(warperTextBox textBox, int* exportedLen)
     }
     free(textsSizes);
 
-    strncat(boxData, "];[", dataSize);
+    strncat(boxData, "]`[", dataSize);
 
     for(int i = 0; i < textBox.textsSize; i++)
     {
