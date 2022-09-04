@@ -213,9 +213,11 @@ void initWarperCutsceneBox(warperCutsceneBox* box, warperTextBox** boxes, int* f
 void incrementWarperCutsceneBox(warperCutscene* cutscene)
 {
     int curAnimation = cutscene->currentAnimation;
-    cutscene->boxes[curAnimation].boxResources[cutscene->boxes[curAnimation].currentBox]->renderLayer = 0;  //hide the old box
-    cutscene->boxes[curAnimation].currentBox++;  //increment to the next box
-
+    if (cutscene->boxes[curAnimation].boxResources != NULL)
+    {
+        cutscene->boxes[curAnimation].boxResources[cutscene->boxes[curAnimation].currentBox]->renderLayer = 0;  //hide the old box
+        cutscene->boxes[curAnimation].currentBox++;  //increment to the next box
+    }
     cutscene->waitingForBox = false;  //unblock the cutscene (letting another box or the overall cutscene continue)
 }
 
@@ -442,7 +444,16 @@ void destroyWarperCutscene(warperCutscene* cutscene, bool destroyAnimations, boo
     cutscene->numAnimations = 0;
 }
 
-void importWarperCutscene(warperCutscene* cutscene, char* filepath)
+/** \brief
+ *
+ * \param cutscene warperCutscene* - cutscene with the data to be filled in
+ * \param filepath char* - the filepath where the cutscene data can be found
+ * \param cutsceneSprites cSprite*** - the reference to the cSprite* array that will be fed into the cScene [one additional slot will be left open for the cursor]
+ * \param numSprites int - reference to an int that will, on completion, hold the number of sprites [additional cursor slot not included]
+ * \param cutsceneResources cResources*** - the reference to the cResource* array that will be fed into the cScene
+ * \param numSprites int - reference to an int that will, on completion, hold the number of resources
+ */
+void importWarperCutscene(warperCutscene* cutscene, char* filepath, cSprite*** cutsceneSprites, int* numSprites, cResource*** cutsceneResources, int* numResources)
 {
     /* file format:
     1: Lengths of each array
@@ -452,6 +463,7 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath)
     4: animation data (actors etc)
     */
     cutscene->currentAnimation = 0;
+    cutscene->waitingForBox = false;
 
     //start interpreting the lengths of each array
     int dataSize = 2 + 3 * 3 + 1;  //2 digits + 3-char numbers (max expected) * 3 numbers + 1 for good measure
@@ -547,6 +559,31 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath)
     }
     free(data);
     cutscene->animations = animations;
+    //done filling in cutscene
+
+    //process cutscene for conversion to the structures needed by the cScene
+    //sprites
+    *numSprites = spritesLen;
+    *cutsceneSprites = calloc(spritesLen + 1, sizeof(cSprite*));
+    for(int i = 0; i < spritesLen; i++)
+        *cutsceneSprites[i] = &sprites[i];
+
+    //resources
+    *numResources = 0;
+    for(int i = 0; i < cutscene->numAnimations; i++)
+        *numResources += cutscene->boxes[i].numBoxes;  //get number of resources
+
+
+    *cutsceneResources = calloc(*numResources, sizeof(cResource*));
+    int crIndex = 0;
+    for(int i = 0; i < cutscene->numAnimations; i++)
+    {
+        //generate array of cResource*'s
+        for(int j = 0; j < cutscene->boxes[i].numBoxes; j++)
+        {
+            (*cutsceneResources)[crIndex++] = cutscene->boxes[i].boxResources[j];
+        }
+    }
 }
 
 void exportWarperCutscene(warperCutscene cutscene, char* filepath)

@@ -57,7 +57,7 @@ void initWarperCutscene(warperCutscene* cutscene, warperAnimation* animations, w
 void iterateWarperCutscene(warperCutscene* cutscene);
 void destroyWarperCutscene(warperCutscene* cutscene,  bool destroyAnimations, bool destroyTextBoxes, bool destroyBoxResources);
 
-void importWarperCutscene(warperCutscene* cutscene, char* filepath);
+void importWarperCutscene(warperCutscene* cutscene, char* filepath, cSprite*** cutsceneSprites, int* numSprites, cResource*** cutsceneResources, int* numResources);
 void exportWarperCutscene(warperCutscene cutscene, char* filepath);
 
 #endif // WARPERCUTSCENE_H_INCLUDED

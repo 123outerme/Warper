@@ -517,40 +517,13 @@ void playTestWizardAnimation()
     exportWarperCutscene(cutscene, "./assets/testWizCutscene.txt");
     //*/
 
-    importWarperCutscene(&cutscene, "./assets/testWizCutscene.txt");
 
-    int numSprites = 0;
-    for(int i = 0; i < cutscene.numAnimations; i++)
-    {
-        numSprites += cutscene.animations[i].numActors;
-    }
+    cSprite** cutsceneSprites;
+    cResource** cutsceneResources;
+    int numSprites, numResources;
+    importWarperCutscene(&cutscene, "./assets/testWizCutscene.txt", &cutsceneSprites, &numSprites, &cutsceneResources, &numResources);
 
-    cSprite** cutsceneSprites = calloc(numSprites + 1, sizeof(cSprite*));
-    int csIndex = 0;
-    for(int i = 0; i < cutscene.numAnimations; i++)
-    {
-        for(int j = 0; j < cutscene.animations[i].numActors; j++)
-        {
-            cutsceneSprites[csIndex++] = cutscene.animations[i].actors[j].animatedSpr->sprite;
-        }
-    }
-    cutsceneSprites[csIndex++] = &cursorSprite;
-
-    int numResources = 0;
-    for(int i = 0; i < cutscene.numAnimations; i++)
-        numResources += cutscene.boxes[i].numBoxes;  //get number of resources
-
-
-    cResource** cutsceneResources = calloc(numResources, sizeof(cResource*));
-    int crIndex = 0;
-    for(int i = 0; i < cutscene.numAnimations; i++)
-    {
-        //generate array of cResource*'s
-        for(int j = 0; j < cutscene.boxes[i].numBoxes; j++)
-        {
-            cutsceneResources[crIndex++] = cutscene.boxes[i].boxResources[j];
-        }
-    }
+    cutsceneSprites[numSprites++] = &cursorSprite;
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
