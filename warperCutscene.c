@@ -7,9 +7,33 @@ void initWarperActor(warperActor* actor, cDoubleRect pos, warperAnimatedSprite* 
     actor->pauseAnimationWhenWaiting = pauseSpriteWhenWaiting;
 }
 
-void importWarperActor(warperActor* actor, char* data, warperAnimatedSprite* sprites, int numSprites)
+void importWarperActor(warperActor* actor, char* data, warperAnimatedSprite* animSprites, int numAnimSprites, cSprite* sprites, int numSprites)
 {
-    //TODO
+    char* savePtr = data;
+    //printf("\nactor data %s\n", data);
+    actor->position.x = strtol(strtok_r(data, ",", &savePtr), NULL, 10);
+    actor->position.y = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
+    actor->position.w = strtol(strtok_r(savePtr, ",", &savePtr), NULL, 10);
+    actor->position.h = strtol(strtok_r(savePtr, ",;", &savePtr), NULL, 10);
+    actor->pauseAnimationWhenWaiting = strtol(strtok_r(savePtr, ";", &savePtr), NULL, 10);
+
+
+    if (savePtr[0] == '\"')
+    {  //if the remaining data (sprite data) was actual data, and not a referenced index
+        //printf("> %s\n", tempData);
+        int spriteIndex = -1;
+        importWarperAnimatedSprite(actor->animatedSpr, savePtr, &spriteIndex);
+        if (spriteIndex != -1 && spriteIndex < numSprites)
+            actor->animatedSpr->sprite = &(sprites[spriteIndex]);
+    }
+    else
+    {  //if it was an index
+        int index = strtol(strtok_r(savePtr, ";\0", &savePtr), NULL, 10);
+        if (index != -1 && index < numAnimSprites)
+            actor->animatedSpr = &(animSprites[index]);
+    }
+
+    printf("actor data %f, %f, %f, %f, %d, %s\n", actor->position.x, actor->position.y, actor->position.w, actor->position.h, actor->pauseAnimationWhenWaiting, actor->animatedSpr->sprite->textureFilepath);
 }
 
 char* exportWarperActor(warperActor actor, warperAnimatedSprite** sprites, int numSprites)
@@ -32,7 +56,7 @@ char* exportWarperActor(warperActor actor, warperAnimatedSprite** sprites, int n
         int chars = charsInNum(foundIndex);
         spriteData = calloc(chars + 1, sizeof(char));
         actorDataSize += chars;  //plus the length of the actor sprite index
-        snprintf(spriteData, chars, "%d", foundIndex);
+        snprintf(spriteData, chars + 1, "%d", foundIndex);
     }
     else
     {
@@ -89,9 +113,10 @@ void destroyWarperAnimation(warperAnimation* animation)
     animation->currentFrame = 0;
 }
 
-void importWarperAnimation(warperAnimation* animation, char* data, warperAnimatedSprite* sprites, int numSprites)
+void importWarperAnimation(warperAnimation* animation, char* data, warperAnimatedSprite* animSprites, int numAnimSprites, cSprite* sprites, int numSprites)
 {
     char* savePtr = data;
+    //printf("animation data %s\n", data);
     animation->numActors = strtol(strtok_r(data, "&;", &savePtr), NULL, 10);
     animation->actors = calloc(animation->numActors, sizeof(warperActor));
 
@@ -101,7 +126,7 @@ void importWarperAnimation(warperAnimation* animation, char* data, warperAnimate
     for(int i = 0; i < animation->numActors; i++)
     {
         char* actorData = strtok_r(savePtr, "$", &savePtr);
-        importWarperActor(&(animation->actors[i]), actorData, sprites, numSprites);
+        importWarperActor(&(animation->actors[i]), actorData, animSprites, numAnimSprites, sprites, numSprites);
     }
 }
 
@@ -224,12 +249,30 @@ void destroyWarperCutsceneBox(warperCutsceneBox* box, bool destroyResources)
 
 void importWarperCutsceneBox(warperCutsceneBox* box, char* data)
 {
-    //TODO
+    //TODO complete
+    box->currentBox = 0;
+
+    char* savePtr = data;
+    box->numBoxes = strtol(strtok_r(savePtr, "#%", &savePtr), NULL, 10);
+
+    box->boxes = calloc(box->numBoxes, sizeof(warperTextBox*));  //allocate array for boxes
+    box->framesAppear = calloc(box->numBoxes, sizeof(int));  //allocate array for framesAppear
+    box->boxResources = calloc(box->numBoxes, sizeof(cResource*));  //allocate array for resources
+
+    for(int i = 0; i < box->numBoxes; i++)
+    {
+        box->boxes[i] = malloc(sizeof(warperTextBox));  //allocate current box
+        box->boxResources[i] = malloc(sizeof(cResource));  //allocate current box's cResource
+
+        //parse box data
+        char* boxData = strtok_r(savePtr, "{}$", &savePtr);
+        printf("boxData = %s\n", boxData);
+    }
 }
 
 char* exportWarperCutsceneBox(warperCutsceneBox box)
 {
-    int boxesLen = 2 + charsInNum(box.numBoxes) + 1;  //2 containing '$' characters plus the chars to represent the number of boxes, plus 1 for good measure
+    int boxesLen = 2 + charsInNum(box.numBoxes) + 2 + 1;  //2 containing '$' characters plus the chars to represent the number of boxes, plus 2 for dividing % characters, plus 1 for good measure
     char** animBoxData = calloc(box.numBoxes, sizeof(char*));
 
     for(int i = 0; i < box.numBoxes; i++)
@@ -239,8 +282,8 @@ char* exportWarperCutsceneBox(warperCutsceneBox box)
         boxesLen += dataLen + 1 + charsInNum(box.framesAppear[i]) + 1;  //calculate the length of the string we need to allocate: size of box data, plus 1 for separator, plus size of framesAppear int, plus 1 for separator
     }
 
-    char* boxesData = calloc(boxesLen, sizeof(char));  //allocate the string we will return
-    snprintf(boxesData, boxesLen, "#%d%%", box.numBoxes);  //put the preliminary information in there
+    char* boxesData = calloc(boxesLen + 1, sizeof(char));  //allocate the string we will return
+    snprintf(boxesData, boxesLen, "#%d%%", box.numBoxes);  //put the preliminary information in there ('%%' delimits the percent character in formatted print functions)
 
     for(int i = 0; i < box.numBoxes; i++)
     {
@@ -249,7 +292,7 @@ char* exportWarperCutsceneBox(warperCutsceneBox box)
         free(animBoxData[i]);
 
         if (i < box.numBoxes - 1)
-            strncat(boxesData, ":", boxesLen);  //add the separator
+            strncat(boxesData, "$", boxesLen);  //add the separator
     }
     free(animBoxData);
     strncat(boxesData, "%", boxesLen);
@@ -268,6 +311,8 @@ char* exportWarperCutsceneBox(warperCutsceneBox box)
     }
 
     strncat(boxesData, "%#", boxesLen);  //close it off
+
+    printf("boxesLen = %d for str \"%s\"\n", boxesLen, boxesData);
 
     return boxesData;
 }
@@ -472,13 +517,13 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath)
     data = calloc(dataSize, sizeof(char));
     readLine(filepath, 4, dataSize, &data);
     savePtr = data;
-    printf("TESTING\n%s\n", data);
+    //printf("TESTING\n%s\n", data);
     //get each animation
     for(int i = 0; i < cutscene->numAnimations; i++)
     {
         char* animationData = strtok_r(savePtr, "|@", &savePtr);
         printf("%s\n", animationData);
-        importWarperAnimation(&(animations[i]), animationData, animSprites, animSpritesLen);
+        importWarperAnimation(&(animations[i]), animationData, animSprites, animSpritesLen, sprites, spritesLen);
     }
     free(data);
     cutscene->animations = animations;
@@ -587,9 +632,10 @@ void exportWarperCutscene(warperCutscene cutscene, char* filepath)
     {
         char* boxesData = exportWarperCutsceneBox(cutscene.boxes[i]);
         appendLine(filepath, boxesData, false);
+        free(boxesData);  //TODO: this causes a weird breakpoint to appear for whatever reason but boxesData will always be calloc'd properly so I'm not quite sure what's going on here
         if (i < cutscene.numAnimations - 1)
             appendLine(filepath, "@", false);
-        free(boxesData);
+
     }
     appendLine(filepath, "|", true);
 

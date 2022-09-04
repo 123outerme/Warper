@@ -61,7 +61,7 @@ void initWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, cSprite* spr, c
 
 void iterateWarperAnimatedSprite(warperAnimatedSprite* animatedSpr)
 {
-    if (animatedSpr->curFrame < animatedSpr->numDiffs || animatedSpr->loops != 0)
+    if (animatedSpr && (animatedSpr->curFrame < animatedSpr->numDiffs || animatedSpr->loops != 0))
     {
         animatedSpr->sprite->srcClipRect.x += animatedSpr->srcRectDiffs[animatedSpr->curFrame].x;  //go to next source frame
         animatedSpr->sprite->srcClipRect.y += animatedSpr->srcRectDiffs[animatedSpr->curFrame].y;
@@ -121,8 +121,8 @@ void destroyWarperAnimatedSprite(warperAnimatedSprite* animatedSpr, bool destroy
 /** \brief Imports an animated sprite from string data
  *
  * \param aSpr warperAnimatedSprite* - expects aSpr->spr to be filled with an allocated cSprite*, if sprIndex != NULL
- * \param spriteIndex int* - if not NULL, will be filled in with the index that this sprite occurs at (only for if sprite data wasn't exported and the index was instead)
  * \param data char* - the data you want to import
+ * \param spriteIndex int* - if not NULL, will be filled in with the index that this sprite occurs at (only for if sprite data wasn't exported and the index was instead)
  */
 void importWarperAnimatedSprite(warperAnimatedSprite* aSpr, char* data, int* spriteIndex)
 {
