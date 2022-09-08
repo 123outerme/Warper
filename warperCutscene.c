@@ -279,7 +279,7 @@ void importWarperCutsceneBox(warperCutsceneBox* box, char* data)
 
             //init box resource
             box->boxResources[i] = malloc(sizeof(cResource));
-            printf("box resource %x\n", box->boxResources[i]);
+            //printf("box resource %x\n", box->boxResources[i]);
             initCResource(box->boxResources[i], box->boxes[i], drawWarperTextBox, destroyWarperTextBox, 0);
         }
     }
@@ -494,7 +494,7 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath, cSprite*** c
     //start interpreting the animatedSprite data
     warperAnimatedSprite* animSprites = calloc(animSpritesLen, sizeof(warperAnimatedSprite));
     dataSize = 5000 * animSpritesLen;  //approx 5,000 characters per animated sprite TODO REDUCE THIS!!!
-    int animSpritesDataSize = dataSize;
+    //int animSpritesDataSize = dataSize;
     data = calloc(dataSize, sizeof(char));
     readLine(filepath, 2, dataSize, &data);
     if (data == NULL)
@@ -523,7 +523,7 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath, cSprite*** c
 
     //import textboxes
     warperCutsceneBox* boxes = calloc(cutscene->numAnimations, sizeof(warperCutsceneBox));
-    dataSize = max(500 * cutscene->numAnimations, animSpritesDataSize);  //approx 500 characters per box (but usually way less for no box)
+    dataSize = 500 * cutscene->numAnimations;  //approx 500 characters per box (but usually way less for no box)
     /*NOTE: This must be a max() expression because of the way readLine has been implemented (aka poorly)
             If a previous line is too long, then the counter for lines will increment at the max length, resulting in the string reutrned being from somewhere BEFORE the target line
             This fix is also applied to the below animation import
@@ -545,7 +545,7 @@ void importWarperCutscene(warperCutscene* cutscene, char* filepath, cSprite*** c
 
     //import the rest of the animation data
     warperAnimation* animations = calloc(cutscene->numAnimations, sizeof(warperAnimation));
-    dataSize = max(100 * cutscene->numAnimations, animSpritesDataSize);  //approx 100 characters per animation
+    dataSize = 100 * cutscene->numAnimations;  //approx 100 characters per animation
     data = calloc(dataSize, sizeof(char));
     readLine(filepath, 4, dataSize, &data);
     savePtr = data;

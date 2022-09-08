@@ -523,7 +523,7 @@ void playTestWizardAnimation()
     int numSprites, numResources;
     importWarperCutscene(&cutscene, "./assets/testWizCutscene.txt", &cutsceneSprites, &numSprites, &cutsceneResources, &numResources);
 
-    cutsceneSprites[numSprites++] = &cursorSprite;
+    cutsceneSprites[numSprites++] = &cursorSprite;  //an extra slot in the cSprite* array is allocated specifically for the cursor (but numSprites will need to be updated)
 
     cCamera camera;
     initCCamera(&camera, (cDoubleRect) {0, 0, global.windowW, global.windowH}, 1.0, 0.0, 5);
